@@ -2,7 +2,7 @@
 
 **Platform Engineer** — Cloud-Native Infrastructure + AI.
 
-Platform Engineer building cloud-native infrastructure on AWS, GCP, and Azure.  
+Building cloud-native infrastructure on AWS, GCP, and Azure.  
 I design Kubernetes platforms, GitOps workflows, and CI/CD pipelines  
 that keep applications and APIs running reliably at scale.
 
