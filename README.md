@@ -1,16 +1,32 @@
-## Hi there 👋
+# 👋 Hi, I'm Patyatawee (Champ)
 
-<!--
-**champ-patyatawee/champ-patyatawee** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+**Platform Engineer** — Cloud-Native Infrastructure + AI.
 
-Here are some ideas to get you started:
+Platform Engineer building cloud-native infrastructure on AWS, GCP, and Azure.  
+I design Kubernetes platforms, GitOps workflows, and CI/CD pipelines  
+that keep applications and APIs running reliably at scale.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+I work with startups across SEA as a freelance and contract engineer.
+
+👉 [Portfolio](https://champ-patyatawee.github.io/portfolio/)  
+📄 [Resume](./resume.pdf)
+
+
+## 🔥 Featured Projects
+
+### [LermoAI](https://github.com/champ-patyatawee/LermoAI)
+AI Agent for Personalized Learning
+
+### [Worf](https://github.com/champ-patyatawee/worf)
+
+Personal workspace - AI-native Chat, Notes, Kanban all in one place.
+
+### [Vulpic](https://github.com/champ-patyatawee/Vulpic)
+AI image editor
+
+
+## 📬 Let's Connect
+
+📧 champ.patyatawee@gmail.com
+
+💼 [LinkedIn](www.linkedin.com/in/champpatyatawee)
