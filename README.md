@@ -1,4 +1,4 @@
-# 👋 Hi, I'm Patyatawee (Champ)
+# Hi, I'm Patyatawee (Champ)
 
 **Platform Engineer** — Cloud-Native Infrastructure + AI.
 
@@ -8,11 +8,11 @@ that keep applications and APIs running reliably at scale.
 
 I work with startups across SEA as a freelance and contract engineer.
 
-👉 [Portfolio](https://champ-patyatawee.github.io/portfolio/)  
-📄 [Resume](./resume.pdf)
+[Portfolio](https://champ-patyatawee.github.io/portfolio/)  
+[Resume](./resume.pdf)
 
 
-## 🔥 Featured Projects
+## Featured Projects
 
 ### [LermoAI](https://github.com/champ-patyatawee/LermoAI)
 AI Agent for Personalized Learning
@@ -25,7 +25,7 @@ Personal workspace - AI-native Chat, Notes, Kanban all in one place.
 AI image editor
 
 
-## 📬 Let's Connect
+## Let's Connect
 
 📧 champ.patyatawee@gmail.com
 
