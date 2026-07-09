@@ -27,6 +27,6 @@ AI image editor
 
 ## Let's Connect
 
-📧 champ.patyatawee@gmail.com
+Email: champ.patyatawee@gmail.com
 
-💼 [LinkedIn](www.linkedin.com/in/champpatyatawee)
+LinkedIn: [LinkedIn](www.linkedin.com/in/champpatyatawee)
