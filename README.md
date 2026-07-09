@@ -29,4 +29,4 @@ AI image editor
 
 Email: champ.patyatawee@gmail.com
 
-LinkedIn: [LinkedIn](www.linkedin.com/in/champpatyatawee)
+LinkedIn: www.linkedin.com/in/champpatyatawee
