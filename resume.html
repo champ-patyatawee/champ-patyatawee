@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patyatawee.P – Platform Engineer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap');
+
+    :root {
+      --bg: #fafaf9;
+      --text: #1c1917;
+      --text-muted: #a8a29e;
+      --accent: #0c4a6e;
+      --rule: #e7e5e4;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      line-height: 1.5;
+      color: var(--text);
+      padding: 0;
+    }
+
+    .resume {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      background: transparent;
+    }
+
+    /* header */
+    .header {
+      margin-bottom: 2.5rem;
+    }
+
+    .name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.5rem;
+      font-weight: 400;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+
+    .title {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .summary {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: var(--text);
+      margin-top: 1rem;
+      line-height: 1.7;
+      max-width: 620px;
+    }
+
+    /* sections */
+    section {
+      margin-bottom: 2rem;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.3rem;
+      font-style: italic;
+      font-weight: 400;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+      text-transform: none;
+      border-bottom: none;
+      padding-bottom: 0;
+      letter-spacing: normal;
+    }
+
+    /* experience items */
+    .exp-item {
+      margin-bottom: 1.6rem;
+    }
+
+    .exp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.3rem 0.8rem;
+    }
+
+    .exp-role {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .exp-company {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .exp-left-group {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .exp-date {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .exp-desc {
+      margin-top: 0.3rem;
+      padding-left: 0;
+    }
+
+    .exp-desc ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .exp-desc li {
+      position: relative;
+      padding-left: 1.1rem;
+      margin-bottom: 0.2rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .exp-desc li::before {
+      content: "\2014";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    /* consulting grid */
+    .consulting-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding: 0;
+    }
+
+    .consulting-item {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 1.2rem;
+    }
+
+    /* projects */
+    .project-item {
+      margin-bottom: 1.4rem;
+    }
+
+    .project-name {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .project-name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .project-name a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .github-link {
+      margin-top: 0.8rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .github-link a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      border-bottom: none;
+    }
+
+    .github-link a:hover {
+      color: var(--text);
+    }
+
+    .print-btn {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+      padding: 0.5rem 1rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--accent);
+      background: #fff;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .print-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* responsive */
+    @media (max-width: 600px) {
+      .resume {
+        padding: 2rem 1.25rem;
+      }
+      .name {
+        font-size: 2rem;
+      }
+      .exp-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+      }
+    }
+
+    @media print {
+      @page {
+        size: A4;
+        margin: 12mm 15mm;
+      }
+
+      body {
+        background: #fff;
+        padding: 0 !important;
+      }
+
+      .print-btn {
+        display: none !important;
+      }
+
+      .resume {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+
+      .header {
+        margin-bottom: 1rem;
+      }
+
+      .name {
+        font-size: 1.8rem;
+      }
+
+      .title {
+        font-size: 0.88rem;
+        margin-top: 0.15rem;
+      }
+
+      .summary {
+        font-size: 0.82rem;
+        margin-top: 0.5rem;
+        line-height: 1.4;
+        max-width: 100%;
+      }
+
+      section {
+        margin-bottom: 0.7rem;
+      }
+
+      .section-title {
+        font-size: 1.15rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .exp-item {
+        margin-bottom: 0.55rem;
+      }
+
+      .exp-role {
+        font-size: 0.88rem;
+      }
+
+      .exp-company {
+        font-size: 0.84rem;
+      }
+
+      .exp-date {
+        font-size: 0.8rem;
+      }
+
+      .exp-desc {
+        margin-top: 0.1rem;
+      }
+
+      .exp-desc li {
+        font-size: 0.8rem;
+        margin-bottom: 0.1rem;
+        line-height: 1.35;
+        padding-left: 0.9rem;
+      }
+
+      .consulting-grid {
+        gap: 0.25rem;
+      }
+
+      .consulting-item {
+        font-size: 0.84rem;
+        margin-bottom: 0.45rem;
+      }
+
+      .project-item {
+        margin-bottom: 0.45rem;
+      }
+
+      .project-name {
+        font-size: 0.84rem;
+      }
+
+      .github-link {
+        margin-top: 0.4rem;
+        font-size: 0.84rem;
+      }
+
+      .github-link a {
+        text-decoration: none;
+        color: var(--text);
+      }
+
+      .project-name a {
+        text-decoration: none;
+        color: var(--text);
+      }
+    }
+
+  </style>
+</head>
+<body>
+  <button class="print-btn" onclick="window.print()">Print / PDF</button>
+  <div class="resume">
+    <!-- header -->
+    <div class="header">
+      <div class="name">Patyatawee Pongpayak</div>
+      <div class="title">Platform Engineer</div>
+      <div class="summary">
+        Building cloud‑native infrastructure on AWS, GCP, and Azure. 
+        I design Kubernetes platforms, GitOps workflows, and CI/CD pipelines that keep 
+        applications and APIs running reliably at scale.
+      </div>
+    </div>
+
+    <!-- experience -->
+    <section>
+      <div class="section-title">Experience</div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <div class="exp-left-group">
+            <span class="exp-role">Site Reliability Engineer</span>
+            <span class="exp-company">H LAB</span>
+          </div>
+          <span class="exp-date">Jun 2022 – Jan 2024</span>
+        </div>
+        <div class="exp-desc">
+          <ul>
+            <li>Ensured reliability &amp; performance of cloud‑based healthcare platform using SLIs/SLOs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <div class="exp-left-group">
+            <span class="exp-role">Platform Engineer</span>
+            <span class="exp-company">RentSpree</span>
+          </div>
+          <span class="exp-date">Jan 2022 – May 2022</span>
+        </div>
+        <div class="exp-desc">
+          <ul>
+            <li>Improved CI/CD processes and deployment efficiency for US rental platform</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <div class="exp-left-group">
+            <span class="exp-role">Lead DevOps Engineer</span>
+            <span class="exp-company">SkillLane</span>
+          </div>
+          <span class="exp-date">Jan 2019 – Dec 2020</span>
+        </div>
+        <div class="exp-desc">
+          <ul>
+            <li>Led cloud migration to GCP/Kubernetes, built CI/CD pipelines, reduced CDN costs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <div class="exp-left-group">
+            <span class="exp-role">DevOps Engineer</span>
+            <span class="exp-company">King Power Click</span>
+          </div>
+          <span class="exp-date">Jan 2017 – Jan 2019</span>
+        </div>
+        <div class="exp-desc">
+          <ul>
+            <li>Automated testing pipelines, deployed microservices on K8s (AWS + GCP)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="exp-item">
+        <div class="exp-header">
+          <div class="exp-left-group">
+            <span class="exp-role">Full‑Stack Engineer</span>
+            <span class="exp-company">ShopSpot</span>
+          </div>
+          <span class="exp-date">Jan 2016 – Jan 2017</span>
+        </div>
+        <div class="exp-desc">
+          <ul>
+            <li>Developed web applications and APIs for mobile apps using Angular, React, and Node.js</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- consulting experience -->
+    <section>
+      <div class="section-title">Consulting Experience</div>
+      <div class="consulting-grid">
+
+        <div class="consulting-item">
+          <div class="exp-header">
+            <div class="exp-left-group">
+              <span class="exp-role">SkillLane</span>
+              <span class="exp-company">(EdTech) — DevOps Consulting</span>
+            </div>
+            <span class="exp-date">2025 – Present</span>
+          </div>
+          <div class="exp-desc">
+            <ul>
+              <li>Transformed infrastructure to IaC (Terraform) and GitOps workflows</li>
+              <li>Designed scalable infrastructure supporting millions of users</li>
+              <li>Established SRE practices for monitoring and incident response</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="consulting-item">
+          <div class="exp-header">
+            <div class="exp-left-group">
+              <span class="exp-role">HLAB</span>
+              <span class="exp-company">(HealthTech) — SRE Consulting</span>
+            </div>
+            <span class="exp-date">2025 – 2026</span>
+          </div>
+          <div class="exp-desc">
+            <ul>
+              <li>Built CI/CD pipelines using Azure DevOps for automated deployment</li>
+              <li>Managed cloud infrastructure for healthcare application delivery</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="consulting-item">
+          <div class="exp-header">
+            <div class="exp-left-group">
+              <span class="exp-role">Orbit People</span>
+              <span class="exp-company">(HRTech) — Platform Consulting</span>
+            </div>
+            <span class="exp-date">2025</span>
+          </div>
+          <div class="exp-desc">
+            <ul>
+              <li>Designed and developed Resume Match App for HR platform</li>
+              <li>Deployed application on DigitalOcean with automated CI/CD</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="consulting-item">
+          <div class="exp-header">
+            <div class="exp-left-group">
+              <span class="exp-role">Finddive</span>
+              <span class="exp-company">(TravelTech) — Cloud Infrastructure Consulting</span>
+            </div>
+            <span class="exp-date">2025</span>
+          </div>
+          <div class="exp-desc">
+            <ul>
+              <li>Deployed microservices to Google Cloud using Kubernetes</li>
+              <li>Set up CI/CD pipelines for automated builds and deployments</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="consulting-item">
+          <div class="exp-header">
+            <div class="exp-left-group">
+              <span class="exp-role">ShobShop Media</span>
+              <span class="exp-company">(Ecommerce) — Platform Consulting</span>
+            </div>
+            <span class="exp-date">2025</span>
+          </div>
+          <div class="exp-desc">
+            <ul>
+              <li>Optimized platform performance, reducing page load times</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- personal projects -->
+    <section>
+      <div class="section-title">Personal Projects</div>
+
+      <div class="project-item">
+        <div class="project-name"><a href="https://github.com/champ-patyatawee/lermoai" target="_blank" rel="noopener">LermoAI – AI‑Powered Personalized Learning Platform</a></div>
+      </div>
+
+      <div class="project-item">
+        <div class="project-name"><a href="https://github.com/champ-patyatawee/worf" target="_blank" rel="noopener">Worf – AI‑Native Workspace (Chat, Notes, Kanban)</a></div>
+      </div>
+
+      <div class="github-link">
+        More projects: <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener">github.com/champ-patyatawee</a>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

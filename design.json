@@ -1,0 +1,225 @@
+{
+  "name": "Startup Marketing Design System",
+  "version": "1.0.0",
+  "theme": {
+    "mode": "light",
+    "background": "#F7F7F4",
+    "surface": "#FFFFFF",
+    "text": "#111111",
+    "textSecondary": "#555555",
+    "border": "#111111"
+  },
+  "colors": {
+    "primary": "#1E50FF",
+    "secondary": "#F5A9D6",
+    "accent": "#D9FF2A",
+    "cyan": "#3BE8F6",
+    "yellow": "#FFD84D",
+    "black": "#111111",
+    "white": "#FFFFFF",
+    "gray50": "#F7F7F4",
+    "gray100": "#ECECEC",
+    "gray200": "#DDDDDD",
+    "gray300": "#C8C8C8",
+    "gray500": "#777777",
+    "gray700": "#444444",
+    "gray900": "#111111",
+    "success": "#00D084",
+    "warning": "#FFC93C",
+    "danger": "#FF4D4F"
+  },
+  "typography": {
+    "fontFamily": {
+      "heading": "Poppins",
+      "body": "Inter",
+      "mono": "JetBrains Mono"
+    },
+    "fontWeight": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700,
+      "black": 800
+    },
+    "fontSize": {
+      "xs": 12,
+      "sm": 14,
+      "base": 16,
+      "lg": 18,
+      "xl": 24,
+      "2xl": 36,
+      "3xl": 48,
+      "4xl": 64,
+      "5xl": 80
+    },
+    "lineHeight": {
+      "tight": 1.1,
+      "normal": 1.5,
+      "relaxed": 1.8
+    },
+    "letterSpacing": {
+      "tight": "-2%",
+      "normal": "0%",
+      "wide": "2%"
+    }
+  },
+  "spacing": {
+    "0": 0,
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "8": 32,
+    "10": 40,
+    "12": 48,
+    "16": 64,
+    "20": 80,
+    "24": 96,
+    "32": 128
+  },
+  "radius": {
+    "none": 0,
+    "sm": 8,
+    "md": 12,
+    "lg": 20,
+    "xl": 28,
+    "full": 9999
+  },
+  "border": {
+    "width": {
+      "thin": 1,
+      "default": 2,
+      "heavy": 3
+    },
+    "color": "#111111"
+  },
+  "shadow": {
+    "card": {
+      "x": 4,
+      "y": 4,
+      "blur": 0,
+      "spread": 0,
+      "color": "#111111"
+    },
+    "button": {
+      "x": 3,
+      "y": 3,
+      "blur": 0,
+      "spread": 0,
+      "color": "#111111"
+    }
+  },
+  "layout": {
+    "container": {
+      "maxWidth": 1280,
+      "padding": 32
+    },
+    "grid": {
+      "columns": 12,
+      "gutter": 32,
+      "margin": 32
+    }
+  },
+  "buttons": {
+    "primary": {
+      "background": "#D9FF2A",
+      "text": "#111111",
+      "border": "2px solid #111111",
+      "radius": 16,
+      "padding": {
+        "x": 28,
+        "y": 16
+      },
+      "shadow": "button"
+    },
+    "secondary": {
+      "background": "#FFFFFF",
+      "text": "#111111",
+      "border": "2px solid #111111",
+      "radius": 16,
+      "padding": {
+        "x": 28,
+        "y": 16
+      }
+    },
+    "ghost": {
+      "background": "transparent",
+      "text": "#111111",
+      "border": "none"
+    }
+  },
+  "cards": {
+    "default": {
+      "background": "#FFFFFF",
+      "radius": 20,
+      "border": "2px solid #111111",
+      "shadow": "card",
+      "padding": 32
+    },
+    "blue": {
+      "background": "#1E50FF",
+      "text": "#FFFFFF"
+    },
+    "pink": {
+      "background": "#F5A9D6",
+      "text": "#111111"
+    }
+  },
+  "navigation": {
+    "height": 72,
+    "background": "#FFFFFF",
+    "border": "2px solid #111111",
+    "radius": 24
+  },
+  "hero": {
+    "title": {
+      "fontSize": 80,
+      "fontWeight": 700,
+      "lineHeight": 1.05
+    },
+    "description": {
+      "fontSize": 18,
+      "lineHeight": 1.6,
+      "color": "#555555"
+    },
+    "buttonSpacing": 32
+  },
+  "icons": {
+    "stroke": 2,
+    "color": "#111111",
+    "style": "outline"
+  },
+  "illustration": {
+    "style": "Memphis",
+    "outline": "#111111",
+    "outlineWidth": 2,
+    "palette": [
+      "#1E50FF",
+      "#F5A9D6",
+      "#FFD84D",
+      "#D9FF2A",
+      "#3BE8F6",
+      "#FFFFFF",
+      "#111111"
+    ]
+  },
+  "decorations": {
+    "gridPattern": true,
+    "geometricShapes": true,
+    "outlined": true,
+    "playful": true
+  },
+  "motion": {
+    "duration": {
+      "fast": 150,
+      "normal": 250,
+      "slow": 400
+    },
+    "easing": {
+      "default": "ease-out",
+      "bounce": "cubic-bezier(.34,1.56,.64,1)"
+    }
+  }
+}
