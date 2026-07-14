@@ -1482,25 +1482,6 @@
                 observer.observe(section);
             });
             
-            // Enhanced scroll behavior for iPhone-like experience
-            let startY = 0;
-            let startX = 0;
-            
-            document.addEventListener('touchstart', function(e) {
-                startY = e.touches[0].pageY;
-                startX = e.touches[0].pageX;
-            }, { passive: false });
-            
-            document.addEventListener('touchmove', function(e) {
-                const deltaY = e.touches[0].pageY - startY;
-                const deltaX = e.touches[0].pageX - startX;
-                
-                // Only prevent default if we're scrolling vertically
-                if (Math.abs(deltaY) > Math.abs(deltaX)) {
-                    e.preventDefault();
-                }
-            }, { passive: false });
-
             // Active nav link highlighting on scroll
             const navLinks = document.querySelectorAll('.nav-links a[href^="#"]');
             const allSections = document.querySelectorAll('section[id]');
