@@ -1,0 +1,25 @@
+{
+  "name": "champ-patyatawee",
+  "version": "1.0.0",
+  "description": "**Platform Engineer** — Cloud-Native Infrastructure + AI.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:blog": "node build.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/champ-patyatawee/champ-patyatawee.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/champ-patyatawee/champ-patyatawee/issues"
+  },
+  "homepage": "https://github.com/champ-patyatawee/champ-patyatawee#readme",
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "marked": "^18.0.6"
+  }
+}
