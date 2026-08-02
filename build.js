@@ -24,7 +24,7 @@ const matter = require('gray-matter');
 const POSTS_DIR = path.join(__dirname, 'blog', 'posts');
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const OUTPUT_DIR = path.join(__dirname, 'blog');
-const SITE_URL = 'https://champ-patyatawee.com';
+const SITE_URL = 'https://champ-patyatawee.pages.dev';
 
 // Configure marked for safety
 marked.setOptions({
@@ -347,7 +347,7 @@ function build() {
         page = page.replace(/\{\{encodedTitle\}\}/g, encodedTitle);
 
         // hreflang URLs
-        page = page.replace(/\{\{page_url\}\}/g, `${SITE_URL}/blog/${post.slug}.html`);
+        page = page.replace(/\{\{page_url\}\}/g, `${SITE_URL}/blog/${post.slug}`);
 
         // Open Graph share image (absolute URL). Falls back to the site avatar.
         const ogImage = post.image
