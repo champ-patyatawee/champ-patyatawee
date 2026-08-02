@@ -3,7 +3,7 @@ title: "Managing Multiple Kubernetes Clusters Using Argo CD"
 date: 2025-07-15
 tags: [devops, gitops, argocd]
 excerpt: "Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively."
-image: argocd-ui-preview.png
+image: argocd-ui-preview.jpg
 lang: en
 ---
 
