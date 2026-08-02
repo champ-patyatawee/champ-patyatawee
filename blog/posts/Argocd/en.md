@@ -40,7 +40,7 @@ Argo CD is a declarative GitOps tool for Kubernetes that continuously watches yo
 
 In a GitOps workflow, your Git repository is the single source of truth — the place where your entire cluster state lives, versioned and reviewed like code.
 
-# Our Setup: Cluster A and Cluster B
+# Setup: Cluster A and Cluster B
 
 To see this in action, let's use two clusters:
 
