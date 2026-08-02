@@ -691,7 +691,7 @@ img.loaded {
    Blog Post Page
    ============================================ */
 .blog-post-container {
-    max-width: 800px;
+    max-width: 960px;
     margin: 0 auto;
     padding: 3rem 2rem 4rem;
     opacity: 0;
@@ -1106,6 +1106,97 @@ pre[class*="language-"] {
 }
 
 /* ============================================
+   Language Tabs
+   ============================================ */
+.lang-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--border);
+}
+
+.lang-tab {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 20px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+}
+
+.lang-tab:hover {
+    background: #EEF0FF;
+    color: var(--primary);
+}
+
+.lang-tab.active {
+    background: var(--primary);
+    color: var(--white);
+    border-color: var(--primary);
+}
+
+.lang-tab.active:hover {
+    background: var(--primary);
+    color: var(--white);
+}
+
+/* ============================================
+   Language Content Visibility
+   ============================================ */
+.lang-content {
+    display: none;
+}
+
+.lang-content.active {
+    display: block;
+}
+
+/* ============================================
+   Language Badge on Listing Cards
+   ============================================ */
+.post-card-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.post-card-title-row .post-card-title {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+.lang-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 3px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid var(--primary);
+    border-radius: 6px;
+    color: var(--primary);
+    background: transparent;
+    white-space: nowrap;
+}
+
+.lang-badge-both {
+    background: var(--primary);
+    color: var(--white);
+}
+
+/* ============================================
    Responsive
    ============================================ */
 @media (max-width: 992px) {
@@ -1121,6 +1212,7 @@ pre[class*="language-"] {
     }
 
     .blog-post-container {
+        max-width: 100%;
         padding: 2rem 1.5rem;
     }
 
@@ -1325,4 +1417,25 @@ div.code-toolbar > .toolbar {
 
 div.code-toolbar:hover > .toolbar {
     opacity: 1;
+}
+
+/* ============================================
+   Mermaid Diagrams
+   ============================================ */
+.post-content pre.mermaid {
+    background: #FFFFFF;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: normal;
+    text-align: center;
+}
+
+.post-content pre.mermaid svg {
+    max-width: 100%;
+    height: auto;
 }

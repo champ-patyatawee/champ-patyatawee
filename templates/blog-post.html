@@ -3,16 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{{excerpt}}">
-    <meta property="og:title" content="{{title}} — Champ Patyatawee">
-    <meta property="og:description" content="{{excerpt}}">
+    <meta name="description" content="{{en_excerpt}}">
+    <meta property="og:title" content="{{en_title}} — Champ Patyatawee">
+    <meta property="og:description" content="{{en_excerpt}}">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://champ-patyatawee.com/blog/{{slug}}.html">
+    <meta property="og:url" content="{{page_url}}">
+    <meta property="og:image" content="{{og_image}}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{title}}">
-    <meta name="twitter:description" content="{{excerpt}}">
-    <link rel="canonical" href="https://champ-patyatawee.com/blog/{{slug}}.html">
-    <title>{{title}} — Champ Patyatawee</title>
+    <meta name="twitter:title" content="{{en_title}}">
+    <meta name="twitter:description" content="{{en_excerpt}}">
+    <meta name="twitter:image" content="{{og_image}}">
+    <meta name="twitter:image:alt" content="{{en_title}}">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="{{th_excerpt}}" lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="{{page_url}}">
+    <link rel="alternate" hreflang="en" href="{{page_url}}">
+    <link rel="alternate" hreflang="th" href="{{page_url}}">
+    <link rel="alternate" hreflang="x-default" href="{{page_url}}">
+    <title>{{en_title}} — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
     <link rel="stylesheet" href="style.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -110,27 +122,43 @@
             <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
             
             <header class="post-header">
-                <h1 class="post-title">{{title}}</h1>
+                <h1 class="post-title" id="post-title">{{en_title}}</h1>
                 <div class="post-meta">
-                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> {{date}}</span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> {{readingTime}} min read</span>
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">{{date}}</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">{{en_readingTime}} min read</span></span>
                 </div>
-                <div class="post-tags">
-                    {{tags}}
+                <div class="post-tags" id="post-tags">
+                    {{en_tags}}
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="{{has_both}}">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
                 </div>
             </header>
 
-            <div class="post-content">
-                {{content}}
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    {{en_content}}
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    {{th_content}}
+                </div>
             </div>
 
             <footer class="post-footer">
                 <div class="share-links">
                     <span class="share-label">Share this post:</span>
-                    <a href="https://twitter.com/intent/tweet?text={{encodedTitle}}&url=https://champ-patyatawee.com/blog/{{slug}}.html" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                    <a href="https://twitter.com/intent/tweet?text={{encodedTitle}}&url={{page_url}}" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
                     </a>
-                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ-patyatawee.com/blog/{{slug}}.html" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{page_url}}" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
                     </a>
                 </div>
@@ -188,10 +216,131 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script>
         lucide.createIcons();
 
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: {{en_title_json}},
+                    date: {{en_date_json}},
+                    readingTime: {{en_readingTime_json}},
+                    tags: {{en_tags_json}},
+                },
+                th: {
+                    title: {{th_title_json}},
+                    date: {{th_date_json}},
+                    readingTime: {{th_readingTime_json}},
+                    tags: {{th_tags_json}},
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide Thai tab if post is English-only
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === 'th') {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                switchLang(hash);
+            }
+        })();
+
+        // ============================================
         // Mobile menu toggle
+        // ============================================
         document.addEventListener('DOMContentLoaded', function () {
             const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
             const mobileMenu = document.querySelector('.mobile-menu');
@@ -266,6 +415,9 @@
                     });
                 }
             });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
         });
     </script>
 </body>

@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively.">
+    <meta property="og:title" content="Managing Multiple Kubernetes Clusters Using Argo CD — Champ Patyatawee">
+    <meta property="og:description" content="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ-patyatawee.com/blog/Argocd.html">
+    <meta property="og:image" content="https://champ-patyatawee.com/image/blog/argocd-ui-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Managing Multiple Kubernetes Clusters Using Argo CD">
+    <meta name="twitter:description" content="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively.">
+    <meta name="twitter:image" content="https://champ-patyatawee.com/image/blog/argocd-ui-preview.png">
+    <meta name="twitter:image:alt" content="Managing Multiple Kubernetes Clusters Using Argo CD">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ-patyatawee.com/blog/Argocd.html">
+    <link rel="alternate" hreflang="en" href="https://champ-patyatawee.com/blog/Argocd.html">
+    <link rel="alternate" hreflang="th" href="https://champ-patyatawee.com/blog/Argocd.html">
+    <link rel="alternate" hreflang="x-default" href="https://champ-patyatawee.com/blog/Argocd.html">
+    <title>Managing Multiple Kubernetes Clusters Using Argo CD — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Hire me</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title">Get In Touch</h2>
+                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                </div>
+                <div class="contact-info">
+                    <p>
+                        Have a project in mind or want to discuss potential opportunities? 
+                        Feel free to reach out through any of these channels.
+                    </p>
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="mail"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Email</p>
+                                <p>champ.patyatawee@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="phone"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">LineID</p>
+                                <p>champ.patyatawee</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="map-pin"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Location</p>
+                                <p>Bangkok, Thailand</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Managing Multiple Kubernetes Clusters Using Argo CD</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">July 15, 2025</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">8 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">devops</span>
+<span class="tag">gitops</span>
+<span class="tag">argocd</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Multiple Kubernetes clusters help you dedicate applications by service category. But managing multiple Kubernetes clusters can sometimes get difficult.</p>
+<p><img src="../image/blog/argocd-ui.gif" alt="Argo CD UI"></p>
+<p>This article will show you how to use Argo CD and GitOps to manage multiple Kubernetes clusters.</p>
+<h1>Why Managing Multiple Clusters Is Hard</h1>
+<p>Managing multiple Kubernetes clusters is hard because it multiplies operational overhead, causes configuration drift, and complicates governance.</p>
+<h2>Operational Overhead and Manual Work</h2>
+<ul>
+<li><strong>Repetitive deployment</strong> — the same manifests are applied cluster by cluster with <code>kubectl apply</code>, wasting time and inviting typos</li>
+<li><strong>No single source of truth</strong> — the cluster&#39;s live state is the only record of what&#39;s running, with no version history behind it</li>
+<li><strong>Wrong-cluster mistakes</strong> — pointing a command at the wrong context can silently update the wrong environment</li>
+</ul>
+<h2>Configuration Drift and Governance</h2>
+<ul>
+<li><strong>State divergence</strong> — manual changes or staggered rollouts mean clusters slowly fall out of sync, causing unpredictable bugs</li>
+<li><strong>No audit trail</strong> — someone edited a Deployment by hand and no one can tell what changed, when, or why</li>
+<li><strong>Inconsistent policies</strong> — replicating RBAC, secrets, and configs across clusters creates blind spots</li>
+</ul>
+<h2>Version Consistency</h2>
+<ul>
+<li><strong>Mixed versions</strong> — one cluster runs v1.2 while another still runs v1.0, and the gap is only discovered in production</li>
+<li><strong>Slow, error-prone rollouts</strong> — promoting a new version across all clusters is a manual checklist instead of a repeatable process</li>
+</ul>
+<h1>What Is Argo CD</h1>
+<p>Argo CD is a declarative GitOps tool for Kubernetes that continuously watches your Git repository and automatically syncs your clusters to match the desired state defined there.</p>
+<p>In a GitOps workflow, your Git repository is the single source of truth — the place where your entire cluster state lives, versioned and reviewed like code.</p>
+<h1>Our Setup: Cluster A and Cluster B</h1>
+<p>To see this in action, let&#39;s use two clusters:</p>
+<ul>
+<li><strong>Cluster A</strong> — the management cluster. Argo CD is installed here, and it also runs applications</li>
+<li><strong>Cluster B</strong> — an application-only cluster. No Argo CD here; it just runs the apps you deploy to it</li>
+</ul>
+<p>Argo CD installed in Cluster A watches your Git repository and syncs apps to <strong>both</strong> clusters — Cluster B needs nothing installed, only its credentials registered with Argo CD.</p>
+<pre class="mermaid">
+flowchart LR
+    subgraph Git["Git Repository"]
+        Repo["my-infra.git"]
+    end
+
+    subgraph ClusterA["Cluster A — Management + Apps"]
+        ArgoCD["Argo CD"]
+        AppA["Applications"]
+        ArgoCD --> AppA
+    end
+
+    subgraph ClusterB["Cluster B — Apps Only"]
+        AppB["Applications"]
+    end
+
+    Repo -->|"watches & syncs"| ArgoCD
+    ArgoCD -->|"sync"| AppB
+</pre>
+<h1>How to Deploy Argo CD</h1>
+<h2>Step 1 — Install the Chart</h2>
+<p>The fastest way to get Argo CD running is the official Helm chart from the <code>argo-helm</code> repository:</p>
+<pre><code class="language-bash">helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+kubectl create namespace argocd
+</code></pre>
+<h2>Step 2 — values.yaml</h2>
+<p>A production setup usually goes beyond the chart defaults. Here is an example <code>values.yaml</code> that customizes repo credentials, RBAC, scaling, and SSO:</p>
+<pre><code class="language-yaml">configs:
+  cm:
+    create: true
+    kustomize.buildOptions: --enable-helm
+
+  credentialTemplates:
+    https-creds:
+      url: https://gitlab.example.com/my-org/my-infra.git
+      username: &lt;your-gitlab-username&gt;
+      password: &lt;your-gitlab-token&gt;
+
+redis-ha:
+  enabled: true
+
+server:
+  extraArgs:
+    - --insecure
+    - --enable-gzip
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+
+applicationSet:
+  replicas: 2
+
+dex:
+  enabled: false
+</code></pre>
+<p>Here&#39;s what each section does:</p>
+<ul>
+<li><strong><code>configs.cm</code></strong> — settings for Argo CD&#39;s main ConfigMap. <code>kustomize.buildOptions: --enable-helm</code> lets Kustomize render Helm charts as part of a build</li>
+<li><strong><code>configs.credentialTemplates</code></strong> — a reusable set of Git credentials (<code>https-creds</code>) Argo CD uses to clone private repositories like your GitLab repo. The placeholders should be replaced with a real username and access token</li>
+<li><strong><code>redis-ha</code></strong> — deploys Redis in high-availability mode, which Argo CD uses for caching. Set to <code>true</code> for resilience across failures</li>
+<li><strong><code>server.extraArgs</code></strong> — flags passed to the Argo CD API server. <code>--insecure</code> disables the internal TLS layer, <code>--enable-gzip</code> compresses API responses</li>
+<li><strong><code>server.service.type: ClusterIP</code></strong> — keeps the server internal and reachable only inside the cluster; you access it later via port-forwarding</li>
+<li><strong><code>server.autoscaling</code></strong> / <strong><code>repoServer.autoscaling</code></strong> — auto-scales the API server and repo server to at least 2 replicas each to handle more apps and clusters</li>
+<li><strong><code>applicationSet.replicas</code></strong> — the ApplicationSet controller runs 2 replicas (it generates Applications for multiple clusters from templates)</li>
+<li><strong><code>dex.enabled: false</code></strong> — disables Dex SSO since we only use the local <code>admin</code> account; re-enable it if you want login via an external identity provider</li>
+</ul>
+<pre><code class="language-sh">helm install argocd argo/argo-cd -n argocd -f values.yaml
+</code></pre>
+<p>The install targets the current kubeconfig context, so this command deploys Argo CD into <strong>Cluster A</strong> — your management cluster. Nothing is installed on Cluster B.</p>
+<h2>Step 3 — Get the Admin Password</h2>
+<p>The chart stores the admin password in a secret. Decode it with:</p>
+<pre><code class="language-bash">kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath=&quot;{.data.password}&quot; | base64 -d
+</code></pre>
+<h2>Step 4 — Access the UI</h2>
+<pre><code class="language-bash">kubectl port-forward svc/argocd-server -n argocd 8080:80
+</code></pre>
+<p>Open <code>http://localhost:8080</code>, sign in as <code>admin</code>, and you&#39;ll see an empty Applications view — ready for you to register your clusters and apps.</p>
+<h2>Step 5 — Install CRDs on Cluster B</h2>
+<p>Argo CD uses three custom resource types (CRDs): Application, ApplicationSet, and AppProject. Cluster A gets them automatically when you install the chart, but Cluster B does not — if you plan to deploy Argo CD resources (an app-of-apps pattern) onto Cluster B, it needs the CRDs installed too.</p>
+<p>Install them from the official manifests:</p>
+<pre><code class="language-bash">kubectl apply -k https://github.com/argoproj/argo-cd/manifests/crds
+</code></pre>
+<p>The <code>crds</code> directory ships a <code>kustomization.yaml</code> covering <code>application-crd.yaml</code>, <code>applicationset-crd.yaml</code>, and <code>appproject-crd.yaml</code>.</p>
+<h2>Step 6 — Register Cluster B with a Service Account</h2>
+<p>Argo CD needs cluster-admin access on Cluster B to manage its resources. The recommended way to grant it is a dedicated <code>argocd-manager</code> ServiceAccount — this keeps Cluster B independent from your local credentials.</p>
+<p>First, create the <code>argocd</code> namespace on Cluster B:</p>
+<pre><code class="language-bash">kubectl create namespace argocd
+</code></pre>
+<p>Then create these resources on Cluster B:</p>
+<pre><code class="language-yaml">---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-manager
+  namespace: argocd
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-manager-token
+  namespace: argocd
+  annotations:
+    kubernetes.io/service-account.name: argocd-manager
+type: kubernetes.io/service-account-token
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-manager-role
+rules:
+  - apiGroups: [&quot;*&quot;]
+    resources: [&quot;*&quot;]
+    verbs: [&quot;*&quot;]
+  - nonResourceURLs: [&quot;*&quot;]
+    verbs: [&quot;*&quot;]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-manager-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: argocd-manager
+    namespace: argocd
+</code></pre>
+<p>Then add the cluster to Argo CD using the ServiceAccount token in the next step.</p>
+<h2>Step 7 — Register the Cluster Declaratively</h2>
+<p>Register Cluster B declaratively by creating a Secret on Cluster A (in the <code>argocd</code> namespace) with the label <code>argocd.argoproj.io/secret-type: cluster</code>. Argo CD watches for these Secrets and automatically adds the cluster.</p>
+<pre><code class="language-yaml">---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+  name: argocd-cluster-b
+  namespace: argocd
+stringData:
+  config: |
+    {&quot;bearerToken&quot;:&quot;xxxx&quot;,&quot;tlsClientConfig&quot;:{&quot;caData&quot;:&quot;x&quot;,&quot;insecure&quot;:false}}
+  name: cluster-b
+  server: https://cluster-b-api.example.com:6443
+type: Opaque
+</code></pre>
+<p>Apply it on Cluster A and Argo CD will pick up Cluster B automatically. Replace <code>bearerToken</code> with the ServiceAccount token, <code>caData</code> with Cluster B&#39;s certificate authority, and <code>server</code> with Cluster B&#39;s API server URL (for example <code>https://cluster-b-api.example.com:6443</code>).</p>
+<h2>Step 8 — Deploy Applications to Both Clusters</h2>
+<p>With both clusters registered, you define what to deploy. Start with an <code>AppProject</code> — a logical grouping that controls which repositories, destinations, and resources an app can use:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: my-project
+  namespace: argocd
+spec:
+  clusterResourceWhitelist:
+  - group: &#39;*&#39;
+    kind: &#39;*&#39;
+  description: My Argo CD project
+  destinations:
+  - namespace: &#39;*&#39;
+    server: https://kubernetes.default.svc
+  - namespace: &#39;*&#39;
+    server: https://cluster-b-api.example.com:6443
+  orphanedResources:
+    warn: false
+  sourceRepos:
+  - &#39;*&#39;
+</code></pre>
+<p>Next, a single <code>Application</code> that points at a folder in your Git repo and a destination cluster. This one targets Cluster A:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+spec:
+  project: my-project
+  source:
+    directory:
+      recurse: true
+    repoURL: https://gitlab.example.com/my-org/my-infra.git
+    targetRevision: main
+    path: apps/my-app/overlay/my-env/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+</code></pre>
+<p>When you have many apps and clusters, an <code>ApplicationSet</code> generates Applications from a template instead of writing them by hand. This one creates one app per app/cluster combination across both clusters:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: my-appset
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - app: api
+                  path: api
+                - app: web
+                  path: web
+                - app: worker
+                  path: worker
+          - list:
+              elements:
+                - cluster: cluster-a
+                  server: https://kubernetes.default.svc
+                - cluster: cluster-b
+                  server: https://cluster-b-api.example.com:6443
+  template:
+    metadata:
+      name: &quot;{{app}}-{{cluster}}&quot;
+      labels:
+        domain: my-project
+    spec:
+      project: my-project
+      source:
+        repoURL: https://gitlab.example.com/my-org/my-infra.git
+        targetRevision: main
+        path: &quot;apps/my-app/overlay/my-env/{{path}}&quot;
+      destination:
+        server: &quot;{{server}}&quot;
+        namespace: default
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+</code></pre>
+<p>The ApplicationSet matrix generator combines the app list with the cluster list, producing six applications (<code>api-cluster-a</code>, <code>api-cluster-b</code>, <code>web-cluster-a</code>, and so on). Change a manifest in Git and Argo CD rolls it out to every matching app and cluster automatically.</p>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Multiple Kubernetes clusters help you dedicate applications by service category. But managing multiple Kubernetes clusters can sometimes get difficult.</p>
+<p><img src="../image/blog/argocd-ui.gif" alt="Argo CD UI"></p>
+<p>This article will show you how to use Argo CD and GitOps to manage multiple Kubernetes clusters.</p>
+<h1>Why Managing Multiple Clusters Is Hard</h1>
+<p>Managing multiple Kubernetes clusters is hard because it multiplies operational overhead, causes configuration drift, and complicates governance.</p>
+<h2>Operational Overhead and Manual Work</h2>
+<ul>
+<li><strong>Repetitive deployment</strong> — the same manifests are applied cluster by cluster with <code>kubectl apply</code>, wasting time and inviting typos</li>
+<li><strong>No single source of truth</strong> — the cluster&#39;s live state is the only record of what&#39;s running, with no version history behind it</li>
+<li><strong>Wrong-cluster mistakes</strong> — pointing a command at the wrong context can silently update the wrong environment</li>
+</ul>
+<h2>Configuration Drift and Governance</h2>
+<ul>
+<li><strong>State divergence</strong> — manual changes or staggered rollouts mean clusters slowly fall out of sync, causing unpredictable bugs</li>
+<li><strong>No audit trail</strong> — someone edited a Deployment by hand and no one can tell what changed, when, or why</li>
+<li><strong>Inconsistent policies</strong> — replicating RBAC, secrets, and configs across clusters creates blind spots</li>
+</ul>
+<h2>Version Consistency</h2>
+<ul>
+<li><strong>Mixed versions</strong> — one cluster runs v1.2 while another still runs v1.0, and the gap is only discovered in production</li>
+<li><strong>Slow, error-prone rollouts</strong> — promoting a new version across all clusters is a manual checklist instead of a repeatable process</li>
+</ul>
+<h1>What Is Argo CD</h1>
+<p>Argo CD is a declarative GitOps tool for Kubernetes that continuously watches your Git repository and automatically syncs your clusters to match the desired state defined there.</p>
+<p>In a GitOps workflow, your Git repository is the single source of truth — the place where your entire cluster state lives, versioned and reviewed like code.</p>
+<h1>Our Setup: Cluster A and Cluster B</h1>
+<p>To see this in action, let&#39;s use two clusters:</p>
+<ul>
+<li><strong>Cluster A</strong> — the management cluster. Argo CD is installed here, and it also runs applications</li>
+<li><strong>Cluster B</strong> — an application-only cluster. No Argo CD here; it just runs the apps you deploy to it</li>
+</ul>
+<p>Argo CD installed in Cluster A watches your Git repository and syncs apps to <strong>both</strong> clusters — Cluster B needs nothing installed, only its credentials registered with Argo CD.</p>
+<pre class="mermaid">
+flowchart LR
+    subgraph Git["Git Repository"]
+        Repo["my-infra.git"]
+    end
+
+    subgraph ClusterA["Cluster A — Management + Apps"]
+        ArgoCD["Argo CD"]
+        AppA["Applications"]
+        ArgoCD --> AppA
+    end
+
+    subgraph ClusterB["Cluster B — Apps Only"]
+        AppB["Applications"]
+    end
+
+    Repo -->|"watches & syncs"| ArgoCD
+    ArgoCD -->|"sync"| AppB
+</pre>
+<h1>How to Deploy Argo CD</h1>
+<h2>Step 1 — Install the Chart</h2>
+<p>The fastest way to get Argo CD running is the official Helm chart from the <code>argo-helm</code> repository:</p>
+<pre><code class="language-bash">helm repo add argo https://argoproj.github.io/argo-helm
+helm repo update
+kubectl create namespace argocd
+</code></pre>
+<h2>Step 2 — values.yaml</h2>
+<p>A production setup usually goes beyond the chart defaults. Here is an example <code>values.yaml</code> that customizes repo credentials, RBAC, scaling, and SSO:</p>
+<pre><code class="language-yaml">configs:
+  cm:
+    create: true
+    kustomize.buildOptions: --enable-helm
+
+  credentialTemplates:
+    https-creds:
+      url: https://gitlab.example.com/my-org/my-infra.git
+      username: &lt;your-gitlab-username&gt;
+      password: &lt;your-gitlab-token&gt;
+
+redis-ha:
+  enabled: true
+
+server:
+  extraArgs:
+    - --insecure
+    - --enable-gzip
+  service:
+    type: ClusterIP
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+
+repoServer:
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+
+applicationSet:
+  replicas: 2
+
+dex:
+  enabled: false
+</code></pre>
+<p>Here&#39;s what each section does:</p>
+<ul>
+<li><strong><code>configs.cm</code></strong> — settings for Argo CD&#39;s main ConfigMap. <code>kustomize.buildOptions: --enable-helm</code> lets Kustomize render Helm charts as part of a build</li>
+<li><strong><code>configs.credentialTemplates</code></strong> — a reusable set of Git credentials (<code>https-creds</code>) Argo CD uses to clone private repositories like your GitLab repo. The placeholders should be replaced with a real username and access token</li>
+<li><strong><code>redis-ha</code></strong> — deploys Redis in high-availability mode, which Argo CD uses for caching. Set to <code>true</code> for resilience across failures</li>
+<li><strong><code>server.extraArgs</code></strong> — flags passed to the Argo CD API server. <code>--insecure</code> disables the internal TLS layer, <code>--enable-gzip</code> compresses API responses</li>
+<li><strong><code>server.service.type: ClusterIP</code></strong> — keeps the server internal and reachable only inside the cluster; you access it later via port-forwarding</li>
+<li><strong><code>server.autoscaling</code></strong> / <strong><code>repoServer.autoscaling</code></strong> — auto-scales the API server and repo server to at least 2 replicas each to handle more apps and clusters</li>
+<li><strong><code>applicationSet.replicas</code></strong> — the ApplicationSet controller runs 2 replicas (it generates Applications for multiple clusters from templates)</li>
+<li><strong><code>dex.enabled: false</code></strong> — disables Dex SSO since we only use the local <code>admin</code> account; re-enable it if you want login via an external identity provider</li>
+</ul>
+<pre><code class="language-sh">helm install argocd argo/argo-cd -n argocd -f values.yaml
+</code></pre>
+<p>The install targets the current kubeconfig context, so this command deploys Argo CD into <strong>Cluster A</strong> — your management cluster. Nothing is installed on Cluster B.</p>
+<h2>Step 3 — Get the Admin Password</h2>
+<p>The chart stores the admin password in a secret. Decode it with:</p>
+<pre><code class="language-bash">kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath=&quot;{.data.password}&quot; | base64 -d
+</code></pre>
+<h2>Step 4 — Access the UI</h2>
+<pre><code class="language-bash">kubectl port-forward svc/argocd-server -n argocd 8080:80
+</code></pre>
+<p>Open <code>http://localhost:8080</code>, sign in as <code>admin</code>, and you&#39;ll see an empty Applications view — ready for you to register your clusters and apps.</p>
+<h2>Step 5 — Install CRDs on Cluster B</h2>
+<p>Argo CD uses three custom resource types (CRDs): Application, ApplicationSet, and AppProject. Cluster A gets them automatically when you install the chart, but Cluster B does not — if you plan to deploy Argo CD resources (an app-of-apps pattern) onto Cluster B, it needs the CRDs installed too.</p>
+<p>Install them from the official manifests:</p>
+<pre><code class="language-bash">kubectl apply -k https://github.com/argoproj/argo-cd/manifests/crds
+</code></pre>
+<p>The <code>crds</code> directory ships a <code>kustomization.yaml</code> covering <code>application-crd.yaml</code>, <code>applicationset-crd.yaml</code>, and <code>appproject-crd.yaml</code>.</p>
+<h2>Step 6 — Register Cluster B with a Service Account</h2>
+<p>Argo CD needs cluster-admin access on Cluster B to manage its resources. The recommended way to grant it is a dedicated <code>argocd-manager</code> ServiceAccount — this keeps Cluster B independent from your local credentials.</p>
+<p>First, create the <code>argocd</code> namespace on Cluster B:</p>
+<pre><code class="language-bash">kubectl create namespace argocd
+</code></pre>
+<p>Then create these resources on Cluster B:</p>
+<pre><code class="language-yaml">---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-manager
+  namespace: argocd
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-manager-token
+  namespace: argocd
+  annotations:
+    kubernetes.io/service-account.name: argocd-manager
+type: kubernetes.io/service-account-token
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-manager-role
+rules:
+  - apiGroups: [&quot;*&quot;]
+    resources: [&quot;*&quot;]
+    verbs: [&quot;*&quot;]
+  - nonResourceURLs: [&quot;*&quot;]
+    verbs: [&quot;*&quot;]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-manager-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-manager-role
+subjects:
+  - kind: ServiceAccount
+    name: argocd-manager
+    namespace: argocd
+</code></pre>
+<p>Then add the cluster to Argo CD using the ServiceAccount token in the next step.</p>
+<h2>Step 7 — Register the Cluster Declaratively</h2>
+<p>Register Cluster B declaratively by creating a Secret on Cluster A (in the <code>argocd</code> namespace) with the label <code>argocd.argoproj.io/secret-type: cluster</code>. Argo CD watches for these Secrets and automatically adds the cluster.</p>
+<pre><code class="language-yaml">---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+  name: argocd-cluster-b
+  namespace: argocd
+stringData:
+  config: |
+    {&quot;bearerToken&quot;:&quot;xxxx&quot;,&quot;tlsClientConfig&quot;:{&quot;caData&quot;:&quot;x&quot;,&quot;insecure&quot;:false}}
+  name: cluster-b
+  server: https://cluster-b-api.example.com:6443
+type: Opaque
+</code></pre>
+<p>Apply it on Cluster A and Argo CD will pick up Cluster B automatically. Replace <code>bearerToken</code> with the ServiceAccount token, <code>caData</code> with Cluster B&#39;s certificate authority, and <code>server</code> with Cluster B&#39;s API server URL (for example <code>https://cluster-b-api.example.com:6443</code>).</p>
+<h2>Step 8 — Deploy Applications to Both Clusters</h2>
+<p>With both clusters registered, you define what to deploy. Start with an <code>AppProject</code> — a logical grouping that controls which repositories, destinations, and resources an app can use:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: my-project
+  namespace: argocd
+spec:
+  clusterResourceWhitelist:
+  - group: &#39;*&#39;
+    kind: &#39;*&#39;
+  description: My Argo CD project
+  destinations:
+  - namespace: &#39;*&#39;
+    server: https://kubernetes.default.svc
+  - namespace: &#39;*&#39;
+    server: https://cluster-b-api.example.com:6443
+  orphanedResources:
+    warn: false
+  sourceRepos:
+  - &#39;*&#39;
+</code></pre>
+<p>Next, a single <code>Application</code> that points at a folder in your Git repo and a destination cluster. This one targets Cluster A:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+spec:
+  project: my-project
+  source:
+    directory:
+      recurse: true
+    repoURL: https://gitlab.example.com/my-org/my-infra.git
+    targetRevision: main
+    path: apps/my-app/overlay/my-env/applications
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+</code></pre>
+<p>When you have many apps and clusters, an <code>ApplicationSet</code> generates Applications from a template instead of writing them by hand. This one creates one app per app/cluster combination across both clusters:</p>
+<pre><code class="language-yaml">apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: my-appset
+  namespace: argocd
+spec:
+  generators:
+    - matrix:
+        generators:
+          - list:
+              elements:
+                - app: api
+                  path: api
+                - app: web
+                  path: web
+                - app: worker
+                  path: worker
+          - list:
+              elements:
+                - cluster: cluster-a
+                  server: https://kubernetes.default.svc
+                - cluster: cluster-b
+                  server: https://cluster-b-api.example.com:6443
+  template:
+    metadata:
+      name: &quot;{{app}}-{{cluster}}&quot;
+      labels:
+        domain: my-project
+    spec:
+      project: my-project
+      source:
+        repoURL: https://gitlab.example.com/my-org/my-infra.git
+        targetRevision: main
+        path: &quot;apps/my-app/overlay/my-env/{{path}}&quot;
+      destination:
+        server: &quot;{{server}}&quot;
+        namespace: default
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+</code></pre>
+<p>The ApplicationSet matrix generator combines the app list with the cluster list, producing six applications (<code>api-cluster-a</code>, <code>api-cluster-b</code>, <code>web-cluster-a</code>, and so on). Change a manifest in Git and Argo CD rolls it out to every matching app and cluster automatically.</p>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Managing%20Multiple%20Kubernetes%20Clusters%20Using%20Argo%20CD&url=https://champ-patyatawee.com/blog/Argocd.html" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ-patyatawee.com/blog/Argocd.html" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Managing Multiple Kubernetes Clusters Using Argo CD",
+                    date: "July 15, 2025",
+                    readingTime: "8 min read",
+                    tags: "<span class=\"tag\">devops</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">argocd</span>",
+                },
+                th: {
+                    title: "Managing Multiple Kubernetes Clusters Using Argo CD",
+                    date: "July 15, 2025",
+                    readingTime: "0 นาที",
+                    tags: "",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide Thai tab if post is English-only
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === 'th') {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                switchLang(hash);
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
