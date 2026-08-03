@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database.">
+    <meta property="og:title" content="Running Keycloak in High Availability Mode with the Keycloak Operator — Champ Patyatawee">
+    <meta property="og:description" content="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability">
+    <meta property="og:image" content="https://champ-patyatawee.pages.dev/image/blog/keycloak-icon.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Running Keycloak in High Availability Mode with the Keycloak Operator">
+    <meta name="twitter:description" content="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database.">
+    <meta name="twitter:image" content="https://champ-patyatawee.pages.dev/image/blog/keycloak-icon.jpg">
+    <meta name="twitter:image:alt" content="Running Keycloak in High Availability Mode with the Keycloak Operator">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability">
+    <link rel="alternate" hreflang="en" href="https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability">
+    <link rel="alternate" hreflang="th" href="https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability">
+    <link rel="alternate" hreflang="x-default" href="https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability">
+    <title>Running Keycloak in High Availability Mode with the Keycloak Operator — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Hire me</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title">Get In Touch</h2>
+                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                </div>
+                <div class="contact-info">
+                    <p>
+                        Have a project in mind or want to discuss potential opportunities? 
+                        Feel free to reach out through any of these channels.
+                    </p>
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="mail"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Email</p>
+                                <p>champ.patyatawee@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="phone"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">LineID</p>
+                                <p>champ.patyatawee</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="map-pin"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Location</p>
+                                <p>Bangkok, Thailand</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Running Keycloak in High Availability Mode with the Keycloak Operator</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">August 3, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">7 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">keycloak</span>
+<span class="tag">kubernetes</span>
+<span class="tag">high-availability</span>
+<span class="tag">gitops</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p><img src="../image/blog/keycloak-icon.jpg" alt="Keycloak"></p>
+<h1>What Is Keycloak</h1>
+<p>Keycloak is an open-source identity and access management (IAM) solution. It provides single sign-on (SSO), social login, user federation, and role-based access control out of the box — speaking standard protocols like OIDC, OAuth 2.0, and SAML, so your applications don&#39;t have to build auth themselves.</p>
+<h1>What Is the Keycloak Operator</h1>
+<p>The Keycloak Operator is a Kubernetes controller that manages the full Keycloak lifecycle declaratively. You define a <code>Keycloak</code> custom resource (CR) in YAML — the operator watches it and creates, scales, and updates the actual Keycloak deployment to match what you declared.</p>
+<h1>Prerequisites</h1>
+<p>Before you start, you only need two things:</p>
+<ul>
+<li><strong>Kubernetes cluster</strong> — a running cluster; any environment works (managed cloud or on-premises)</li>
+<li><strong>kubectl</strong> — configured to talk to that cluster</li>
+</ul>
+<h1>Install the Keycloak Operator</h1>
+<p>The operator ships as plain Kubernetes manifests in the <code>keycloak-k8s-resources</code> repository. Apply the two custom resource definitions (CRDs) first, then the operator itself:</p>
+<pre><code class="language-bash">kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/kubernetes.yml
+</code></pre>
+<ul>
+<li><strong><code>keycloaks.k8s.keycloak.org-v1.yml</code></strong> — the CRD for the <code>Keycloak</code> resource, which defines the Keycloak server instance itself</li>
+<li><strong><code>keycloakrealmimports.k8s.keycloak.org-v1.yml</code></strong> — the CRD for <code>KeycloakRealmImport</code>, used to manage realms and clients declaratively</li>
+<li><strong><code>kubernetes.yml</code></strong> — the operator deployment, its RBAC rules, and service account</li>
+</ul>
+<p>Verify the operator is running in the <code>keycloak-system</code> namespace:</p>
+<pre><code class="language-bash">kubectl get pods -n keycloak-system
+</code></pre>
+<p>You should see the operator pod with a <code>Running</code> status. Once it&#39;s up, the operator is ready to reconcile your <code>Keycloak</code> custom resources.</p>
+<h1>Deploy Keycloak with the Keycloak CR</h1>
+<p>With the operator running, you define the Keycloak instance as a <code>Keycloak</code> custom resource. Here is the full example configuration this guide is built around — create the <code>keycloak</code> namespace and apply it:</p>
+<pre><code class="language-bash">kubectl create namespace keycloak
+</code></pre>
+<pre><code class="language-yaml">apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  ingress:
+    enabled: false
+
+  http:
+    httpEnabled: true
+
+  hostname:
+    hostname: keycloak.example.com
+
+  proxy:
+    headers: xforwarded
+
+  additionalOptions:
+    - name: proxy
+      value: edge # assumes TLS is terminated upstream (ingress/load balancer)
+    - name: hostname-strict
+      value: &quot;false&quot; # allow requests to the hostname over both HTTP and HTTPS
+    - name: log-console-output
+      value: json # structured JSON logs for easier aggregation
+    - name: metrics-enabled
+      value: &quot;true&quot; # expose Prometheus metrics from the Keycloak server
+    - name: event-metrics-user-enabled
+      value: &quot;true&quot; # add login/registration metrics per user event
+    - name: cache
+      value: ispn # use the embedded Infinispan cache
+    - name: cache-stack
+      value: kubernetes # Infinispan discovers peers via Kubernetes DNS
+    - name: db-pool-initial-size
+      value: &quot;100&quot; # initial JDBC connection pool size
+    - name: db-pool-min-size
+      value: &quot;100&quot; # minimum JDBC connection pool size
+    - name: db-pool-max-size
+      value: &quot;200&quot; # maximum JDBC connection pool size
+
+  db:
+    vendor: postgres
+    url: jdbc:postgresql://postgres:5432/keycloak
+    usernameSecret:
+      name: keycloak-db-secret
+      key: username
+    passwordSecret:
+      name: keycloak-db-secret
+      key: password
+
+  image: quay.io/keycloak/keycloak:26.0
+  startOptimized: false
+  instances: 5
+
+  resources:
+    requests:
+      cpu: &quot;1&quot;
+      memory: &quot;1Gi&quot;
+    limits:
+      cpu: &quot;4&quot;
+      memory: &quot;4Gi&quot;
+
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+        - name: keycloak
+          env:
+            - name: JAVA_OPTS_APPEND
+              value: &quot;-Djgroups.dns.query=keycloak-discovery.keycloak.svc.cluster.local&quot; # tell JGroups how to discover cluster peers via DNS
+        hostNetwork: false # keep pods isolated on the Kubernetes network
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app: keycloak
+                topologyKey: &quot;kubernetes.io/hostname&quot; # spread Keycloak pods across different nodes
+        nodeSelector:
+          node-type: &quot;keycloak&quot;
+        tolerations:
+          - key: &quot;node-type&quot;
+            operator: &quot;Equal&quot;
+            value: &quot;keycloak&quot;
+            effect: &quot;PreferNoSchedule&quot;
+</code></pre>
+<p>The operator reads this spec and creates the underlying StatefulSet, services, and secrets to match. We&#39;ll walk through what each section does — and why this setup is highly available — next.</p>
+<h1>Why This Configuration Is High Availability</h1>
+<p>At a glance, the operator turns the <code>Keycloak</code> CR into one StatefulSet with 5 replicas. All 5 pods share two things: an <strong>Infinispan distributed cache</strong> for session data and a <strong>shared PostgreSQL database</strong>:</p>
+<pre class="mermaid">
+flowchart TB
+    Op["Keycloak Operator"] --> CR["Keycloak CR — instances: 5"]
+    CR --> SS["StatefulSet (5 replicas)"]
+    SS --> P1["Keycloak Pod 1"]
+    SS --> P2["Keycloak Pod 2"]
+    SS --> P3["Keycloak Pod 3"]
+    SS --> P4["Keycloak Pod 4"]
+    SS --> P5["Keycloak Pod 5"]
+
+    P1 <--> CACHE["Infinispan Cache (ISPN)"]
+    P2 <--> CACHE
+    P3 <--> CACHE
+    P4 <--> CACHE
+    P5 <--> CACHE
+
+    P1 --> DB[("PostgreSQL")]
+    P2 --> DB
+    P3 --> DB
+    P4 --> DB
+    P5 --> DB
+</pre>
+<h2>Instances: 5</h2>
+<p><code>instances: 5</code> tells the operator to run 5 Keycloak replicas. If one pod crashes, restarts, or its node goes away, the remaining 4 keep serving traffic while the StatefulSet brings the replacement back. That is the core of the HA story — no single Keycloak pod is a point of failure.</p>
+<h2>Infinispan Distributed Cache</h2>
+<p>Sessions are the hard part. If each pod kept sessions only in its own memory, a failed pod would log out its users. The <code>cache: ispn</code> and <code>cache-stack: kubernetes</code> options enable the embedded <strong>Infinispan</strong> cache using the Kubernetes stack, which lets the pods discover each other and replicate session data across the cluster. When a user&#39;s session is stored on pod 1 and that pod dies, pod 2 still has it.</p>
+<p>The <code>JAVA_OPTS_APPEND</code> environment variable makes this work under the hood:</p>
+<pre><code class="language-yaml">- name: JAVA_OPTS_APPEND
+  value: &quot;-Djgroups.dns.query=keycloak-discovery.keycloak.svc.cluster.local&quot;
+</code></pre>
+<p><strong>JGroups</strong> is the cluster communication library Infinispan uses. This setting tells it to discover peers by resolving the DNS name <code>keycloak-discovery</code> in the <code>keycloak</code> namespace — the Kubernetes headless service the operator creates. Each pod asks DNS, finds the other 4, and joins the distributed cache.</p>
+<h2>Pod Anti-Affinity</h2>
+<pre><code class="language-yaml">affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: keycloak
+        topologyKey: &quot;kubernetes.io/hostname&quot;
+</code></pre>
+<p>This rule prevents two Keycloak pods from landing on the <strong>same node</strong>. If a node fails, at most one Keycloak pod goes with it — the other 4 are already running elsewhere and keep serving. Combined with the node selector and toleration below, pods are pinned to dedicated <code>keycloak</code> nodes, one per node:</p>
+<pre><code class="language-yaml">nodeSelector:
+  node-type: &quot;keycloak&quot;
+tolerations:
+  - key: &quot;node-type&quot;
+    operator: &quot;Equal&quot;
+    value: &quot;keycloak&quot;
+    effect: &quot;PreferNoSchedule&quot;
+</code></pre>
+<h2>Connection Pool Tuning</h2>
+<p>With 5 instances sharing one database, the connection pool matters:</p>
+<ul>
+<li><strong><code>db-pool-min-size: 100</code></strong> / <strong><code>db-pool-initial-size: 100</code></strong> — keep 100 connections warm so burst traffic never waits on a new connection</li>
+<li><strong><code>db-pool-max-size: 200</code></strong> — cap total connections so the database isn&#39;t overwhelmed when all 5 instances spike at once</li>
+</ul>
+<h1>Expose Keycloak with an NGINX Ingress</h1>
+<p>The <code>Keycloak</code> CR disables its own ingress (<code>ingress.enabled: false</code>) and enables HTTP (<code>http.httpEnabled: true</code>), so traffic enters through an ingress controller instead — here, NGINX Ingress. TLS terminates at the ingress, which is why the CR sets <code>proxy: edge</code> and <code>hostname-strict: false</code>:</p>
+<pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;true&quot;
+    nginx.ingress.kubernetes.io/ssl-redirect: &quot;true&quot;
+    nginx.ingress.kubernetes.io/backend-protocol: &quot;HTTP&quot;
+    nginx.ingress.kubernetes.io/x-forwarded-prefix: &quot;/&quot;
+    nginx.ingress.kubernetes.io/affinity: &quot;cookie&quot;
+    nginx.ingress.kubernetes.io/session-cookie-name: &quot;KEYCLOAK_SESSION&quot;
+    nginx.ingress.kubernetes.io/session-cookie-hash: &quot;sha1&quot;
+    nginx.ingress.kubernetes.io/proxy-read-timeout: &quot;120&quot;
+    nginx.ingress.kubernetes.io/proxy-send-timeout: &quot;120&quot;
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: &quot;30&quot;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - keycloak.example.com
+      secretName: keycloak-tls-secret
+  rules:
+    - host: keycloak.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-service
+                port:
+                  number: 8080
+</code></pre>
+<p>A few things worth noting:</p>
+<ul>
+<li><strong><code>backend-protocol: HTTP</code></strong> — matches the CR&#39;s <code>httpEnabled: true</code>; the operator&#39;s service (<code>keycloak-service</code>) listens on port 8080, and the ingress talks to it over plain HTTP because TLS is already terminated in front</li>
+<li><strong><code>ssl-redirect</code> / <code>force-ssl-redirect</code></strong> — every request is upgraded to HTTPS, which is what <code>proxy: edge</code> assumes</li>
+<li><strong>Cookie affinity</strong> (<code>affinity: cookie</code>, <code>session-cookie-name</code>) — sticks a client&#39;s requests to the same Keycloak pod where possible, which pairs well with the Infinispan session cache</li>
+<li><strong>Timeout annotations</strong> — longer <code>proxy-read</code>/<code>proxy-send</code> timeouts (120s) so slow token or import requests don&#39;t get cut off by the ingress default</li>
+</ul>
+<h2>Traefik Ingress Example</h2>
+<p>If you use Traefik, the equivalent is an <code>IngressRoute</code> with a redirect middleware. First the middleware that forces HTTPS, then a route on the <code>websecure</code> entry point with TLS and cookie stickiness:</p>
+<pre><code class="language-yaml">apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: keycloak-redirect-https
+  namespace: keycloak
+spec:
+  redirectScheme:
+    scheme: https
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`keycloak.example.com`)
+      kind: Rule
+      middlewares:
+        - name: keycloak-redirect-https
+      services:
+        - name: keycloak-service
+          port: 8080
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    secretName: keycloak-tls-secret
+  routes:
+    - match: Host(`keycloak.example.com`)
+      kind: Rule
+      services:
+        - name: keycloak-service
+          port: 8080
+          sticky:
+            cookie:
+              name: KEYCLOAK_SESSION
+              httpOnly: true
+</code></pre>
+<p>The <code>web</code> entry point only redirects to HTTPS, while <code>websecure</code> serves the actual traffic with TLS and session cookie stickiness — the same behavior as the NGINX annotations above. Traefik&#39;s <code>sticky.cookie</code> replaces <code>nginx.ingress.kubernetes.io/affinity: cookie</code>.</p>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p><img src="../image/blog/keycloak-icon.jpg" alt="Keycloak"></p>
+<h1>What Is Keycloak</h1>
+<p>Keycloak is an open-source identity and access management (IAM) solution. It provides single sign-on (SSO), social login, user federation, and role-based access control out of the box — speaking standard protocols like OIDC, OAuth 2.0, and SAML, so your applications don&#39;t have to build auth themselves.</p>
+<h1>What Is the Keycloak Operator</h1>
+<p>The Keycloak Operator is a Kubernetes controller that manages the full Keycloak lifecycle declaratively. You define a <code>Keycloak</code> custom resource (CR) in YAML — the operator watches it and creates, scales, and updates the actual Keycloak deployment to match what you declared.</p>
+<h1>Prerequisites</h1>
+<p>Before you start, you only need two things:</p>
+<ul>
+<li><strong>Kubernetes cluster</strong> — a running cluster; any environment works (managed cloud or on-premises)</li>
+<li><strong>kubectl</strong> — configured to talk to that cluster</li>
+</ul>
+<h1>Install the Keycloak Operator</h1>
+<p>The operator ships as plain Kubernetes manifests in the <code>keycloak-k8s-resources</code> repository. Apply the two custom resource definitions (CRDs) first, then the operator itself:</p>
+<pre><code class="language-bash">kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/keycloaks.k8s.keycloak.org-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/keycloakrealmimports.k8s.keycloak.org-v1.yml
+kubectl apply -f https://raw.githubusercontent.com/keycloak/keycloak-k8s-resources/26.3.3/kubernetes/kubernetes.yml
+</code></pre>
+<ul>
+<li><strong><code>keycloaks.k8s.keycloak.org-v1.yml</code></strong> — the CRD for the <code>Keycloak</code> resource, which defines the Keycloak server instance itself</li>
+<li><strong><code>keycloakrealmimports.k8s.keycloak.org-v1.yml</code></strong> — the CRD for <code>KeycloakRealmImport</code>, used to manage realms and clients declaratively</li>
+<li><strong><code>kubernetes.yml</code></strong> — the operator deployment, its RBAC rules, and service account</li>
+</ul>
+<p>Verify the operator is running in the <code>keycloak-system</code> namespace:</p>
+<pre><code class="language-bash">kubectl get pods -n keycloak-system
+</code></pre>
+<p>You should see the operator pod with a <code>Running</code> status. Once it&#39;s up, the operator is ready to reconcile your <code>Keycloak</code> custom resources.</p>
+<h1>Deploy Keycloak with the Keycloak CR</h1>
+<p>With the operator running, you define the Keycloak instance as a <code>Keycloak</code> custom resource. Here is the full example configuration this guide is built around — create the <code>keycloak</code> namespace and apply it:</p>
+<pre><code class="language-bash">kubectl create namespace keycloak
+</code></pre>
+<pre><code class="language-yaml">apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  ingress:
+    enabled: false
+
+  http:
+    httpEnabled: true
+
+  hostname:
+    hostname: keycloak.example.com
+
+  proxy:
+    headers: xforwarded
+
+  additionalOptions:
+    - name: proxy
+      value: edge # assumes TLS is terminated upstream (ingress/load balancer)
+    - name: hostname-strict
+      value: &quot;false&quot; # allow requests to the hostname over both HTTP and HTTPS
+    - name: log-console-output
+      value: json # structured JSON logs for easier aggregation
+    - name: metrics-enabled
+      value: &quot;true&quot; # expose Prometheus metrics from the Keycloak server
+    - name: event-metrics-user-enabled
+      value: &quot;true&quot; # add login/registration metrics per user event
+    - name: cache
+      value: ispn # use the embedded Infinispan cache
+    - name: cache-stack
+      value: kubernetes # Infinispan discovers peers via Kubernetes DNS
+    - name: db-pool-initial-size
+      value: &quot;100&quot; # initial JDBC connection pool size
+    - name: db-pool-min-size
+      value: &quot;100&quot; # minimum JDBC connection pool size
+    - name: db-pool-max-size
+      value: &quot;200&quot; # maximum JDBC connection pool size
+
+  db:
+    vendor: postgres
+    url: jdbc:postgresql://postgres:5432/keycloak
+    usernameSecret:
+      name: keycloak-db-secret
+      key: username
+    passwordSecret:
+      name: keycloak-db-secret
+      key: password
+
+  image: quay.io/keycloak/keycloak:26.0
+  startOptimized: false
+  instances: 5
+
+  resources:
+    requests:
+      cpu: &quot;1&quot;
+      memory: &quot;1Gi&quot;
+    limits:
+      cpu: &quot;4&quot;
+      memory: &quot;4Gi&quot;
+
+  unsupported:
+    podTemplate:
+      spec:
+        containers:
+        - name: keycloak
+          env:
+            - name: JAVA_OPTS_APPEND
+              value: &quot;-Djgroups.dns.query=keycloak-discovery.keycloak.svc.cluster.local&quot; # tell JGroups how to discover cluster peers via DNS
+        hostNetwork: false # keep pods isolated on the Kubernetes network
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app: keycloak
+                topologyKey: &quot;kubernetes.io/hostname&quot; # spread Keycloak pods across different nodes
+        nodeSelector:
+          node-type: &quot;keycloak&quot;
+        tolerations:
+          - key: &quot;node-type&quot;
+            operator: &quot;Equal&quot;
+            value: &quot;keycloak&quot;
+            effect: &quot;PreferNoSchedule&quot;
+</code></pre>
+<p>The operator reads this spec and creates the underlying StatefulSet, services, and secrets to match. We&#39;ll walk through what each section does — and why this setup is highly available — next.</p>
+<h1>Why This Configuration Is High Availability</h1>
+<p>At a glance, the operator turns the <code>Keycloak</code> CR into one StatefulSet with 5 replicas. All 5 pods share two things: an <strong>Infinispan distributed cache</strong> for session data and a <strong>shared PostgreSQL database</strong>:</p>
+<pre class="mermaid">
+flowchart TB
+    Op["Keycloak Operator"] --> CR["Keycloak CR — instances: 5"]
+    CR --> SS["StatefulSet (5 replicas)"]
+    SS --> P1["Keycloak Pod 1"]
+    SS --> P2["Keycloak Pod 2"]
+    SS --> P3["Keycloak Pod 3"]
+    SS --> P4["Keycloak Pod 4"]
+    SS --> P5["Keycloak Pod 5"]
+
+    P1 <--> CACHE["Infinispan Cache (ISPN)"]
+    P2 <--> CACHE
+    P3 <--> CACHE
+    P4 <--> CACHE
+    P5 <--> CACHE
+
+    P1 --> DB[("PostgreSQL")]
+    P2 --> DB
+    P3 --> DB
+    P4 --> DB
+    P5 --> DB
+</pre>
+<h2>Instances: 5</h2>
+<p><code>instances: 5</code> tells the operator to run 5 Keycloak replicas. If one pod crashes, restarts, or its node goes away, the remaining 4 keep serving traffic while the StatefulSet brings the replacement back. That is the core of the HA story — no single Keycloak pod is a point of failure.</p>
+<h2>Infinispan Distributed Cache</h2>
+<p>Sessions are the hard part. If each pod kept sessions only in its own memory, a failed pod would log out its users. The <code>cache: ispn</code> and <code>cache-stack: kubernetes</code> options enable the embedded <strong>Infinispan</strong> cache using the Kubernetes stack, which lets the pods discover each other and replicate session data across the cluster. When a user&#39;s session is stored on pod 1 and that pod dies, pod 2 still has it.</p>
+<p>The <code>JAVA_OPTS_APPEND</code> environment variable makes this work under the hood:</p>
+<pre><code class="language-yaml">- name: JAVA_OPTS_APPEND
+  value: &quot;-Djgroups.dns.query=keycloak-discovery.keycloak.svc.cluster.local&quot;
+</code></pre>
+<p><strong>JGroups</strong> is the cluster communication library Infinispan uses. This setting tells it to discover peers by resolving the DNS name <code>keycloak-discovery</code> in the <code>keycloak</code> namespace — the Kubernetes headless service the operator creates. Each pod asks DNS, finds the other 4, and joins the distributed cache.</p>
+<h2>Pod Anti-Affinity</h2>
+<pre><code class="language-yaml">affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: keycloak
+        topologyKey: &quot;kubernetes.io/hostname&quot;
+</code></pre>
+<p>This rule prevents two Keycloak pods from landing on the <strong>same node</strong>. If a node fails, at most one Keycloak pod goes with it — the other 4 are already running elsewhere and keep serving. Combined with the node selector and toleration below, pods are pinned to dedicated <code>keycloak</code> nodes, one per node:</p>
+<pre><code class="language-yaml">nodeSelector:
+  node-type: &quot;keycloak&quot;
+tolerations:
+  - key: &quot;node-type&quot;
+    operator: &quot;Equal&quot;
+    value: &quot;keycloak&quot;
+    effect: &quot;PreferNoSchedule&quot;
+</code></pre>
+<h2>Connection Pool Tuning</h2>
+<p>With 5 instances sharing one database, the connection pool matters:</p>
+<ul>
+<li><strong><code>db-pool-min-size: 100</code></strong> / <strong><code>db-pool-initial-size: 100</code></strong> — keep 100 connections warm so burst traffic never waits on a new connection</li>
+<li><strong><code>db-pool-max-size: 200</code></strong> — cap total connections so the database isn&#39;t overwhelmed when all 5 instances spike at once</li>
+</ul>
+<h1>Expose Keycloak with an NGINX Ingress</h1>
+<p>The <code>Keycloak</code> CR disables its own ingress (<code>ingress.enabled: false</code>) and enables HTTP (<code>http.httpEnabled: true</code>), so traffic enters through an ingress controller instead — here, NGINX Ingress. TLS terminates at the ingress, which is why the CR sets <code>proxy: edge</code> and <code>hostname-strict: false</code>:</p>
+<pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: keycloak
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: &quot;true&quot;
+    nginx.ingress.kubernetes.io/ssl-redirect: &quot;true&quot;
+    nginx.ingress.kubernetes.io/backend-protocol: &quot;HTTP&quot;
+    nginx.ingress.kubernetes.io/x-forwarded-prefix: &quot;/&quot;
+    nginx.ingress.kubernetes.io/affinity: &quot;cookie&quot;
+    nginx.ingress.kubernetes.io/session-cookie-name: &quot;KEYCLOAK_SESSION&quot;
+    nginx.ingress.kubernetes.io/session-cookie-hash: &quot;sha1&quot;
+    nginx.ingress.kubernetes.io/proxy-read-timeout: &quot;120&quot;
+    nginx.ingress.kubernetes.io/proxy-send-timeout: &quot;120&quot;
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: &quot;30&quot;
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - keycloak.example.com
+      secretName: keycloak-tls-secret
+  rules:
+    - host: keycloak.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak-service
+                port:
+                  number: 8080
+</code></pre>
+<p>A few things worth noting:</p>
+<ul>
+<li><strong><code>backend-protocol: HTTP</code></strong> — matches the CR&#39;s <code>httpEnabled: true</code>; the operator&#39;s service (<code>keycloak-service</code>) listens on port 8080, and the ingress talks to it over plain HTTP because TLS is already terminated in front</li>
+<li><strong><code>ssl-redirect</code> / <code>force-ssl-redirect</code></strong> — every request is upgraded to HTTPS, which is what <code>proxy: edge</code> assumes</li>
+<li><strong>Cookie affinity</strong> (<code>affinity: cookie</code>, <code>session-cookie-name</code>) — sticks a client&#39;s requests to the same Keycloak pod where possible, which pairs well with the Infinispan session cache</li>
+<li><strong>Timeout annotations</strong> — longer <code>proxy-read</code>/<code>proxy-send</code> timeouts (120s) so slow token or import requests don&#39;t get cut off by the ingress default</li>
+</ul>
+<h2>Traefik Ingress Example</h2>
+<p>If you use Traefik, the equivalent is an <code>IngressRoute</code> with a redirect middleware. First the middleware that forces HTTPS, then a route on the <code>websecure</code> entry point with TLS and cookie stickiness:</p>
+<pre><code class="language-yaml">apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: keycloak-redirect-https
+  namespace: keycloak
+spec:
+  redirectScheme:
+    scheme: https
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`keycloak.example.com`)
+      kind: Rule
+      middlewares:
+        - name: keycloak-redirect-https
+      services:
+        - name: keycloak-service
+          port: 8080
+
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: keycloak
+  namespace: keycloak
+spec:
+  entryPoints:
+    - websecure
+  tls:
+    secretName: keycloak-tls-secret
+  routes:
+    - match: Host(`keycloak.example.com`)
+      kind: Rule
+      services:
+        - name: keycloak-service
+          port: 8080
+          sticky:
+            cookie:
+              name: KEYCLOAK_SESSION
+              httpOnly: true
+</code></pre>
+<p>The <code>web</code> entry point only redirects to HTTPS, while <code>websecure</code> serves the actual traffic with TLS and session cookie stickiness — the same behavior as the NGINX annotations above. Traefik&#39;s <code>sticky.cookie</code> replaces <code>nginx.ingress.kubernetes.io/affinity: cookie</code>.</p>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Running%20Keycloak%20in%20High%20Availability%20Mode%20with%20the%20Keycloak%20Operator&url=https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ-patyatawee.pages.dev/blog/Keycloak-High-Availability" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Running Keycloak in High Availability Mode with the Keycloak Operator",
+                    date: "August 3, 2026",
+                    readingTime: "7 min read",
+                    tags: "<span class=\"tag\">keycloak</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">high-availability</span>\n<span class=\"tag\">gitops</span>",
+                },
+                th: {
+                    title: "Running Keycloak in High Availability Mode with the Keycloak Operator",
+                    date: "August 3, 2026",
+                    readingTime: "0 นาที",
+                    tags: "",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide Thai tab if post is English-only
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === 'th') {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                switchLang(hash);
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
