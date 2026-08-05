@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * build.js — Static blog generator for champ-patyatawee.com
+ * build.js — Static blog generator for champ.patyatawee.com
  *
  * Reads bilingual Markdown files from blog/posts/<slug>/{en,th}.md,
  * parses frontmatter, converts to HTML using `marked`, and generates:
@@ -24,7 +24,7 @@ const matter = require('gray-matter');
 const POSTS_DIR = path.join(__dirname, 'blog', 'posts');
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const OUTPUT_DIR = path.join(__dirname, 'blog');
-const SITE_URL = 'https://champ-patyatawee.pages.dev';
+const SITE_URL = 'https://champ.patyatawee.com';
 
 // Configure marked for safety
 marked.setOptions({

@@ -8,8 +8,8 @@ that keep applications and APIs running reliably at scale.
 
 I work with startups across SEA as a freelance and contract engineer.
 
-[Hire Me →](https://champ-patyatawee.pages.dev/)  
-[Resume](https://champ-patyatawee.pages.dev/resume)
+[Hire Me →](https://champ.patyatawee.com/)  
+[Resume](https://champ.patyatawee.com/resume)
 
 
 ## Featured Projects

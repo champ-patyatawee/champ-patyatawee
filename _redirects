@@ -1,0 +1,3 @@
+# champ.patyatawee.com is the canonical domain
+https://champ-patyatawee.pages.dev/* https://champ.patyatawee.com/:splat 301
+https://champ-patyatawee.com/* https://champ.patyatawee.com/:splat 301
