@@ -605,6 +605,14 @@ img.loaded {
     flex-direction: column;
     opacity: 0;
     transform: translateY(24px);
+    position: relative;
+    cursor: pointer;
+}
+
+.post-card-title a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
 }
 
 .post-card.visible {

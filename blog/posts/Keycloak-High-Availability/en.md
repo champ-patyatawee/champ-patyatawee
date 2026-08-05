@@ -3,11 +3,11 @@ title: "Running Keycloak in High Availability Mode with the Keycloak Operator"
 date: 2026-08-03
 tags: [keycloak, kubernetes, high-availability, gitops]
 excerpt: "Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database."
-image: keycloak-icon.jpg
+image: Keycloak-High-Availability/keycloak-icon-og.jpg
 lang: en
 ---
 
-![Keycloak](../image/blog/keycloak-icon.jpg)
+![Keycloak](../image/blog/Keycloak-High-Availability/keycloak-icon.jpg)
 
 # What Is Keycloak
 
