@@ -9,6 +9,12 @@ lang: th
 
 พร้อมเปิดเทคนิคที่ตัวเองใช้ รวมถึงโชว์ตัวอย่างการเล่นจริง ที่ไม่ได้เป็นแค่ภาพ Render
 
+![GTA6](../image/feed/GTA6/gta6-a.png)
+
+![GTA6 gameplay](../image/feed/GTA6/gta6-b.png)
+
+![GTA6 gameplay](../image/feed/GTA6/gta6-c.png)
+
 แถมยังเปิด Opensource Project ให้เข้าไปส่องได้อีก
 
 https://github.com/ukanwat/aaabench
