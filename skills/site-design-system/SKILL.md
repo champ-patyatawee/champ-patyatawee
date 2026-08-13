@@ -41,7 +41,7 @@ There is exactly **one source of truth** — `design.json` — and **two CSS imp
 - **Changing a token means updating all three**: `design.json` + the `:root` block in `index.html` + the `:root` block in `blog/style.css`. Miss one and pages drift apart.
 - `resume.html` is **intentionally separate** — it uses its own minimal DM Sans / DM Serif Display print-focused theme. Do not restyle it to match the main system.
 - `profile_theme.css` is a **dark shadcn-style theme that is NOT part of the live design** (a reference/leftover). Never link it into a page.
-- The nav + footer are duplicated across `index.html`, `resume.html`, and both blog templates — any nav/footer change must be mirrored in all four.
+- The nav + footer are duplicated across `index.html`, `resume.html`, the two blog templates, and the two feed templates (`templates/feed.html`, `templates/feed-post.html`) — any nav/footer change must be mirrored in all six. Note: the feed pages link to the blog and homepage; blog pages do not link to the feed (by design).
 - When you edit `blog/style.css`, **bump the cache-busting query** on the `<link>` in the blog templates (`style.css?v=3`), otherwise visitors keep the old stylesheet.
 
 ### 3. How to consume tokens in CSS
@@ -437,5 +437,5 @@ Black panel (`background-color: var(--black)`), muted slate text (`#94a3b8`, bot
 - **Updating only one of the three token sources** — `design.json`, `index.html :root`, `blog/style.css :root` must change together.
 - **Forgetting `lucide.createIcons()` after DOM changes** — icons injected after initial load (e.g., blog language-tab switch) stay as empty `<i>` tags unless icons are re-created.
 - **"Fixing" `resume.html` or linking `profile_theme.css`** — the resume's DM Sans theme is intentional (print-focused, separate); `profile_theme.css` is a dark leftover that is not part of the live design.
-- **Duplicate nav/footer** — mirrored across `index.html`, `resume.html`, `templates/blog-post.html`, `templates/blog-listing.html`; update all four or pages disagree.
+- **Duplicate nav/footer** — mirrored across `index.html`, `resume.html`, `templates/blog-post.html`, `templates/blog-listing.html`, `templates/feed.html`, `templates/feed-post.html`; update all six or pages disagree.
 - **Stale `style.css?v=`** — blog visitors on Cloudflare Pages cache the stylesheet; bump the version query after editing `blog/style.css`.

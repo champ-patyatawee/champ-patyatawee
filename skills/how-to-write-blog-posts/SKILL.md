@@ -101,6 +101,24 @@ Regenerates `blog/index.html` (listing with post cards) and `blog/<slug>.html` f
 
 Verify: open `blog/index.html` in a browser, confirm the new card appears, click through to the post, check tags, mermaid diagrams, and code highlighting.
 
+## 7. Feed posts (`feed/posts/`) — Facebook-style timeline
+
+The feed is a second, independent content area rendered as a social-style timeline. Content format is **identical to blog posts** — same frontmatter schema, same bilingual `en.md`/`th.md` layout — but lives in its own folder and image space:
+
+```
+feed/posts/<Slug>/
+├── en.md   # English version (required for an EN post)
+└── th.md   # Thai version (optional)
+```
+
+- Frontmatter fields are the same as the blog table in section 2 (`title`, `date`, `tags`, `excerpt`, `image`, `lang`).
+- Feed images go in `image/feed/<slug>/`. The frontmatter `image:` path must include the post subfolder (e.g. `My-Slug/pic.jpg`) and becomes the card image + OG image (`https://champ.patyatawee.com/image/feed/My-Slug/pic.jpg`).
+- In-content images use `../image/feed/<slug>/...` relative paths.
+- The build generates `feed/index.html` (timeline of Facebook-style cards: avatar + author header, title, excerpt, card image, tags, EN/TH badge, Like/Comment/Share action bar) and `feed/<slug>.html` (full page with EN/TH tabs, mermaid, Prism — everything blog post pages have).
+- Cards are sorted newest first; card titles fall back EN → TH → slug; the EN/TH badge appears when both languages exist.
+- The `⚠️ Could not parse … th.md` lines in build output for English-only posts are harmless (the build still succeeds).
+- Feed pages are committed to git like blog pages; rebuild after any markdown edit.
+
 ## Format / Templates
 
 - Post pages use `templates/blog-post.html` — placeholders include `{{slug}}`, `{{date}}`, `{{en_title}}` / `{{th_title}}`, `{{en_content}}` / `{{th_content}}`, `{{en_tags}}` / `{{th_tags}}`, `{{en_readingTime}}` / `{{th_readingTime}}`, `{{en_excerpt}}`, `{{page_url}}`, `{{og_image}}`, `{{encodedTitle}}`, `{{has_both}}`, plus `*_json` variants used by the `langData` JS object. Do not edit generated HTML; edit markdown (or the template) and rebuild.

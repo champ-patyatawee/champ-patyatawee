@@ -3,10 +3,13 @@
 /**
  * build.js — Static blog generator for champ.patyatawee.com
  *
- * Reads bilingual Markdown files from blog/posts/<slug>/{en,th}.md,
- * parses frontmatter, converts to HTML using `marked`, and generates:
+ * Reads bilingual Markdown files from blog/posts/<slug>/{en,th}.md and
+ * feed/posts/<slug>/{en,th}.md, parses frontmatter, converts to HTML using
+ * `marked`, and generates:
  *   - blog/index.html         (listing page with card grid)
  *   - blog/<slug>.html        (individual post page with EN/TH tabs)
+ *   - feed/index.html         (Facebook-style timeline feed)
+ *   - feed/<slug>.html        (individual feed post page with EN/TH tabs)
  *
  * Usage: node build.js
  *
@@ -25,6 +28,10 @@ const POSTS_DIR = path.join(__dirname, 'blog', 'posts');
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const OUTPUT_DIR = path.join(__dirname, 'blog');
 const SITE_URL = 'https://champ.patyatawee.com';
+
+// Feed section — mirrors the blog structure but renders as a social-style timeline
+const FEED_POSTS_DIR = path.join(__dirname, 'feed', 'posts');
+const FEED_OUTPUT_DIR = path.join(__dirname, 'feed');
 
 // Configure marked for safety
 marked.setOptions({
@@ -119,6 +126,46 @@ function generateExcerpt(htmlContent, maxLength = 200) {
 }
 
 /**
+ * Parse a post folder for en.md and th.md into a combined post object.
+ * Shared by the blog and feed builds.
+ */
+function parsePostDir(baseDir, slug) {
+    const folderPath = path.join(baseDir, slug);
+    const enData = parseLangFile(path.join(folderPath, 'en.md'), 'en');
+    const thData = parseLangFile(path.join(folderPath, 'th.md'), 'th');
+
+    if (!enData && !thData) return null;
+
+    // Use English date as primary, fallback to Thai date
+    const primaryDate = enData ? enData.date : thData.date;
+    const dateFormatted = enData ? enData.dateFormatted : thData.dateFormatted;
+
+    return {
+        slug,
+        date: primaryDate,
+        dateFormatted,
+        hasBothLangs: !!(enData && thData),
+
+        en_title: enData ? enData.title : null,
+        en_excerpt: enData ? enData.excerpt : null,
+        en_content: enData ? enData.htmlContent : null,
+        en_tags: enData ? enData.tags : [],
+        en_tagsHtml: enData ? enData.tagsHtml : '',
+        en_readingTime: enData ? enData.readingTime : 0,
+        en_dateFormatted: enData ? enData.dateFormatted : '',
+
+        th_title: thData ? thData.title : null,
+        th_excerpt: thData ? thData.excerpt : null,
+        th_content: thData ? thData.htmlContent : null,
+        th_tags: thData ? thData.tags : [],
+        th_tagsHtml: thData ? thData.tagsHtml : '',
+        th_readingTime: thData ? thData.readingTime : 0,
+        th_dateFormatted: thData ? thData.dateFormatted : '',
+        image: (enData && enData.image) || (thData && thData.image) || '',
+    };
+}
+
+/**
  * Parse a single markdown file from a post directory
  */
 function parseLangFile(filePath, lang) {
@@ -155,6 +202,115 @@ function parseLangFile(filePath, lang) {
 }
 
 /**
+ * Fill a post-page template (blog-post.html / feed-post.html) with a post's data.
+ * Shared by the blog and feed builds — `pageUrl` and `ogImage` are absolute URLs.
+ */
+function fillPostTemplate(template, post, pageUrl, ogImage) {
+    let page = template;
+
+    // Replace placeholder values (escape where needed)
+    page = page.replace(/\{\{slug\}\}/g, post.slug);
+    page = page.replace(/\{\{date\}\}/g, post.dateFormatted);
+    page = page.replace(/\{\{has_both\}\}/g, String(post.hasBothLangs));
+    page = page.replace(/\{\{has_en\}\}/g, String(!!post.en_content));
+    page = page.replace(/\{\{has_th\}\}/g, String(!!post.th_content));
+
+    // English placeholders
+    page = page.replace(/\{\{en_title\}\}/g, escapeHtml(post.en_title || post.th_title || post.slug));
+    page = page.replace(/\{\{en_content\}\}/g, post.en_content || post.th_content || '');
+    page = page.replace(/\{\{en_tags\}\}/g, post.en_tagsHtml || '');
+    page = page.replace(/\{\{en_readingTime\}\}/g, String(post.en_readingTime || 0));
+    page = page.replace(/\{\{en_excerpt\}\}/g, post.en_excerpt || post.th_excerpt || '');
+    page = page.replace(/\{\{en_dateFormatted\}\}/g, post.en_dateFormatted || post.dateFormatted);
+
+    // Thai placeholders
+    page = page.replace(/\{\{th_title\}\}/g, escapeHtml(post.th_title || post.en_title || post.slug));
+    page = page.replace(/\{\{th_content\}\}/g, post.th_content || post.en_content || '');
+    page = page.replace(/\{\{th_tags\}\}/g, post.th_tagsHtml || '');
+    page = page.replace(/\{\{th_readingTime\}\}/g, String(post.th_readingTime || 0));
+    page = page.replace(/\{\{th_excerpt\}\}/g, post.th_excerpt || post.en_excerpt || '');
+    page = page.replace(/\{\{th_dateFormatted\}\}/g, post.th_dateFormatted || post.dateFormatted);
+
+    // JSON-encoded values for the langData JavaScript object
+    // These use JSON.stringify() so they're safe for embedding in JS (handles quotes, newlines, etc.)
+    const enTagsJson = JSON.stringify(post.en_tagsHtml || '');
+    const thTagsJson = JSON.stringify(post.th_tagsHtml || '');
+    const enTitleJson = JSON.stringify(post.en_title || post.th_title || post.slug);
+    const thTitleJson = JSON.stringify(post.th_title || post.en_title || post.slug);
+    const enDateJson = JSON.stringify(post.en_dateFormatted || post.dateFormatted);
+    const thDateJson = JSON.stringify(post.th_dateFormatted || post.dateFormatted);
+    const enReadingTimeJson = JSON.stringify((post.en_readingTime || 0) + ' min read');
+    const thReadingTimeJson = JSON.stringify((post.th_readingTime || 0) + ' นาที');
+
+    page = page.replace(/\{\{en_title_json\}\}/g, enTitleJson);
+    page = page.replace(/\{\{en_date_json\}\}/g, enDateJson);
+    page = page.replace(/\{\{en_readingTime_json\}\}/g, enReadingTimeJson);
+    page = page.replace(/\{\{en_tags_json\}\}/g, enTagsJson);
+    page = page.replace(/\{\{th_title_json\}\}/g, thTitleJson);
+    page = page.replace(/\{\{th_date_json\}\}/g, thDateJson);
+    page = page.replace(/\{\{th_readingTime_json\}\}/g, thReadingTimeJson);
+    page = page.replace(/\{\{th_tags_json\}\}/g, thTagsJson);
+
+    // Encoded title for share URLs
+    const encodedTitle = encodeURIComponent(post.en_title || post.th_title || post.slug);
+    page = page.replace(/\{\{encodedTitle\}\}/g, encodedTitle);
+
+    // Canonical / hreflang / share URLs
+    page = page.replace(/\{\{page_url\}\}/g, pageUrl);
+
+    // Open Graph share image (absolute URL)
+    page = page.replace(/\{\{og_image\}\}/g, ogImage);
+
+    return page;
+}
+
+/**
+ * Generate a feed card HTML — Facebook-style timeline card for feed/index.html
+ */
+function generateFeedCard(post) {
+    // Determine display title: prefer English, fallback to Thai
+    const displayTitle = post.en_title || post.th_title || post.slug;
+    const displayExcerpt = post.en_excerpt || post.th_excerpt || '';
+
+    // Build language badge
+    let langBadge = '';
+    if (post.hasBothLangs) {
+        langBadge = `<span class="feed-lang-badge feed-lang-badge-both">EN / TH</span>`;
+    } else if (post.en_title) {
+        langBadge = `<span class="feed-lang-badge">EN</span>`;
+    } else if (post.th_title) {
+        langBadge = `<span class="feed-lang-badge">TH</span>`;
+    }
+
+    // Optional post image (relative path from the feed/ folder)
+    const imageHtml = post.image
+        ? `\n                <a href="${post.slug}.html" class="feed-card-image-wrap"><img src="../image/feed/${post.image}" alt="${escapeHtml(displayTitle)}" class="feed-card-image" loading="lazy"></a>`
+        : '';
+
+    const displayDate = post.en_dateFormatted || post.th_dateFormatted || post.dateFormatted;
+
+    return `
+            <article class="feed-card">
+                <div class="feed-card-header">
+                    <img src="../image/avatar/i.png" alt="Champ Patyatawee" class="feed-avatar">
+                    <div class="feed-card-author">
+                        <span class="feed-author-name">Champ Patyatawee</span>
+                        <span class="feed-card-date">${displayDate}</span>
+                    </div>
+                    ${langBadge}
+                </div>
+                <h2 class="feed-card-title"><a href="${post.slug}.html">${escapeHtml(displayTitle)}</a></h2>
+                <p class="feed-card-excerpt">${displayExcerpt}</p>${imageHtml}
+                <div class="feed-card-tags">${post.en_tagsHtml || post.th_tagsHtml || ''}</div>
+                <div class="feed-card-actions">
+                    <a href="${post.slug}.html" class="feed-action" title="Read post"><i data-lucide="heart" style="width:18px;height:18px;stroke-width:2;"></i> Like</a>
+                    <a href="${post.slug}.html" class="feed-action" title="Read post"><i data-lucide="message-circle" style="width:18px;height:18px;stroke-width:2;"></i> Comment</a>
+                    <a href="${post.slug}.html" class="feed-action" title="Read post"><i data-lucide="share-2" style="width:18px;height:18px;stroke-width:2;"></i> Share</a>
+                </div>
+            </article>`;
+}
+
+/**
  * Generate a post card HTML for the listing page
  */
 function generatePostCard(post) {
@@ -188,6 +344,108 @@ function generatePostCard(post) {
 }
 
 // ============================================================
+// Feed Build
+// ============================================================
+
+/**
+ * Build the feed section (feed/index.html + feed/<slug>.html).
+ * Mirrors the blog build but renders posts as a social-style timeline
+ * and uses image/feed/ for post images.
+ */
+function buildFeed() {
+    console.log('\n📰 Building feed...');
+
+    let entries;
+    try {
+        entries = fs.readdirSync(FEED_POSTS_DIR, { withFileTypes: true });
+    } catch (err) {
+        console.log('   ⚠️  Could not read feed/posts — skipping feed. Create feed/posts/<slug>/{en,th}.md to enable it.');
+        return;
+    }
+
+    const postDirs = entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name);
+
+    if (postDirs.length === 0) {
+        console.log('   ⚠️  No post directories found in feed/posts/. Skipping feed.');
+        return;
+    }
+
+    console.log(`   📁 Found ${postDirs.length} feed post folder(s): ${postDirs.join(', ')}`);
+
+    // Parse each folder for en.md and th.md
+    const posts = postDirs.map((slug) => {
+        const post = parsePostDir(FEED_POSTS_DIR, slug);
+        if (!post) {
+            console.error(`   ❌ Neither en.md nor th.md found in feed/posts/${slug}/ — skipping`);
+            return null;
+        }
+        console.log(`   ✓ ${slug}: ${post.hasBothLangs ? 'EN + TH' : post.en_title ? 'EN only' : 'TH only'}`);
+        return post;
+    }).filter(Boolean);
+
+    if (posts.length === 0) {
+        console.log('   ⚠️  No valid feed posts found. Skipping feed.');
+        return;
+    }
+
+    // Sort by date descending (newest first)
+    posts.sort((a, b) => b.date - a.date);
+
+    console.log('   📝 Feed posts sorted by date (newest first):');
+    posts.forEach((p) => {
+        const title = p.en_title || p.th_title || p.slug;
+        console.log(`      - ${p.dateFormatted}: ${title} [${p.hasBothLangs ? 'EN/TH' : p.en_title ? 'EN' : 'TH'}]`);
+    });
+
+    // Load templates
+    let feedPostTemplate, feedTemplate;
+    try {
+        feedPostTemplate = fs.readFileSync(
+            path.join(TEMPLATES_DIR, 'feed-post.html'),
+            'utf-8'
+        );
+    } catch (err) {
+        console.error(`❌ Could not read template: templates/feed-post.html`);
+        process.exit(1);
+    }
+
+    try {
+        feedTemplate = fs.readFileSync(
+            path.join(TEMPLATES_DIR, 'feed.html'),
+            'utf-8'
+        );
+    } catch (err) {
+        console.error(`❌ Could not read template: templates/feed.html`);
+        process.exit(1);
+    }
+
+    // Generate individual feed post pages
+    posts.forEach((post) => {
+        const pageUrl = `${SITE_URL}/feed/${post.slug}`;
+        const ogImage = post.image
+            ? `${SITE_URL}/image/feed/${post.image}`
+            : `${SITE_URL}/image/avatar/i.png`;
+
+        const page = fillPostTemplate(feedPostTemplate, post, pageUrl, ogImage);
+        const outputPath = path.join(FEED_OUTPUT_DIR, `${post.slug}.html`);
+        fs.writeFileSync(outputPath, page, 'utf-8');
+        console.log(`✅ Generated: feed/${post.slug}.html`);
+    });
+
+    // Generate feed timeline page (Facebook-style cards)
+    const feedCards = posts.map((post) => generateFeedCard(post)).join('\n');
+    let feedPage = feedTemplate;
+    feedPage = feedPage.replace(/\{\{posts\}\}/g, feedCards);
+    feedPage = feedPage.replace(/\{\{post_count\}\}/g, String(posts.length));
+
+    const feedOutputPath = path.join(FEED_OUTPUT_DIR, 'index.html');
+    fs.writeFileSync(feedOutputPath, feedPage, 'utf-8');
+    console.log(`✅ Generated: feed/index.html (${posts.length} post(s))`);
+}
+
+// ============================================================
 // Main Build
 // ============================================================
 
@@ -217,46 +475,12 @@ function build() {
 
     // 2. Parse each folder for en.md and th.md
     const posts = postDirs.map((slug) => {
-        const folderPath = path.join(POSTS_DIR, slug);
-        const enPath = path.join(folderPath, 'en.md');
-        const thPath = path.join(folderPath, 'th.md');
-
-        const enData = parseLangFile(enPath, 'en');
-        const thData = parseLangFile(thPath, 'th');
-
-        if (!enData && !thData) {
+        const post = parsePostDir(POSTS_DIR, slug);
+        if (!post) {
             console.error(`   ❌ Neither en.md nor th.md found in ${slug}/ — skipping`);
             return null;
         }
-
-        // Use English date as primary, fallback to Thai date
-        const primaryDate = enData ? enData.date : thData.date;
-        const dateFormatted = enData ? enData.dateFormatted : thData.dateFormatted;
-
-        const post = {
-            slug,
-            date: primaryDate,
-            dateFormatted,
-            hasBothLangs: !!(enData && thData),
-
-            en_title: enData ? enData.title : null,
-            en_excerpt: enData ? enData.excerpt : null,
-            en_content: enData ? enData.htmlContent : null,
-            en_tags: enData ? enData.tags : [],
-            en_tagsHtml: enData ? enData.tagsHtml : '',
-            en_readingTime: enData ? enData.readingTime : 0,
-            en_dateFormatted: enData ? enData.dateFormatted : '',
-
-            th_title: thData ? thData.title : null,
-            th_excerpt: thData ? thData.excerpt : null,
-            th_content: thData ? thData.htmlContent : null,
-            th_tags: thData ? thData.tags : [],
-            th_tagsHtml: thData ? thData.tagsHtml : '',
-            th_readingTime: thData ? thData.readingTime : 0,
-            th_dateFormatted: thData ? thData.dateFormatted : '',
-            image: (enData && enData.image) || (thData && thData.image) || '',
-        };
-        console.log(`   ✓ ${slug}: ${post.hasBothLangs ? 'EN + TH' : enData ? 'EN only' : 'TH only'}`);
+        console.log(`   ✓ ${slug}: ${post.hasBothLangs ? 'EN + TH' : post.en_title ? 'EN only' : 'TH only'}`);
         return post;
     }).filter(Boolean);
 
@@ -299,62 +523,12 @@ function build() {
 
     // 5. Generate individual post pages
     posts.forEach((post) => {
-        let page = postTemplate;
-
-        // Replace placeholder values (escape where needed)
-        page = page.replace(/\{\{slug\}\}/g, post.slug);
-        page = page.replace(/\{\{date\}\}/g, post.dateFormatted);
-        page = page.replace(/\{\{has_both\}\}/g, String(post.hasBothLangs));
-
-        // English placeholders
-        page = page.replace(/\{\{en_title\}\}/g, escapeHtml(post.en_title || post.th_title || post.slug));
-        page = page.replace(/\{\{en_content\}\}/g, post.en_content || post.th_content || '');
-        page = page.replace(/\{\{en_tags\}\}/g, post.en_tagsHtml || '');
-        page = page.replace(/\{\{en_readingTime\}\}/g, String(post.en_readingTime || 0));
-        page = page.replace(/\{\{en_excerpt\}\}/g, post.en_excerpt || post.th_excerpt || '');
-        page = page.replace(/\{\{en_dateFormatted\}\}/g, post.en_dateFormatted || post.dateFormatted);
-
-        // Thai placeholders
-        page = page.replace(/\{\{th_title\}\}/g, escapeHtml(post.th_title || post.en_title || post.slug));
-        page = page.replace(/\{\{th_content\}\}/g, post.th_content || post.en_content || '');
-        page = page.replace(/\{\{th_tags\}\}/g, post.th_tagsHtml || '');
-        page = page.replace(/\{\{th_readingTime\}\}/g, String(post.th_readingTime || 0));
-        page = page.replace(/\{\{th_excerpt\}\}/g, post.th_excerpt || post.en_excerpt || '');
-        page = page.replace(/\{\{th_dateFormatted\}\}/g, post.th_dateFormatted || post.dateFormatted);
-
-        // JSON-encoded values for the langData JavaScript object
-        // These use JSON.stringify() so they're safe for embedding in JS (handles quotes, newlines, etc.)
-        const enTagsJson = JSON.stringify(post.en_tagsHtml || '');
-        const thTagsJson = JSON.stringify(post.th_tagsHtml || '');
-        const enTitleJson = JSON.stringify(post.en_title || post.th_title || post.slug);
-        const thTitleJson = JSON.stringify(post.th_title || post.en_title || post.slug);
-        const enDateJson = JSON.stringify(post.en_dateFormatted || post.dateFormatted);
-        const thDateJson = JSON.stringify(post.th_dateFormatted || post.dateFormatted);
-        const enReadingTimeJson = JSON.stringify((post.en_readingTime || 0) + ' min read');
-        const thReadingTimeJson = JSON.stringify((post.th_readingTime || 0) + ' นาที');
-
-        page = page.replace(/\{\{en_title_json\}\}/g, enTitleJson);
-        page = page.replace(/\{\{en_date_json\}\}/g, enDateJson);
-        page = page.replace(/\{\{en_readingTime_json\}\}/g, enReadingTimeJson);
-        page = page.replace(/\{\{en_tags_json\}\}/g, enTagsJson);
-        page = page.replace(/\{\{th_title_json\}\}/g, thTitleJson);
-        page = page.replace(/\{\{th_date_json\}\}/g, thDateJson);
-        page = page.replace(/\{\{th_readingTime_json\}\}/g, thReadingTimeJson);
-        page = page.replace(/\{\{th_tags_json\}\}/g, thTagsJson);
-
-        // Encoded title for share URLs
-        const encodedTitle = encodeURIComponent(post.en_title || post.th_title || post.slug);
-        page = page.replace(/\{\{encodedTitle\}\}/g, encodedTitle);
-
-        // hreflang URLs
-        page = page.replace(/\{\{page_url\}\}/g, `${SITE_URL}/blog/${post.slug}`);
-
-        // Open Graph share image (absolute URL). Falls back to the site avatar.
+        const pageUrl = `${SITE_URL}/blog/${post.slug}`;
         const ogImage = post.image
             ? `${SITE_URL}/image/blog/${post.image}`
             : `${SITE_URL}/image/avatar/i.png`;
-        page = page.replace(/\{\{og_image\}\}/g, ogImage);
 
+        const page = fillPostTemplate(postTemplate, post, pageUrl, ogImage);
         const outputPath = path.join(OUTPUT_DIR, `${post.slug}.html`);
         fs.writeFileSync(outputPath, page, 'utf-8');
         console.log(`✅ Generated: blog/${post.slug}.html`);
@@ -368,6 +542,9 @@ function build() {
     const listingOutputPath = path.join(OUTPUT_DIR, 'index.html');
     fs.writeFileSync(listingOutputPath, listingPage, 'utf-8');
     console.log(`✅ Generated: blog/index.html (${posts.length} post(s))`);
+
+    // 7. Build feed section
+    buildFeed();
 
     console.log('\n🎉 Blog build complete!');
 }

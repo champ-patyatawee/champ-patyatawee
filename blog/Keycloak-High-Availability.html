@@ -135,7 +135,7 @@
                 </div>
 
                 <!-- Language tabs -->
-                <div class="lang-tabs" id="lang-tabs" data-has-both="false">
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
                     <button class="lang-tab active" data-lang="en">English</button>
                     <button class="lang-tab" data-lang="th">ไทย</button>
                 </div>
@@ -796,6 +796,8 @@ spec:
                 th: document.getElementById('content-th'),
             };
             const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
             const htmlEl = document.documentElement;
             const postTitle = document.getElementById('post-title');
             const postDate = document.getElementById('post-date');
@@ -870,10 +872,10 @@ spec:
                 });
             });
 
-            // Hide Thai tab if post is English-only
+            // Hide the tab for a missing language
             if (!hasBoth) {
                 tabs.forEach(function(tab) {
-                    if (tab.dataset.lang === 'th') {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
                         tab.style.display = 'none';
                     }
                 });

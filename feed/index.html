@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Feed by Champ Patyatawee — DevOps &amp; Cloud Infrastructure Engineer. Short updates, insights, and highlights on Kubernetes, GitOps, CI/CD, and cloud-native systems.">
+    <meta property="og:title" content="Feed — Champ Patyatawee">
+    <meta property="og:description" content="Short updates and highlights on DevOps, Kubernetes, and cloud-native systems.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://champ.patyatawee.com/feed/">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://champ.patyatawee.com/feed/">
+    <title>Feed — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --bg: #F7F7F4;
+            --surface: #FFFFFF;
+            --text: #111111;
+            --text-muted: #555555;
+            --primary: #1E50FF;
+            --secondary: #F5A9D6;
+            --accent: #D9FF2A;
+            --cyan: #3BE8F6;
+            --yellow: #FFD84D;
+            --black: #111111;
+            --white: #FFFFFF;
+            --border: #111111;
+            --success: #00D084;
+            --warning: #FFC93C;
+            --danger: #FF4D4F;
+            --shadow-card: 4px 4px 0 0 #111111;
+            --shadow-btn: 3px 3px 0 0 #111111;
+            --radius-card: 20px;
+            --radius-btn: 16px;
+            --radius-tag: 8px;
+            --radius-full: 9999px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 90px;
+        }
+
+        body {
+            background-color: var(--bg);
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            line-height: 1.6;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--text);
+        }
+
+        img {
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        img.loaded {
+            opacity: 1;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            height: 72px;
+            border: 2px solid var(--border);
+            border-radius: 24px;
+            gap: 2rem;
+            position: sticky;
+            top: 16px;
+            z-index: 1000;
+            background-color: var(--white);
+            max-width: 1280px;
+            margin: 0 auto;
+            margin-top: 16px;
+            box-shadow: 4px 4px 0 0 #111111;
+        }
+
+        .logo {
+            font-family: 'Poppins', sans-serif;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--text);
+        }
+
+        .logo a {
+            text-decoration: none;
+            color: var(--text);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            margin-left: auto;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 500;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: color 0.2s;
+            position: relative;
+            padding-bottom: 4px;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.25s ease;
+        }
+
+        .nav-links a:hover::after,
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--primary);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-btn);
+            background: transparent;
+            color: var(--text);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            box-shadow: 4px 4px 0 0 #111111;
+        }
+
+        .btn:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 0 #111111;
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 0 #111111;
+        }
+
+        .btn-hire-me {
+            color: var(--text);
+            background-color: var(--accent);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-btn);
+            font-weight: 600;
+            padding: 10px 24px;
+            font-size: 13px;
+            box-shadow: 4px 4px 0 0 #111111;
+        }
+
+        .btn-hire-me:hover {
+            background: var(--accent);
+            color: var(--text);
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 0 #111111;
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            background: none;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            cursor: pointer;
+            font-size: 22px;
+            color: var(--text);
+            padding: 8px;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .mobile-menu-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .mobile-menu-btn svg {
+            stroke: var(--text);
+        }
+
+        .mobile-menu-btn:hover svg {
+            stroke: var(--primary);
+        }
+
+        .mobile-menu {
+            display: none;
+        }
+
+        /* Feed */
+        .feed-page {
+            padding: 5rem 2rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .feed-header {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .feed-header h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 3rem;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+
+        .feed-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            max-width: 560px;
+            line-height: 1.6;
+        }
+
+        .feed-count {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary);
+            background-color: #EEF0FF;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+        }
+
+        .feed-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .feed-card {
+            background-color: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+            padding: 24px;
+            transition: box-shadow 0.3s ease, transform 0.3s ease;
+        }
+
+        .feed-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 0 #111111;
+        }
+
+        .feed-card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .feed-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-full);
+            border: 2px solid var(--border);
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .feed-card-author {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .feed-author-name {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .feed-card-date {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .feed-lang-badge {
+            margin-left: auto;
+            flex-shrink: 0;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+        }
+
+        .feed-lang-badge-both {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .feed-card-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .feed-card-title a {
+            text-decoration: none;
+            color: var(--text);
+            transition: color 0.2s;
+        }
+
+        .feed-card-title a:hover {
+            color: var(--primary);
+        }
+
+        .feed-card-excerpt {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.7;
+        }
+
+        .feed-card-image-wrap {
+            display: block;
+            margin: 1rem 0;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .feed-card-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .feed-card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            color: var(--primary);
+            background-color: #EEF0FF;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .tag:hover {
+            background-color: var(--primary);
+            color: var(--white);
+            transform: translateY(-1px);
+        }
+
+        .feed-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            padding-top: 12px;
+            border-top: 2px solid var(--border);
+        }
+
+        .feed-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-decoration: none;
+            border: 2px solid transparent;
+            border-radius: var(--radius-tag);
+            transition: all 0.2s ease;
+        }
+
+        .feed-action i {
+            color: var(--text-muted);
+            transition: color 0.2s;
+        }
+
+        .feed-action:hover {
+            color: var(--primary);
+            background-color: #EEF0FF;
+            border-color: var(--border);
+        }
+
+        .feed-action:hover i {
+            color: var(--primary);
+        }
+
+        /* Scroll animation */
+        .feed-card {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+        }
+
+        .feed-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Footer */
+        footer {
+            padding: 4rem 2rem 2rem;
+            background-color: var(--black);
+            color: #e2e8f0;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            gap: 2rem;
+            max-width: 1280px;
+            margin: 0 auto 2rem auto;
+        }
+
+        .footer-info h3 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        .footer-info p {
+            color: #94a3b8;
+            max-width: 300px;
+            line-height: 1.7;
+            font-size: 0.9rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 3rem;
+        }
+
+        .footer-nav h4,
+        .footer-connect h4 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer-nav ul {
+            list-style: none;
+        }
+
+        .footer-nav li {
+            margin-bottom: 0.6rem;
+        }
+
+        .footer-nav a {
+            text-decoration: none;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-nav a:hover {
+            color: var(--accent);
+        }
+
+        .footer-connect .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .footer-connect .social-links a {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-connect .social-links a:hover {
+            color: var(--accent);
+        }
+
+        .footer-social-icon {
+            width: 16px;
+            height: 16px;
+            color: var(--accent);
+        }
+
+        .footer-bottom {
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: #64748b;
+            font-size: 0.85rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background-color: var(--surface);
+            border-radius: var(--radius-card);
+            border: 2px solid var(--border);
+            box-shadow: 8px 8px 0 0 #111111;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 2.5rem;
+            position: relative;
+            transform: translateY(-20px) scale(0.97);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0) scale(1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            font-size: 18px;
+            cursor: pointer;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--white);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .modal .contact-info p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .contact-details {
+            margin-bottom: 1.5rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .contact-icon {
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-tag);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+            color: var(--primary);
+        }
+
+        .contact-icon i {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+            stroke: var(--primary);
+        }
+
+        .contact-label {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.2rem;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .contact-item p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .modal .social-links {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .social-link {
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+            transition: all 0.2s ease;
+        }
+
+        .social-link svg {
+            width: 24px;
+            height: 24px;
+            stroke: currentColor;
+        }
+
+        .social-link:hover {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 3px 3px 0 0 #111111;
+        }
+
+        /* Back to top */
+        .back-to-top {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 44px;
+            height: 44px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            background: var(--primary);
+            color: var(--white);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 4px 4px 0 0 #111111;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            background: var(--primary);
+            color: var(--white);
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 0 #111111;
+        }
+
+        .back-to-top svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            nav {
+                padding: 0 1.5rem;
+                margin-top: 12px;
+                margin-left: 12px;
+                margin-right: 12px;
+            }
+
+            .feed-page {
+                padding: 3rem 1.5rem;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 2rem;
+            }
+
+            footer {
+                padding: 3rem 1.5rem 2rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav-links,
+            .nav-buttons {
+                display: none;
+            }
+
+            .mobile-menu-btn {
+                display: block;
+            }
+
+            .mobile-menu {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background-color: var(--white);
+                flex-direction: column;
+                padding: 1rem;
+                border: 2px solid var(--border);
+                border-top: none;
+                border-radius: 0 0 var(--radius-card) var(--radius-card);
+                box-shadow: 4px 4px 0 0 #111111;
+                z-index: 100;
+                margin-top: 2px;
+            }
+
+            .mobile-menu.active {
+                display: flex;
+            }
+
+            .mobile-menu a {
+                padding: 0.85rem 0;
+                text-decoration: none;
+                color: var(--text);
+                font-weight: 500;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                border-bottom: 1px solid var(--border);
+                transition: color 0.2s;
+            }
+
+            .mobile-menu a:hover {
+                color: var(--primary);
+            }
+
+            .mobile-menu a:last-child {
+                border-bottom: none;
+            }
+
+            #hire-me-mobile-btn {
+                margin-top: 0.5rem;
+                width: 100%;
+                text-align: center;
+                padding: 0.85rem;
+                border: 2px solid var(--border);
+                border-radius: var(--radius-btn);
+                font-weight: 600;
+                color: var(--text);
+                background-color: var(--accent);
+                cursor: pointer;
+                box-shadow: 4px 4px 0 0 #111111;
+            }
+
+            #hire-me-mobile-btn:hover {
+                transform: translate(-2px, -2px);
+                box-shadow: 8px 8px 0 0 #111111;
+            }
+
+            .feed-header h1 {
+                font-size: 2.5rem;
+            }
+
+            .footer-content {
+                flex-direction: column;
+            }
+
+            .footer-links {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            nav {
+                padding: 0 1rem;
+                margin-top: 8px;
+                margin-left: 8px;
+                margin-right: 8px;
+            }
+
+            .feed-page {
+                padding: 2rem 1rem;
+            }
+
+            .feed-card {
+                padding: 16px;
+            }
+
+            .feed-card-actions {
+                gap: 0.25rem;
+            }
+
+            .feed-action {
+                padding: 6px 10px;
+                font-size: 0.8rem;
+            }
+
+            .modal {
+                padding: 1.5rem;
+                border-radius: var(--radius-card);
+            }
+
+            .back-to-top {
+                width: 40px;
+                height: 40px;
+                bottom: 1rem;
+                right: 1rem;
+            }
+
+            .back-to-top svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            footer {
+                padding: 2rem 1rem;
+            }
+        }
+    </style>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Feed</a>
+            <a href="../blog/index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Feed</a>
+            <a href="../blog/index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Hire me</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title">Get In Touch</h2>
+                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                </div>
+                <div class="contact-info">
+                    <p>
+                        Have a project in mind or want to discuss potential opportunities? 
+                        Feel free to reach out through any of these channels.
+                    </p>
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="mail"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Email</p>
+                                <p>champ.patyatawee@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="phone"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">LineID</p>
+                                <p>champ.patyatawee</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="map-pin"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Location</p>
+                                <p>Bangkok, Thailand</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="feed-page">
+        <div class="feed-header">
+            <h1>Feed</h1>
+            <p class="feed-subtitle">Short updates and highlights — DevOps, Kubernetes, cloud-native. Like a timeline, without the algorithmic noise.</p>
+            <span class="feed-count">1 posts</span>
+        </div>
+
+        <div class="feed-timeline">
+            
+            <article class="feed-card">
+                <div class="feed-card-header">
+                    <img src="../image/avatar/i.png" alt="Champ Patyatawee" class="feed-avatar">
+                    <div class="feed-card-author">
+                        <span class="feed-author-name">Champ Patyatawee</span>
+                        <span class="feed-card-date">August 13, 2026</span>
+                    </div>
+                    <span class="feed-lang-badge">TH</span>
+                </div>
+                <h2 class="feed-card-title"><a href="GTA6.html">รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง</a></h2>
+                <p class="feed-card-excerpt">รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง พร้อมเปิดเทคนิคที่ตัวเองใช้ รวมถึงโชว์ตัวอย่างการเล่นจริง ที่ไม่ได้เป็นแค่ภาพ Render และเปิด Opensource Project ให้เข้าไปส่องได้อีก</p>
+                <a href="GTA6.html" class="feed-card-image-wrap"><img src="../image/feed/GTA6/gta6-a.png" alt="รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง" class="feed-card-image" loading="lazy"></a>
+                <div class="feed-card-tags"><span class="tag">ai</span>
+<span class="tag">gamedev</span>
+<span class="tag">unreal-engine</span>
+<span class="tag">fun</span></div>
+                <div class="feed-card-actions">
+                    <a href="GTA6.html" class="feed-action" title="Read post"><i data-lucide="heart" style="width:18px;height:18px;stroke-width:2;"></i> Like</a>
+                    <a href="GTA6.html" class="feed-action" title="Read post"><i data-lucide="message-circle" style="width:18px;height:18px;stroke-width:2;"></i> Comment</a>
+                    <a href="GTA6.html" class="feed-action" title="Read post"><i data-lucide="share-2" style="width:18px;height:18px;stroke-width:2;"></i> Share</a>
+                </div>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Feed</a></li>
+                        <li><a href="../blog/index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script>
+        lucide.createIcons();
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Scroll animation for feed cards
+            const cards = document.querySelectorAll('.feed-card');
+            const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, index) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => {
+                            entry.target.classList.add('visible');
+                        }, index * 100);
+                    }
+                });
+            }, observerOptions);
+
+            cards.forEach(card => {
+                observer.observe(card);
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

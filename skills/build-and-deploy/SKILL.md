@@ -36,6 +36,8 @@ There is no dev server, no bundler, and no test script (`npm test` is a stub tha
 
 `build.js` (plain Node, `#!/usr/bin/env node`):
 
+For the **blog** (`blog/posts/`):
+
 1. Reads every subdirectory of `blog/posts/`; the folder name is the slug. Skips folders with neither `en.md` nor `th.md`.
 2. Parses frontmatter with `gray-matter` and converts body to HTML with `marked` (GFM on, `breaks: false`). A custom renderer turns ` ```mermaid ` fences into `<pre class="mermaid">` for client-side rendering.
 3. Computes per-post: reading time (~200 wpm, min 1), excerpt (frontmatter or auto ~200 chars), formatted date, tag badges, language availability (`has_both`).
@@ -43,23 +45,37 @@ There is no dev server, no bundler, and no test script (`npm test` is a stub tha
 5. Fills placeholders in `templates/blog-post.html` (per post) and `templates/blog-listing.html` (cards for all posts).
 6. Writes outputs (see below).
 
+Then the **feed** (`feed/posts/`, step 7):
+
+7. Runs the same parse/sort pipeline over `feed/posts/` and:
+   - fills `templates/feed.html` (Facebook-style timeline) → `feed/index.html`
+   - fills `templates/feed-post.html` (per post) → `feed/<slug>.html`
+
+The post-page placeholder replacement is shared between blog and feed via `fillPostTemplate(template, post, pageUrl, ogImage)` in `build.js`; only `page_url` (`/blog/<slug>` vs `/feed/<slug>`) and the OG image prefix (`/image/blog/` vs `/image/feed/`) differ. Feed cards come from `generateFeedCard(post)` (avatar + author header, title, excerpt, optional `image/feed/` image, tags, Like/Comment/Share action bar).
+
 ### 3. Inputs → outputs
 
 | Input | Output |
 |---|---|
 | `blog/posts/<slug>/{en,th}.md` | `blog/<slug>.html` (post page with EN/TH tabs) |
 | all posts | `blog/index.html` (listing, card grid) |
-| `templates/blog-post.html` | every post page shell |
+| `feed/posts/<slug>/{en,th}.md` | `feed/<slug>.html` (feed post page with EN/TH tabs) |
+| all feed posts | `feed/index.html` (Facebook-style timeline feed) |
+| `templates/blog-post.html` | every blog post page shell |
 | `templates/blog-listing.html` | listing page shell |
+| `templates/feed.html` | feed timeline page shell |
+| `templates/feed-post.html` | every feed post page shell |
 | `image/blog/<slug>/*` | referenced by content (`../image/blog/...`) and OG images (`https://champ.patyatawee.com/image/blog/<image>`) |
+| `image/feed/<slug>/*` | feed card images (`../image/feed/...`), OG images (`https://champ.patyatawee.com/image/feed/<image>`) |
 
-Generated `blog/*.html` files are **committed to git** (not in `.gitignore`) — they are the deployable artifacts. `.gitignore` only excludes `.DS_Store` and `node_modules/`.
+Generated `blog/*.html` **and `feed/*.html`** files are **committed to git** (not in `.gitignore`) — they are the deployable artifacts. `.gitignore` only excludes `.DS_Store` and `node_modules/`.
 
 ### 4. Site structure & conventions
 
 - **`index.html`** — homepage (About / Services / Customers sections, contact modal, Lucide icons, scroll animations). Inline `<style>` with the design-system CSS custom properties.
 - **`resume.html`** — standalone resume page with its own independent stylesheet block (DM Sans, light). Nav links to `../resume.html`.
-- **`blog/style.css`** — blog pages' stylesheet (linked as `style.css?v=2`); same CSS custom properties as `index.html`.
+- **`blog/style.css`** — blog pages' stylesheet (linked as `style.css?v=2`); same CSS custom properties as `index.html`. Feed post pages reuse it via `../blog/style.css?v=2`.
+- **`feed/index.html`** — Facebook-style timeline feed page. Self-contained inline `<style>` (same tokens); cards show avatar + author header, date, title, excerpt, optional `image/feed/` image, tags, EN/TH badge, and a Like/Comment/Share action bar that links to the post page.
 - **`profile_theme.css`** — a dark shadcn-style theme file, **not** part of the live design; treat as a reference/leftover, do not link it into pages.
 - **`design.json`** — the source of truth "Startup Marketing Design System". Live pages implement its tokens as CSS custom properties:
 
@@ -84,23 +100,24 @@ Generated `blog/*.html` files are **committed to git** (not in `.gitignore`) —
 
 ## Format / Templates
 
-- **`templates/blog-post.html`** placeholders: `{{slug}}`, `{{date}}`, `{{has_both}}`, `{{en_title}}`, `{{en_content}}`, `{{en_tags}}`, `{{en_readingTime}}`, `{{en_excerpt}}`, `{{en_dateFormatted}}`, `{{th_title}}`, `{{th_content}}`, `{{th_tags}}`, `{{th_readingTime}}`, `{{th_excerpt}}`, `{{th_dateFormatted}}`, plus JSON-encoded `{{en_title_json}}`, `{{en_date_json}}`, `{{en_readingTime_json}}`, `{{en_tags_json}}` (and `th_*` variants) for the client-side `langData` switcher, plus `{{encodedTitle}}`, `{{page_url}}` (`https://champ.patyatawee.com/blog/<slug>`), `{{og_image}}`.
+- **`templates/blog-post.html`** placeholders: `{{slug}}`, `{{date}}`, `{{has_both}}`, `{{en_title}}`, `{{en_content}}`, `{{en_tags}}`, `{{en_readingTime}}`, `{{en_excerpt}}`, `{{en_dateFormatted}}`, `{{th_title}}`, `{{th_content}}`, `{{th_tags}}`, `{{th_readingTime}}`, `{{th_excerpt}}`, `{{th_dateFormatted}}`, plus JSON-encoded `{{en_title_json}}`, `{{en_date_json}}`, `{{en_readingTime_json}}`, `{{en_tags_json}}` (and `th_*` variants) for the client-side `langData` switcher, plus `{{encodedTitle}}`, `{{page_url}}`, `{{og_image}}`. `templates/feed-post.html` uses the **same placeholder set** (it is a copy with feed paths, `../blog/style.css?v=2`, and a Feed-active nav).
+- **`templates/feed.html`**: `{{posts}}` (timeline cards) and `{{post_count}}` (badge in header).
 - **`templates/blog-listing.html`**: single `{{posts}}` placeholder replaced with one `.post-card` per post (title link, EN/TH badge, date, excerpt, tags, "Read more").
 - If you add a placeholder to a template, `build.js` must replace it — an unreplaced `{{...}}` renders verbatim on the page. Keep templates and `build.js` in sync.
 
 ## Workflow
 
-1. Edit content (`blog/posts/`) and/or templates.
+1. Edit content (`blog/posts/`, `feed/posts/`) and/or templates.
 2. Run `npm run build:blog` from the repo root.
-3. Check the script output for `❌`/`⚠️` errors; confirm `✅ Generated:` lines for each post and `blog/index.html`.
-4. Spot-check `blog/index.html` + one post page in a browser (mermaid, Prism highlighting, lucide icons, language tabs).
-5. Commit everything — markdown sources, images, AND regenerated `blog/*.html` — then push to `main`; Cloudflare Pages deploys the canonical domain.
+3. Check the script output for `❌`/`⚠️` errors; confirm `✅ Generated:` lines for each post, `blog/index.html`, `feed/index.html`, and each feed post.
+4. Spot-check `blog/index.html`, `feed/index.html`, and one post page in a browser (mermaid, Prism highlighting, lucide icons, language tabs).
+5. Commit everything — markdown sources, images, AND regenerated `blog/*.html` + `feed/*.html` — then push to `main`; Cloudflare Pages deploys the canonical domain.
 
 ## Common pitfalls
 
 - **Hand-editing generated `blog/*.html`** — always edit markdown/templates and rebuild; generated files get overwritten.
-- **Forgetting to commit generated HTML** — the live site serves `blog/*.html` directly; markdown alone does not publish.
-- **Unreplaced template placeholders** — adding `{{foo}}` to a template without adding a `page.replace(...)` in `build.js` leaks raw `{{foo}}` into the page.
+- **Forgetting to commit generated HTML** — the live site serves `blog/*.html` and `feed/*.html` directly; markdown alone does not publish.
+- **Unreplaced template placeholders** — adding `{{foo}}` to a template without adding a `page.replace(...)` in `build.js` leaks raw `{{foo}}` into the page (feed.html expects both `{{posts}}` and `{{post_count}}`).
 - **Breaking `build.js`** — it's plain CommonJS Node; no watch mode, no config file. `SITE_URL` (`https://champ.patyatawee.com`) is a constant used for OG/canonical/hreflang URLs.
-- **Changing nav/footer/socials** — these are duplicated across `index.html`, `resume.html`, and both blog templates; update all four or navigation will be inconsistent across pages.
+- **Changing nav/footer/socials** — these are duplicated across `index.html`, `resume.html`, both blog templates, and both feed templates (`templates/feed.html`, `templates/feed-post.html`); update them all or navigation will be inconsistent across pages. Note: blog pages don't link to the feed (per design); the feed links to both the blog and the homepage.
 - **`_redirects`** — keep the canonical-domain 301s intact; Cloudflare Pages fails the deploy if this file has syntax errors.
