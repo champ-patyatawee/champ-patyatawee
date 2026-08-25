@@ -45,6 +45,8 @@ For the **blog** (`blog/posts/`):
 5. Fills placeholders in `templates/blog-post.html` (per post) and `templates/blog-listing.html` (cards for all posts).
 6. Writes outputs (see below).
 
+The homepage (`index.html`) is also a build target: after generating the listing, the newest `HOME_LATEST_COUNT` (3) blog posts are injected into the homepage's "Latest Articles" section. `build.js` replaces only the content between the `<!-- HOME_POSTS_START -->` / `<!-- HOME_POSTS_END -->` markers it re-emits, so repeated builds are idempotent and hand-edits elsewhere in `index.html` are preserved. If the markers are missing it logs a `⚠️` and skips (never corrupts the file).
+
 Then the **feed** (`feed/posts/`, step 7):
 
 7. Runs the same parse/sort pipeline over `feed/posts/` and:
@@ -59,6 +61,7 @@ The post-page placeholder replacement is shared between blog and feed via `fillP
 |---|---|
 | `blog/posts/<slug>/{en,th}.md` | `blog/<slug>.html` (post page with EN/TH tabs) |
 | all posts | `blog/index.html` (listing, card grid) |
+| all posts (newest 3) | `index.html` (homepage "Latest Articles" section, between `HOME_POSTS_*` markers) |
 | `feed/posts/<slug>/{en,th}.md` | `feed/<slug>.html` (feed post page with EN/TH tabs) |
 | all feed posts | `feed/index.html` (Facebook-style timeline feed) |
 | `templates/blog-post.html` | every blog post page shell |
@@ -116,6 +119,7 @@ Generated `blog/*.html` **and `feed/*.html`** files are **committed to git** (no
 ## Common pitfalls
 
 - **Hand-editing generated `blog/*.html`** — always edit markdown/templates and rebuild; generated files get overwritten.
+- **Hand-editing the homepage "Latest Articles" section** — the block between `HOME_POSTS_START/END` is regenerated from the newest blog posts on every build; edit `blog/posts/` markdown instead (the surrounding `index.html` is safe to hand-edit — only the marked block is touched).
 - **Forgetting to commit generated HTML** — the live site serves `blog/*.html` and `feed/*.html` directly; markdown alone does not publish.
 - **Unreplaced template placeholders** — adding `{{foo}}` to a template without adding a `page.replace(...)` in `build.js` leaks raw `{{foo}}` into the page (feed.html expects both `{{posts}}` and `{{post_count}}`).
 - **Breaking `build.js`** — it's plain CommonJS Node; no watch mode, no config file. `SITE_URL` (`https://champ.patyatawee.com`) is a constant used for OG/canonical/hreflang URLs.

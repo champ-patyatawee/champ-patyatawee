@@ -11,11 +11,15 @@
     <meta property="og:url" content="https://champ.patyatawee.com">
     <meta property="og:type" content="website">
     <meta property="og:locale" content="th_TH">
+    <meta property="og:locale:alternate" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Champ Patyatawee — Fullstack & DevOps/SRE Engineer">
     <meta name="twitter:description" content="Fullstack & DevOps/SRE Engineer based in Thailand. Web apps, Kubernetes, CI/CD, GitOps, cloud architecture.">
     <meta name="twitter:image" content="https://champ.patyatawee.com/image/avatar/i.png">
     <link rel="canonical" href="https://champ.patyatawee.com">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com">
     <title>Champ Patyatawee — Fullstack & DevOps/SRE Engineer | Freelance ในไทย</title>
     <link rel="icon" href="favicon.ico" sizes="any" type="image/x-icon">
     <style>
@@ -85,6 +89,7 @@
             .services,
             .customer,
         .cta-section,
+        .latest-articles,
         footer {
             opacity: 0;
             transform: translateY(24px);
@@ -95,6 +100,7 @@
         .services.visible,
         .customer.visible,
         .cta-section.visible,
+        .latest-articles.visible,
         footer.visible {
             opacity: 1;
             transform: translateY(0);
@@ -243,6 +249,79 @@
             box-shadow: 8px 8px 0 0 #111111;
         }
 
+        /* Language switch */
+        .lang-switch {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, 0.12);
+            border-radius: var(--radius-full);
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.03);
+            flex-shrink: 0;
+        }
+
+        .lang-switch-thumb {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.07);
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            pointer-events: none;
+        }
+
+        .lang-switch[data-lang="th"] .lang-switch-thumb {
+            transform: translateX(100%);
+        }
+
+        .lang-switch button {
+            position: relative;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            padding: 6px 14px;
+            min-width: 54px;
+            text-align: center;
+            color: #9a9a96;
+            transition: color 0.2s;
+        }
+
+        .lang-switch button:hover {
+            color: #666666;
+        }
+
+        .lang-switch button.active {
+            color: #555555;
+        }
+
+        .footer-info .lang-switch {
+            margin-top: 1.25rem;
+            border-color: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .footer-info .lang-switch-thumb {
+            background-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .footer-info .lang-switch button {
+            color: #94a3b8;
+        }
+
+        .footer-info .lang-switch button:hover {
+            color: #e2e8f0;
+        }
+
+        .footer-info .lang-switch button.active {
+            color: #ffffff;
+        }
+
         /* Mobile menu button */
         .mobile-menu-btn {
             display: none;
@@ -285,14 +364,18 @@
         }
 
         .left-section {
-            flex: 1;
+            flex: 1.4;
             padding: 1rem;
             display: flex;
             flex-direction: column;
             align-items: start;
             justify-content: center;
+        }
+
+        .hero-text {
             border-left: 4px solid var(--primary);
             padding-left: 1.5rem;
+            height: fit-content;
         }
 
         .right-section {
@@ -320,11 +403,17 @@
         .left-section h1 {
             font-family: 'Poppins', sans-serif;
             font-weight: 700;
-            font-size: 80px;
-            line-height: 1.05;
+            font-size: 40px;
+            line-height: 1.25;
             margin-bottom: 1.5rem;
             color: var(--text);
             letter-spacing: -0.02em;
+        }
+
+        html[lang="th"] .left-section h1 {
+            font-size: 52px;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
         }
 
         .hero-subtitle {
@@ -399,75 +488,119 @@
 
         .services-container {
             display: grid;
-            grid-template-columns: repeat(2, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
+            align-items: stretch;
         }
 
-        .service-category {
+        .pricing-card {
             background-color: var(--surface);
             padding: 32px;
             border-radius: var(--radius-card);
             border: 2px solid var(--border);
             box-shadow: var(--shadow-card);
             transition: box-shadow 0.3s ease, transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
         }
 
-        .service-category:hover {
+        .pricing-card:hover {
             transform: translate(-2px, -2px);
             box-shadow: 8px 8px 0 0 #111111;
         }
 
-        .service-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 0.75rem;
+        .pricing-card-popular {
+            border-color: var(--primary);
+            background-color: #EEF0FF;
         }
 
-        .service-header h3 {
+        .pricing-card-badge {
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--accent);
+            color: var(--text);
             font-family: 'Poppins', sans-serif;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-full);
+            box-shadow: 3px 3px 0 0 #111111;
+            white-space: nowrap;
+        }
+
+        .pricing-card-header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 1rem;
+        }
+
+        .pricing-card-header .service-icon {
+            width: 30px;
+            height: 30px;
+            color: var(--primary);
+            stroke-width: 2;
+            flex-shrink: 0;
+            margin-bottom: 0.25rem;
+        }
+
+        .pricing-card-header h3 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
             font-size: 1.4rem;
             color: var(--text);
             margin-bottom: 0;
         }
 
-        .service-icon {
-            width: 28px;
-            height: 28px;
+        .pricing-card-tagline {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .pricing-card-price {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 2rem;
             color: var(--primary);
-            stroke-width: 2;
-            flex-shrink: 0;
+            line-height: 1.1;
+            margin-bottom: 1.25rem;
         }
 
-        .service-list {
+        .pricing-card-features {
             list-style: none;
+            margin-bottom: 1.5rem;
+            flex: 1;
         }
 
-        .service-item {
+        .pricing-card-features li {
             display: flex;
             align-items: flex-start;
-            padding: 0.7rem 0;
+            gap: 0.6rem;
+            padding: 0.55rem 0;
             color: var(--text);
-            line-height: 1.6;
-            gap: 0.75rem;
-            transition: transform 0.2s ease, color 0.2s ease;
+            line-height: 1.5;
         }
 
-        .service-item:hover {
-            transform: translateX(8px);
-            color: var(--primary);
-        }
-
-        .service-item-icon {
+        .pricing-check {
             width: 18px;
             height: 18px;
-            color: var(--primary);
+            color: var(--success);
             flex-shrink: 0;
-            margin-top: 4px;
+            margin-top: 2px;
             stroke-width: 2.5;
+        }
+
+        .pricing-card-cta {
+            width: 100%;
         }
 
         /* Customers */
@@ -555,6 +688,159 @@
             color: var(--text-muted);
         }
 
+
+        /* Latest Articles */
+        .latest-articles {
+            padding: 5rem 2rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .latest-articles h1 {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 3rem;
+            margin-bottom: 2.5rem;
+            color: var(--text);
+        }
+
+        .latest-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .home-post-card {
+            background-color: var(--surface);
+            border-radius: var(--radius-card);
+            border: 2px solid var(--border);
+            box-shadow: var(--shadow-card);
+            padding: 2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .home-post-card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 8px 8px 0 0 #111111;
+        }
+
+        .home-post-card-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.4rem;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .home-post-card-title a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .home-post-card-title a::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+        }
+
+        .home-post-card-title a:hover {
+            color: var(--primary);
+        }
+
+        .home-post-card-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .home-post-card-excerpt {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.7;
+            margin-bottom: 1.25rem;
+            flex: 1;
+        }
+
+        .home-post-card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .home-post-card-footer {
+            margin-top: auto;
+        }
+
+        .latest-footer {
+            display: flex;
+            justify-content: center;
+            margin-top: 2.5rem;
+        }
+
+        .home-post-card .lang-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+            color: var(--primary);
+            background: transparent;
+            border: 2px solid var(--primary);
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 0.75rem;
+            vertical-align: middle;
+        }
+
+        .home-post-card .lang-badge-both {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .home-post-card .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            color: var(--primary);
+            background-color: #EEF0FF;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-tag);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .home-post-card .tag:hover {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        .home-post-card .read-more {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--primary);
+            text-decoration: none;
+            transition: gap 0.2s ease;
+        }
+
+        .home-post-card .read-more:hover {
+            gap: 0.7rem;
+            color: #0040cc;
+        }
 
         /* CTA Section */
         .cta-section {
@@ -789,49 +1075,80 @@
             margin-bottom: 1.5rem;
         }
 
-        .contact-details {
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
             margin-bottom: 1.5rem;
         }
 
-        .contact-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .contact-icon {
-            width: 44px;
-            height: 44px;
-            border: 2px solid var(--primary);
-            border-radius: var(--radius-tag);
+        .modal-action {
             display: flex;
             align-items: center;
-            justify-content: center;
-            margin-right: 1rem;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-btn);
+            color: var(--white);
+            text-decoration: none;
+            box-shadow: 4px 4px 0 0 #111111;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .modal-action:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 0 #111111;
+            color: var(--white);
+        }
+
+        .modal-action svg {
+            width: 26px;
+            height: 26px;
             flex-shrink: 0;
-            color: var(--primary);
+            stroke-width: 2;
         }
 
-        .contact-icon i {
-            width: 20px;
-            height: 20px;
-            color: var(--primary);
-            stroke: var(--primary);
+        .modal-action-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.3;
         }
 
-        .contact-label {
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 0.2rem;
+        .modal-action-label {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--white);
+        }
+
+        .modal-action-sub {
             font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            opacity: 0.85;
+            color: var(--white);
         }
 
-        .contact-item p {
-            margin: 0;
-            color: var(--text-muted);
-            font-size: 0.95rem;
+        .modal-action-line {
+            background-color: #06C755;
+        }
+
+        .modal-action-line:hover {
+            background-color: #05b84e;
+        }
+
+        .modal-action-fb {
+            background-color: #1877F2;
+        }
+
+        .modal-action-fb:hover {
+            background-color: #166fe0;
+        }
+
+        .modal-action-email {
+            background-color: #111111;
+        }
+
+        .modal-action-email:hover {
+            background-color: #262626;
         }
 
         .modal .social-links {
@@ -917,10 +1234,6 @@
 
         /* Responsive styles */
         @media (max-width: 1200px) {
-            .services-container {
-                grid-template-columns: 1fr;
-            }
-
             .main-content {
                 padding: 4rem 2rem;
             }
@@ -943,16 +1256,20 @@
                 padding-right: 0;
                 margin-top: 2rem;
                 padding-left: 1rem;
-                border-left: 4px solid var(--primary);
             }
 
             .left-section h1 {
-                font-size: 56px;
+                font-size: 32px;
+            }
+
+            html[lang="th"] .left-section h1 {
+                font-size: 40px;
             }
 
             .services,
             .customer,
-            .cta-section {
+            .cta-section,
+            .latest-articles {
                 padding: 3rem 1.5rem;
             }
 
@@ -1072,7 +1389,15 @@
             }
 
             .left-section h1 {
-                font-size: 44px;
+                font-size: 28px;
+            }
+
+            html[lang="th"] .left-section h1 {
+                font-size: 32px;
+            }
+
+            .latest-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1087,12 +1412,17 @@
             .main-content,
             .services,
             .customer,
-            .cta-section {
+            .cta-section,
+            .latest-articles {
                 padding: 2rem 1rem;
             }
 
             .left-section h1 {
-                font-size: 36px;
+                font-size: 22px;
+            }
+
+            html[lang="th"] .left-section h1 {
+                font-size: 24px;
             }
 
             .avatar-square {
@@ -1188,7 +1518,7 @@
             <a href="resume.html">Resume</a>
         </div>
         <div class="nav-buttons">
-            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+            <button class="btn btn-hire-me" id="hire-me-btn" data-i18n="hire_me">Free Consultation</button>
         </div>
         <button class="mobile-menu-btn" aria-label="Toggle menu">
             <i data-lucide="menu"></i>
@@ -1199,7 +1529,7 @@
             <a href="#customers">Customers</a>
             <a href="blog/index.html">Blog</a>
             <a href="resume.html">Resume</a>
-            <a id="hire-me-mobile-btn">Hire me</a>
+            <a id="hire-me-mobile-btn" data-i18n="hire_me">Free Consultation</a>
         </div>
 
         <div class="modal-overlay" id="contact-modal">
@@ -1208,42 +1538,31 @@
                     <i data-lucide="x"></i>
                 </button>
                 <div class="modal-header">
-                    <h2 class="modal-title">Get In Touch</h2>
-                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                    <h2 class="modal-title" data-i18n="modal_title">Get In Touch</h2>
                 </div>
                 <div class="contact-info">
-                    <p>
-                        Have a project in mind or want to discuss potential opportunities? 
-                        Feel free to reach out through any of these channels.
-                    </p>
-                    <div class="contact-details">
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="mail"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">Email</p>
-                                <p>champ.patyatawee@gmail.com</p>
-                            </div>
-                        </div>
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="phone"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">LineID</p>
-                                <p>champ.patyatawee</p>
-                            </div>
-                        </div>
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="map-pin"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">Location</p>
-                                <p>Bangkok, Thailand</p>
-                            </div>
-                        </div>
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" data-i18n="modal_line">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" data-i18n="modal_fb">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" data-i18n="contact_email">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
                     </div>
                     <div class="social-links">
                         <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
@@ -1267,16 +1586,18 @@
 
     <section id="about" class="main-content">
         <div class="left-section">
-            <h1>I Build Scalable<br>Application &amp; Infrastructure</h1>
-            <p class="hero-subtitle">From idea to production — your app built, shipped, and running.</p>
-            <div class="hero-ctas">
-                <a href="#services" class="btn btn-primary">Explore Services</a>
-                <a href="resume.html" class="btn btn-secondary">Download Resume</a>
-            </div>
-            <div class="hero-stats">
-                <div class="stat"><span class="stat-number">8+</span><span class="stat-label">Years Exp</span></div>
-                <div class="stat"><span class="stat-number">10+</span><span class="stat-label">Clients</span></div>
-                <div class="stat"><span class="stat-number">20+</span><span class="stat-label">Projects</span></div>
+            <div class="hero-text">
+                <h1 data-i18n-html="hero_title">I'm a Technology Consultant for Startups &amp; SMEs<br>Production-Ready Systems That Grow With Your Business</h1>
+                <p class="hero-subtitle" data-i18n-html="hero_subtitle">From design, infrastructure, and development to delivery and production — working in TH, SG &amp; VN.</p>
+                <div class="hero-ctas">
+                    <a href="#services" class="btn btn-secondary" data-i18n="hero_cta_services">Explore Services</a>
+                    <button class="btn btn-primary" id="hero-consult-btn" data-i18n="hire_me">Free Consultation</button>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat"><span class="stat-number">8+</span><span class="stat-label" data-i18n="stat_years">Years Exp</span></div>
+                    <div class="stat"><span class="stat-number">10+</span><span class="stat-label" data-i18n="stat_clients">Clients</span></div>
+                    <div class="stat"><span class="stat-number">20+</span><span class="stat-label" data-i18n="stat_projects">Projects</span></div>
+                </div>
             </div>
         </div>
         <div class="right-section">
@@ -1287,60 +1608,72 @@
     </section>
 
     <section id="services" class="services">
-        <h1>Services</h1>
+        <h1 data-i18n="services_title">Services</h1>
         <div class="services-container">
-            <div class="service-category">
-                <div class="service-header">
-                    <i data-lucide="zap" class="service-icon"></i>
-                    <h3>Pay-as-you-go</h3>
+            <div class="pricing-card">
+                <div class="pricing-card-header">
+                    <i data-lucide="graduation-cap" class="service-icon"></i>
+                    <h3 data-i18n="plan_coach_name">AI Coaching</h3>
+                    <p class="pricing-card-tagline" data-i18n="plan_coach_tagline">Learn to build apps with AI</p>
                 </div>
-                <ul class="service-list">
-                    <li class="service-item">
-                        <i data-lucide="layers" class="service-item-icon"></i>
-                        <span>Fullstack Development: Build complete web applications — frontend, backend, and APIs — running on cloud-native infrastructure.</span>
-                    </li>
-                    <li class="service-item">
-                        <i data-lucide="git-branch" class="service-item-icon"></i>
-                        <span>DevOps Implementation – Streamline your development and deployment process with automated CI/CD pipelines, infrastructure as code, and scalable cloud-native practices.</span>
-                    </li>
-                    <li class="service-item">
-                        <i data-lucide="cloud" class="service-item-icon"></i>
-                        <span>Cloud Infrastructure Setup: Deploy and manage apps on AWS, GCP, Azure, or DigitalOcean.</span>
-                    </li>
-                    <li class="service-item">
-                        <i data-lucide="server" class="service-item-icon"></i>
-                        <span>Cloud-Native Application Architecture: Design apps that scale and perform in cloud environments.</span>
-                    </li>
+                <div class="pricing-card-price" data-i18n="plan_coach_price">THB 1,000 / hr</div>
+                <ul class="pricing-card-features">
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_coach_f4">From idea to a working app</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
                 </ul>
+                <button class="btn btn-primary pricing-card-cta" data-i18n="plan_cta">Start</button>
             </div>
 
-            <div class="service-category">
-                <div class="service-header">
-                    <i data-lucide="briefcase" class="service-icon"></i>
-                    <h3>Contract</h3>
+            <div class="pricing-card pricing-card-popular">
+                <span class="pricing-card-badge" data-i18n="plan_badge">Most Popular</span>
+                <div class="pricing-card-header">
+                    <i data-lucide="code-2" class="service-icon"></i>
+                    <h3 data-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                    <p class="pricing-card-tagline" data-i18n="plan_dev_tagline">Billed by actual development time</p>
                 </div>
-                <ul class="service-list">
-                    <li class="service-item">
-                        <i data-lucide="cloud" class="service-item-icon"></i>
-                        <span>Cloud Engineer: Cloud infrastructure design and management across platforms.</span>
-                    </li>
-                    <li class="service-item">
-                        <i data-lucide="activity" class="service-item-icon"></i>
-                        <span>DevOps/SRE Engineer: Keep systems fast, available, and observable — CI/CD pipelines, monitoring, alerting, incident response, and reliability improvements.</span>
-                    </li>
+                <div class="pricing-card-price" data-i18n="plan_dev_price">From THB 5,000</div>
+                <ul class="pricing-card-features">
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f1">Web app development (React / Next.js)</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f2">Mobile app development (Flutter / React Native)</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_dev_f5">Custom features for your business</span></li>
                 </ul>
+                <button class="btn btn-primary pricing-card-cta" data-i18n="plan_cta">Start</button>
+            </div>
+
+            <div class="pricing-card">
+                <div class="pricing-card-header">
+                    <i data-lucide="cloud-cog" class="service-icon"></i>
+                    <h3 data-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                    <p class="pricing-card-tagline" data-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                </div>
+                <div class="pricing-card-price" data-i18n="plan_cloud_price">From THB 10,000</div>
+                <ul class="pricing-card-features">
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                    <li><i data-lucide="check" class="pricing-check"></i><span data-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                </ul>
+                <button class="btn btn-primary pricing-card-cta" data-i18n="plan_cta">Start</button>
             </div>
         </div>
     </section>
 
     <section id="customers" class="customer">
-        <h1>Customers</h1>
+        <h1 data-i18n="customers_title">Customers</h1>
         <div class="logo-grid">
             <div class="logo-item">
                 <img src="image/clients/skl.png" alt="SkillLane">
                 <div class="logo-info">
                     <h3>SkillLane</h3>
-                    <p>EdTech</p>
+                    <p data-i18n="ind_edtech">EdTech</p>
                 </div>
             </div>
 
@@ -1348,7 +1681,7 @@
                 <img src="image/clients/h.jpeg" alt="HLAB">
                 <div class="logo-info">
                     <h3>HLAB</h3>
-                    <p>HealthTech</p>
+                    <p data-i18n="ind_healthtech">HealthTech</p>
                 </div>
             </div>
 
@@ -1356,7 +1689,7 @@
                 <img src="image/clients/o.png" alt="Orbit People">
                 <div class="logo-info">
                     <h3>Orbit People</h3>
-                    <p>HRTech</p>
+                    <p data-i18n="ind_hrtech">HRTech</p>
                 </div>
             </div>
 
@@ -1364,7 +1697,7 @@
                 <img src="image/clients/f.png" alt="Finddive">
                 <div class="logo-info">
                     <h3>Finddive</h3>
-                    <p>Travel Tech</p>
+                    <p data-i18n="ind_travel">Travel Tech</p>
                 </div>
             </div>
 
@@ -1372,17 +1705,67 @@
                 <img src="image/clients/ss.png" alt="ShobShop Media">
                 <div class="logo-info">
                     <h3>ShobShop Media</h3>
-                    <p>Ecommerce</p>
+                    <p data-i18n="ind_ecom">Ecommerce</p>
                 </div>
             </div>
         </div>
     </section>
 
+    <section id="articles" class="latest-articles">
+        <h1 data-i18n="latest_title">Latest Articles</h1>
+        <div class="latest-grid">
+            <!-- HOME_POSTS_START -->
+
+                <div class="home-post-card" data-en-title="How to Install Vault and the External Secrets Operator on Kubernetes" data-th-title="How to Install Vault and the External Secrets Operator on Kubernetes">
+                    <h2 class="home-post-card-title"><a href="blog/Vault-External-Secrets-Operator.html">How to Install Vault and the External Secrets Operator on Kubernetes</a><span class="lang-badge">EN</span></h2>
+                    <div class="home-post-card-date"><i data-lucide="calendar" style="width:14px;height:14px;stroke-width:2;"></i> August 20, 2026</div>
+                    <p class="home-post-card-excerpt" data-en-excerpt="HashiCorp Vault stores secrets in one place with policies, and the External Secrets Operator pulls them into Kubernetes as native Secrets." data-th-excerpt="HashiCorp Vault stores secrets in one place with policies, and the External Secrets Operator pulls them into Kubernetes as native Secrets.">HashiCorp Vault stores secrets in one place with policies, and the External Secrets Operator pulls them into Kubernetes as native Secrets.</p>
+                    <div class="home-post-card-tags"><span class="tag">vault</span>
+<span class="tag">hashicorp</span>
+<span class="tag">kubernetes</span>
+<span class="tag">external-secrets</span>
+<span class="tag">devops</span></div>
+                    <div class="home-post-card-footer">
+                        <a href="blog/Vault-External-Secrets-Operator.html" class="read-more" data-i18n="read_more">Read more <i data-lucide="arrow-right" style="width:14px;height:14px;stroke-width:2.5;"></i></a>
+                    </div>
+                </div>
+
+                <div class="home-post-card" data-en-title="Running Keycloak in High Availability Mode with the Keycloak Operator" data-th-title="Running Keycloak in High Availability Mode with the Keycloak Operator">
+                    <h2 class="home-post-card-title"><a href="blog/Keycloak-High-Availability.html">Running Keycloak in High Availability Mode with the Keycloak Operator</a><span class="lang-badge">EN</span></h2>
+                    <div class="home-post-card-date"><i data-lucide="calendar" style="width:14px;height:14px;stroke-width:2;"></i> August 3, 2026</div>
+                    <p class="home-post-card-excerpt" data-en-excerpt="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database." data-th-excerpt="Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database.">Learn how to run Keycloak in high-availability mode using the Keycloak Operator on Kubernetes — with 5 clustered instances, Infinispan distributed caching, and a shared Postgres database.</p>
+                    <div class="home-post-card-tags"><span class="tag">keycloak</span>
+<span class="tag">kubernetes</span>
+<span class="tag">high-availability</span>
+<span class="tag">gitops</span></div>
+                    <div class="home-post-card-footer">
+                        <a href="blog/Keycloak-High-Availability.html" class="read-more" data-i18n="read_more">Read more <i data-lucide="arrow-right" style="width:14px;height:14px;stroke-width:2.5;"></i></a>
+                    </div>
+                </div>
+
+                <div class="home-post-card" data-en-title="Managing Multiple Kubernetes Clusters Using Argo CD" data-th-title="Managing Multiple Kubernetes Clusters Using Argo CD">
+                    <h2 class="home-post-card-title"><a href="blog/Managing-Multiple-Kubernetes-Clusters-Using-Argo-CD.html">Managing Multiple Kubernetes Clusters Using Argo CD</a><span class="lang-badge">EN</span></h2>
+                    <div class="home-post-card-date"><i data-lucide="calendar" style="width:14px;height:14px;stroke-width:2;"></i> July 15, 2025</div>
+                    <p class="home-post-card-excerpt" data-en-excerpt="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively." data-th-excerpt="Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively.">Managing multiple Kubernetes clusters means more overhead, drift, and risk. This guide shows you how to deploy Argo CD on a management cluster and use GitOps to sync apps to multiple clusters declaratively.</p>
+                    <div class="home-post-card-tags"><span class="tag">devops</span>
+<span class="tag">gitops</span>
+<span class="tag">argocd</span></div>
+                    <div class="home-post-card-footer">
+                        <a href="blog/Managing-Multiple-Kubernetes-Clusters-Using-Argo-CD.html" class="read-more" data-i18n="read_more">Read more <i data-lucide="arrow-right" style="width:14px;height:14px;stroke-width:2.5;"></i></a>
+                    </div>
+                </div>
+<!-- HOME_POSTS_END -->
+        </div>
+        <div class="latest-footer">
+            <a href="blog/index.html" class="btn btn-primary" data-i18n="see_more">See More Articles <i data-lucide="arrow-right"></i></a>
+        </div>
+    </section>
+
     <section class="cta-section">
         <div class="cta-content">
-            <h2>Let's Build Something Great</h2>
-            <p>Have a project in mind or looking for a reliable engineer? Let's talk about how I can help.</p>
-            <button class="btn btn-primary" id="cta-hire-btn">Hire Me</button>
+            <h2 data-i18n="cta_title">Build the Right System for Your Business</h2>
+            <p data-i18n="cta_subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn" data-i18n="hire_me">Hire Me</button>
         </div>
     </section>
 
@@ -1390,30 +1773,35 @@
         <div class="footer-content">
             <div class="footer-info">
                 <h3>Champ Patyatawee</h3>
-                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+                <p data-i18n="footer_tagline">Software engineer specializing in Cloud Architecture and Applications.</p>
+                <div class="lang-switch" role="group" aria-label="Language switcher" data-lang="en">
+                    <span class="lang-switch-thumb" aria-hidden="true"></span>
+                    <button class="lang-switch-btn active" data-lang="en" aria-pressed="true">EN</button>
+                    <button class="lang-switch-btn" data-lang="th" aria-pressed="false">ไทย</button>
+                </div>
             </div>
             
             <div class="footer-links">
                 <div class="footer-nav">
-                    <h4>Navigation</h4>
+                    <h4 data-i18n="footer_nav">Navigation</h4>
                     <ul>
-                        <li><a href="#about">About</a></li>
-                        <li><a href="#services">Services</a></li>
-                        <li><a href="#customers">Customers</a></li>
-                        <li><a href="blog/index.html">Blog</a></li>
+                        <li><a href="#about" data-i18n="nav_about">About</a></li>
+                        <li><a href="#services" data-i18n="nav_services">Services</a></li>
+                        <li><a href="#customers" data-i18n="nav_customers">Customers</a></li>
+                        <li><a href="blog/index.html" data-i18n="nav_blog">Blog</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-services">
-                    <h4>Services</h4>
+                    <h4 data-i18n="footer_services">Services</h4>
                     <ul>
-                        <li><a href="#services">Pay-as-you-go</a></li>
-                        <li><a href="#services">Contract</a></li>
+                        <li><a href="#services" data-i18n="services_paygo">Pay-as-you-go</a></li>
+                        <li><a href="#services" data-i18n="services_contract">Contract</a></li>
                     </ul>
                 </div>
                 
                 <div class="footer-connect">
-                    <h4>Connect</h4>
+                    <h4 data-i18n="footer_connect">Connect</h4>
                     <div class="social-links">
                         <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
                             <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
@@ -1437,13 +1825,263 @@
         </div>
         
         <div class="footer-bottom">
-            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+            <p data-i18n="copyright">&copy; 2025 Champ Patyatawee. All rights reserved.</p>
         </div>
     </footer>
 
     <button id="back-to-top" class="back-to-top" aria-label="Back to top">
         <i data-lucide="arrow-up"></i>
     </button>
+
+    <script>
+        // ============================================
+        // Homepage language switcher (EN / TH)
+        // ============================================
+        (function () {
+            const STORAGE_KEY = 'patyatawee-lang';
+
+            const translations = {
+                en: {
+                    doc_title: 'Champ Patyatawee — Fullstack & DevOps/SRE Engineer | Freelance ในไทย',
+                    meta_description: 'Fullstack & DevOps/SRE Engineer based in Thailand. Building web applications and cloud-native infrastructure — Kubernetes, CI/CD, GitOps, AWS/GCP/Azure. 8+ years of experience helping businesses build, ship, and scale.',
+                    og_title: 'Champ Patyatawee — Fullstack & DevOps/SRE Engineer | Freelance ในไทย',
+                    og_desc: 'Fullstack & DevOps/SRE Engineer based in Thailand. Building apps and cloud infrastructure — Kubernetes, CI/CD, GitOps, AWS/GCP/Azure.',
+                    nav_about: 'About',
+                    nav_services: 'Services',
+                    nav_customers: 'Customers',
+                    nav_blog: 'Blog',
+                    hire_me: 'Free Consultation',
+                    hero_title: 'I\'m a Technology Consultant for Startups & SMEs<br>Production-Ready Systems That Grow With Your Business',
+                    hero_subtitle: 'From design, infrastructure, and development to delivery and production — working in TH, SG & VN.',
+                    hero_cta_services: 'Explore Services',
+                    stat_years: 'Years Exp',
+                    stat_clients: 'Clients',
+                    stat_projects: 'Projects',
+                    services_title: 'Services',
+                    services_paygo: 'Pay-as-you-go',
+                    services_contract: 'Contract',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                    customers_title: 'Customers',
+                    ind_edtech: 'EdTech',
+                    ind_healthtech: 'HealthTech',
+                    ind_hrtech: 'HRTech',
+                    ind_travel: 'Travel Tech',
+                    ind_ecom: 'Ecommerce',
+                    latest_title: 'Latest Articles',
+                    read_more: 'Read more',
+                    see_more: 'See More Articles',
+                    cta_title: 'Build the Right System for Your Business',
+                    cta_subtitle: 'Have an idea, starting a new project, or facing system issues? Let\'s talk and find the right approach for your business together.',
+                    footer_tagline: 'Software engineer specializing in Cloud Architecture and Applications.',
+                    footer_nav: 'Navigation',
+                    footer_services: 'Services',
+                    footer_connect: 'Connect',
+                    copyright: '© 2025 Champ Patyatawee. All rights reserved.',
+                    modal_title: 'Get In Touch',
+                    modal_line: 'Add Line',
+                    modal_fb: 'Chat on Facebook',
+                    contact_email: 'Email',
+                },
+                th: {
+                    doc_title: 'Champ Patyatawee — Fullstack & DevOps/SRE Engineer | ฟรีแลนซ์ในไทย',
+                    meta_description: 'วิศวกร Fullstack และ DevOps/SRE ในประเทศไทย สร้างเว็บแอปพลิเคชันและโครงสร้างพื้นฐานแบบ Cloud-Native — Kubernetes, CI/CD, GitOps, AWS/GCP/Azure ประสบการณ์กว่า 8 ปี ช่วยธุรกิจสร้าง จัดส่ง และขยายระบบ',
+                    og_title: 'Champ Patyatawee — Fullstack & DevOps/SRE Engineer | ฟรีแลนซ์ในไทย',
+                    og_desc: 'วิศวกร Fullstack และ DevOps/SRE ในประเทศไทย สร้างแอปพลิเคชันและโครงสร้างพื้นฐานคลาวด์ — Kubernetes, CI/CD, GitOps, AWS/GCP/Azure',
+                    nav_about: 'เกี่ยวกับ',
+                    nav_services: 'บริการ',
+                    nav_customers: 'ลูกค้า',
+                    nav_blog: 'บล็อก',
+                    hire_me: 'ปรึกษาฟรี',
+                    hero_title: 'ผมเป็นที่ปรึกษาด้านเทคโนโลยีและ AI สำหรับ Startup/SME สร้างระบบที่พร้อมใช้งานและเติบโตไปกับธุรกิจ',
+                    hero_subtitle: 'ตั้งแต่ออกแบบ วางระบบ พัฒนา ไปจนถึงส่งมอบและดูแลระบบ',
+                    hero_cta_services: 'ดูบริการ',
+                    stat_years: 'ปีประสบการณ์',
+                    stat_clients: 'ลูกค้า',
+                    stat_projects: 'โปรเจกต์',
+                    services_title: 'บริการ',
+                    services_paygo: 'จ่ายตามการใช้งาน',
+                    services_contract: 'สัญญา',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโค้ดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                    customers_title: 'ลูกค้า',
+                    ind_edtech: 'เทคโนโลยีการศึกษา',
+                    ind_healthtech: 'เทคโนโลยีสุขภาพ',
+                    ind_hrtech: 'เทคโนโลยีทรัพยากรบุคคล',
+                    ind_travel: 'เทคโนโลยีท่องเที่ยว',
+                    ind_ecom: 'อีคอมเมิร์ซ',
+                    latest_title: 'บทความล่าสุด',
+                    read_more: 'อ่านต่อ',
+                    see_more: 'ดูบทความทั้งหมด',
+                    cta_title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    cta_subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    footer_tagline: 'วิศวกรซอฟต์แวร์ เชี่ยวชาญด้านสถาปัตยกรรมคลาวด์และแอปพลิเคชัน',
+                    footer_nav: 'เมนูนำทาง',
+                    footer_services: 'บริการ',
+                    footer_connect: 'ติดต่อ',
+                    copyright: '© 2025 Champ Patyatawee. สงวนลิขสิทธิ์',
+                    modal_title: 'ติดต่อเรา',
+                    modal_line: 'เพิ่มเพื่อน Line',
+                    modal_fb: 'แชทบน Facebook',
+                    contact_email: 'อีเมล',
+                },
+            };
+
+            function getDefaultLang() {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved === 'en' || saved === 'th') return saved;
+                } catch (e) {}
+                if (navigator.language && navigator.language.toLowerCase().indexOf('th') === 0) return 'th';
+                return 'en';
+            }
+
+            function setMeta(selector, attr, value) {
+                const el = document.querySelector(selector);
+                if (el) el.setAttribute(attr, value);
+            }
+
+            // Replace only the text nodes, preserving child elements (e.g. lucide icons).
+            function setTextContent(el, value) {
+                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                const nodes = [];
+                while (walker.nextNode()) nodes.push(walker.currentNode);
+                if (nodes.length === 0) {
+                    el.appendChild(document.createTextNode(value));
+                    return;
+                }
+                nodes[0].nodeValue = value;
+                for (let i = 1; i < nodes.length; i++) nodes[i].nodeValue = '';
+            }
+
+            // Blog cards carry both languages as data-* attributes (set by build.js).
+            function swapHomeCards(lang) {
+                document.querySelectorAll('.home-post-card').forEach(function (card) {
+                    const titleLink = card.querySelector('.home-post-card-title a');
+                    const excerpt = card.querySelector('.home-post-card-excerpt');
+                    if (titleLink) {
+                        const t = lang === 'th' ? card.dataset.thTitle : card.dataset.enTitle;
+                        if (t) titleLink.textContent = t;
+                    }
+                    if (excerpt) {
+                        const e = lang === 'th' ? card.dataset.thExcerpt : card.dataset.enExcerpt;
+                        if (e !== undefined) excerpt.textContent = e;
+                    }
+                });
+            }
+
+            function applyLanguage(lang) {
+                const dict = translations[lang] || translations.en;
+
+                // Head metadata
+                document.documentElement.setAttribute('lang', lang);
+                document.title = dict.doc_title;
+                setMeta('meta[name="description"]', 'content', dict.meta_description);
+                setMeta('meta[property="og:title"]', 'content', dict.og_title);
+                setMeta('meta[property="og:description"]', 'content', dict.og_desc);
+                setMeta('meta[property="og:locale"]', 'content', lang === 'th' ? 'th_TH' : 'en_US');
+                setMeta('meta[name="twitter:title"]', 'content', dict.og_title);
+                setMeta('meta[name="twitter:description"]', 'content', dict.og_desc);
+
+                // Body text
+                document.querySelectorAll('[data-i18n]').forEach(function (el) {
+                    const key = el.getAttribute('data-i18n');
+                    if (dict[key]) setTextContent(el, dict[key]);
+                });
+
+                // Elements whose value contains HTML (hero title keeps its <br>)
+                document.querySelectorAll('[data-i18n-html]').forEach(function (el) {
+                    const key = el.getAttribute('data-i18n-html');
+                    if (dict[key]) el.innerHTML = dict[key];
+                });
+
+                // Blog cards
+                swapHomeCards(lang);
+
+                // Toggle buttons
+                document.querySelectorAll('.lang-switch').forEach(function (group) {
+                    group.setAttribute('data-lang', lang);
+                });
+                document.querySelectorAll('.lang-switch-btn').forEach(function (btn) {
+                    const isActive = btn.dataset.lang === lang;
+                    btn.classList.toggle('active', isActive);
+                    btn.setAttribute('aria-pressed', String(isActive));
+                });
+            }
+
+            function saveLang(lang) {
+                try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.lang-switch-btn').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        const lang = btn.dataset.lang;
+                        saveLang(lang);
+                        applyLanguage(lang);
+                        lucide.createIcons();
+                    });
+                });
+
+                // Respect a #en / #th deep link on load, otherwise use saved/browser default
+                const hash = window.location.hash.replace('#', '');
+                const initial = (hash === 'en' || hash === 'th') ? hash : getDefaultLang();
+                applyLanguage(initial);
+            });
+        })();
+    </script>
 
     <script>
         // Initialize Lucide icons
@@ -1499,6 +2137,23 @@
                     document.body.style.overflow = 'hidden';
                 });
             }
+
+            // Hero consultation button
+            const heroConsultBtn = document.getElementById('hero-consult-btn');
+            if (heroConsultBtn) {
+                heroConsultBtn.addEventListener('click', function() {
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            }
+
+            // Pricing card CTAs
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
             
             // Close modal
             modalCloseBtn.addEventListener('click', function() {
@@ -1515,7 +2170,7 @@
             });
 
             // Scroll animation functionality
-            const sections = document.querySelectorAll('.main-content, .services, .customer, .cta-section, footer');
+            const sections = document.querySelectorAll('.main-content, .services, .customer, .cta-section, .latest-articles, footer');
             
             const observerOptions = {
                 root: null,

@@ -29,6 +29,12 @@ const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const OUTPUT_DIR = path.join(__dirname, 'blog');
 const SITE_URL = 'https://champ.patyatawee.com';
 
+// Homepage — index.html gets the newest blog posts injected between markers
+const HOME_INDEX = path.join(__dirname, 'index.html');
+const HOME_POSTS_START = '<!-- HOME_POSTS_START -->';
+const HOME_POSTS_END = '<!-- HOME_POSTS_END -->';
+const HOME_LATEST_COUNT = 3;
+
 // Feed section — mirrors the blog structure but renders as a social-style timeline
 const FEED_POSTS_DIR = path.join(__dirname, 'feed', 'posts');
 const FEED_OUTPUT_DIR = path.join(__dirname, 'feed');
@@ -343,6 +349,86 @@ function generatePostCard(post) {
             </div>`;
 }
 
+/**
+ * Generate a compact post card for the homepage "Latest Articles" section.
+ * Links are relative from the repo root (blog/<slug>.html).
+ *
+ * Both languages are embedded as data-* attributes so the homepage
+ * language toggle can swap title/excerpt without a reload. The visible
+ * text defaults to English.
+ */
+function generateHomePostCard(post) {
+    const displayTitle = post.en_title || post.th_title || post.slug;
+    const displayExcerpt = post.en_excerpt || post.th_excerpt || '';
+    const thTitle = post.th_title || post.en_title || post.slug;
+    const thExcerpt = post.th_excerpt || post.en_excerpt || '';
+
+    let langBadge = '';
+    if (post.hasBothLangs) {
+        langBadge = `<span class="lang-badge lang-badge-both">EN / TH</span>`;
+    } else if (post.en_title) {
+        langBadge = `<span class="lang-badge">EN</span>`;
+    } else if (post.th_title) {
+        langBadge = `<span class="lang-badge">TH</span>`;
+    }
+
+    return `
+                <div class="home-post-card" data-en-title="${escapeHtml(displayTitle)}" data-th-title="${escapeHtml(thTitle)}">
+                    <h2 class="home-post-card-title"><a href="blog/${post.slug}.html">${escapeHtml(displayTitle)}</a>${langBadge}</h2>
+                    <div class="home-post-card-date"><i data-lucide="calendar" style="width:14px;height:14px;stroke-width:2;"></i> ${post.dateFormatted}</div>
+                    <p class="home-post-card-excerpt" data-en-excerpt="${escapeHtml(displayExcerpt)}" data-th-excerpt="${escapeHtml(thExcerpt)}">${displayExcerpt}</p>
+                    <div class="home-post-card-tags">${post.en_tagsHtml || post.th_tagsHtml || ''}</div>
+                    <div class="home-post-card-footer">
+                        <a href="blog/${post.slug}.html" class="read-more" data-i18n="read_more">Read more <i data-lucide="arrow-right" style="width:14px;height:14px;stroke-width:2.5;"></i></a>
+                    </div>
+                </div>`;
+}
+
+/**
+ * Inject the newest blog posts into the homepage index.html between the
+ * HOME_POSTS markers. Idempotent — the markers are re-emitted, so repeated
+ * builds update the section without touching the rest of the file.
+ */
+function updateHomepageLatest(posts) {
+    let html;
+    try {
+        html = fs.readFileSync(HOME_INDEX, 'utf-8');
+    } catch (err) {
+        console.error(`❌ Could not read homepage: ${HOME_INDEX}`);
+        return;
+    }
+
+    if (!html.includes(HOME_POSTS_START) || !html.includes(HOME_POSTS_END)) {
+        console.warn(`   ⚠️  HOME_POSTS markers missing in index.html — skipping homepage latest-articles update.`);
+        return;
+    }
+
+    const latest = posts.slice(0, HOME_LATEST_COUNT);
+    const cards = latest.map((post) => generateHomePostCard(post)).join('\n');
+    const injected = `\n${cards}\n`;
+
+    const markerPattern = new RegExp(
+        `${escapeRegExp(HOME_POSTS_START)}[\\s\\S]*?${escapeRegExp(HOME_POSTS_END)}`
+    );
+
+    const updated = html.replace(markerPattern, `${HOME_POSTS_START}${injected}${HOME_POSTS_END}`);
+
+    if (updated === html) {
+        console.log(`   ℹ️  Homepage latest articles unchanged (${latest.length} post(s)).`);
+        return;
+    }
+
+    fs.writeFileSync(HOME_INDEX, updated, 'utf-8');
+    console.log(`✅ Homepage latest articles updated (${latest.length} post(s))`);
+}
+
+/**
+ * Escape a string for safe use inside a RegExp constructor.
+ */
+function escapeRegExp(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ============================================================
 // Feed Build
 // ============================================================
@@ -542,6 +628,9 @@ function build() {
     const listingOutputPath = path.join(OUTPUT_DIR, 'index.html');
     fs.writeFileSync(listingOutputPath, listingPage, 'utf-8');
     console.log(`✅ Generated: blog/index.html (${posts.length} post(s))`);
+
+    // 6b. Inject newest blog posts into the homepage "Latest Articles" section
+    updateHomepageLatest(posts);
 
     // 7. Build feed section
     buildFeed();
