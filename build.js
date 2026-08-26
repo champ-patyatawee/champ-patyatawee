@@ -39,6 +39,9 @@ const HOME_LATEST_COUNT = 3;
 const FEED_POSTS_DIR = path.join(__dirname, 'feed', 'posts');
 const FEED_OUTPUT_DIR = path.join(__dirname, 'feed');
 
+// Posts to exclude from the published site (keep the MD source, skip building)
+const SKIP_POSTS = ['Vault-External-Secrets-Operator'];
+
 // Configure marked for safety
 marked.setOptions({
     breaks: false,
@@ -451,7 +454,8 @@ function buildFeed() {
 
     const postDirs = entries
         .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name);
+        .map((entry) => entry.name)
+        .filter((slug) => !SKIP_POSTS.includes(slug));
 
     if (postDirs.length === 0) {
         console.log('   ⚠️  No post directories found in feed/posts/. Skipping feed.');
@@ -550,7 +554,8 @@ function build() {
 
     const postDirs = entries
         .filter((entry) => entry.isDirectory())
-        .map((entry) => entry.name);
+        .map((entry) => entry.name)
+        .filter((slug) => !SKIP_POSTS.includes(slug));
 
     if (postDirs.length === 0) {
         console.log('⚠️  No post directories found in blog/posts/. Nothing to build.');
