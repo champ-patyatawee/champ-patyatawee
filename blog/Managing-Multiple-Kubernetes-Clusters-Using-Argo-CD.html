@@ -26,7 +26,7 @@
     <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Managing-Multiple-Kubernetes-Clusters-Using-Argo-CD">
     <title>Managing Multiple Kubernetes Clusters Using Argo CD — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
-    <link rel="stylesheet" href="style.css?v=2">
+    <link rel="stylesheet" href="style.css?v=7">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -41,7 +41,7 @@
             <a href="../resume.html">Resume</a>
         </div>
         <div class="nav-buttons">
-            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
         </div>
         <button class="mobile-menu-btn" aria-label="Toggle menu">
             <i data-lucide="menu"></i>
@@ -52,7 +52,7 @@
             <a href="../index.html#customers">Customers</a>
             <a href="index.html">Blog</a>
             <a href="../resume.html">Resume</a>
-            <a id="hire-me-mobile-btn">Hire me</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
         </div>
 
         <div class="modal-overlay" id="contact-modal">
@@ -61,42 +61,31 @@
                     <i data-lucide="x"></i>
                 </button>
                 <div class="modal-header">
-                    <h2 class="modal-title">Get In Touch</h2>
-                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
                 </div>
                 <div class="contact-info">
-                    <p>
-                        Have a project in mind or want to discuss potential opportunities? 
-                        Feel free to reach out through any of these channels.
-                    </p>
-                    <div class="contact-details">
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="mail"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">Email</p>
-                                <p>champ.patyatawee@gmail.com</p>
-                            </div>
-                        </div>
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="phone"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">LineID</p>
-                                <p>champ.patyatawee</p>
-                            </div>
-                        </div>
-                        <div class="contact-item">
-                            <div class="contact-icon">
-                                <i data-lucide="map-pin"></i>
-                            </div>
-                            <div>
-                                <p class="contact-label">Location</p>
-                                <p>Bangkok, Thailand</p>
-                            </div>
-                        </div>
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
                     </div>
                     <div class="social-links">
                         <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
@@ -719,6 +708,71 @@ spec:
         </article>
     </main>
 
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
     <footer class="blog-footer">
         <div class="footer-content">
             <div class="footer-info">
@@ -808,6 +862,96 @@ spec:
             const postDate = document.getElementById('post-date');
             const postReadingTime = document.getElementById('post-reading-time');
             const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
 
             // Store per-language data from server-rendered content
             // Values use JSON.stringify() in the build script, so no quotes needed here
@@ -851,6 +995,16 @@ spec:
 
                 // Update <html lang>
                 htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
 
                 // Update header metadata
                 if (langData[lang]) {
@@ -942,6 +1096,18 @@ spec:
                 modal.classList.add('active');
                 mobileMenu.classList.remove('active');
                 document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
             });
 
             modalCloseBtn.addEventListener('click', function() {
