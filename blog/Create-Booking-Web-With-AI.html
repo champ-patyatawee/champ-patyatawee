@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง
+เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง…">
+    <meta property="og:title" content="สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI — Champ Patyatawee">
+    <meta property="og:description" content="การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง
+เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง…">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/avatar/i.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI">
+    <meta name="twitter:description" content="การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง
+เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง…">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/avatar/i.png">
+    <meta name="twitter:image:alt" content="สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง
+เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง…" lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI">
+    <title>สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=2">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Hire me</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Hire me</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title">Get In Touch</h2>
+                    <p class="modal-subtitle">Let's Talk About Your Project</p>
+                </div>
+                <div class="contact-info">
+                    <p>
+                        Have a project in mind or want to discuss potential opportunities? 
+                        Feel free to reach out through any of these channels.
+                    </p>
+                    <div class="contact-details">
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="mail"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Email</p>
+                                <p>champ.patyatawee@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="phone"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">LineID</p>
+                                <p>champ.patyatawee</p>
+                            </div>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i data-lucide="map-pin"></i>
+                            </div>
+                            <div>
+                                <p class="contact-label">Location</p>
+                                <p>Bangkok, Thailand</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">August 20, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">3 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">AI</span>
+<span class="tag">Booking</span>
+<span class="tag">No-code</span>
+<span class="tag">Web Development</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="false" data-has-th="true">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง</p>
+<p>เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง เสียเงินหลักหมื่นไปจนถึงหลักแสน</p>
+<p>ในบทความนี้ เราจะมาสอนสร้างเว็บไซต์สำหรับเจ้าของที่พัก โรงแรม รีสอร์ท หรือโฮมสเตย์ กันแบบทีละขั้น โดยใช้ AI</p>
+<h2>Install</h2>
+<p>ก่อนอื่นมาเตรียมเครื่องมือกัน ตัวช่วยหลักของเราในบทความนี้คือ opencode </p>
+<p>โดยก่อนอื่นให้ไปที่เว็บ <a href="https://opencode.ai/download">https://opencode.ai/download</a> เพื่อโหลด OpenCode Desktop เวอร์ชันแอป ไม่ต้องเปิด Terminal หรือพิมพ์คำสั่งอะไรทั้งนั้น เปิดเป็นโปรแกรมธรรมดาเหมือนเปิดโปรแกรมอื่นๆ</p>
+<p><strong>1. เลือกเวอร์ชันให้ตรงกับเครื่องของเรา</strong> บนหน้านี้จะมีปุ่ม Download ให้เลือก:</p>
+<ul>
+<li>Mac → กดปุ่ม Download for macOS</li>
+<li>Windows → กดปุ่ม Windows (x64)</li>
+</ul>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-download.png" alt="หน้า Download OpenCode Desktop"></p>
+<p><strong>2. ติดตั้ง</strong></p>
+<ul>
+<li>Mac: เปิดไฟล์ .dmg ที่โหลดมา → ลาก icon OpenCode ไปที่โฟลเดอร์ Applications</li>
+<li>Windows: เปิดไฟล์ .exe ที่โหลดมา → กด Next ไปเรื่อยๆ จนเสร็จ</li>
+</ul>
+<p><strong>3. เปิดใช้งาน</strong> คลิกที่ไอคอน OpenCode จะเจอหน้าต่างแอป ที่จัดการงานเป็นแท็บๆ ไว้เปิดหลายงานพร้อมกันได้</p>
+<h2>Open Project</h2>
+<p><strong>1. สร้างโฟลเดอร์สำหรับเว็บของเรา</strong> ก่อนเริ่มงาน ให้สร้างโฟลเดอร์ใหม่ไว้ที่ Desktop เช่น ชื่อ booking-web</p>
+<p><strong>2. เปิดโฟลเดอร์ใน OpenCode</strong> กลับมาที่แอป OpenCode Desktop กดเปิดโปรเจกต์ เลือกโฟลเดอร์ booking-web ที่เพิ่งสร้าง เปิดปุ๊บ ก็เหมือนได้ห้องทำงานเปล่าๆ ของเว็บเราแล้ว</p>
+<p><strong>3. เลือก Model</strong> ข้อดีของ opencode คือมี model ที่เราสามารถใช้งานได้ฟรี</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-open.png" alt="หน้าต่าง OpenCode Desktop"></p>
+<h2>Design System</h2>
+<p>ก่อนจะเริ่มให้ AI สร้างเว็บ ขอแนะนำให้รู้จักไฟล์เล็กๆ ที่ชื่อว่า design.json กันสักหน่อย</p>
+<p>มันคือไฟล์ที่บอก &quot;สไตล์&quot; ของเว็บ: ใช้สีอะไร ฟอนต์อะไร ขอบหนาแค่ไหน เหมือนคู่มือของเว็บ ที่ทำให้ทุกหน้าดูเป็นระบบเดียวกัน</p>
+<p>ตัวอย่างหน้าตาเป็นแบบนี้:</p>
+<pre><code>{
+  &quot;colors&quot;: { &quot;primary&quot;: &quot;#1E50FF&quot;, &quot;accent&quot;: &quot;#D9FF2A&quot;, &quot;background&quot;: &quot;#F7F7F4&quot; },
+  &quot;typography&quot;: { &quot;heading&quot;: &quot;Poppins&quot;, &quot;body&quot;: &quot;Inter&quot; }
+}
+</code></pre>
+<p>ซึ่งไฟล์นี้เราจะเอาไปวางไว้ในโฟลเดอร์ booking-web แล้วบอกให้ AI ทำเว็บตามสไตล์นี้</p>
+<h3>เทคนิคการสร้าง design.json</h3>
+<p>ก่อนอื่นมาทำความรู้จักตัวช่วยในวิธีนี้: BrowserClaw เบราว์เซอร์สำหรับ AI โดยเฉพาะ คอยเปิดเว็บและไล่ดู template แทนเรา</p>
+<p><strong>วิธีโหลด BrowserClaw</strong></p>
+<ol>
+<li>เปิดเบราว์เซอร์ไปที่ <a href="https://browseros.com/agents">https://browseros.com/agents</a></li>
+<li>กดปุ่ม Download BrowserClaw ให้ตรงกับเครื่อง (Mac / Windows)</li>
+<li>ติดตั้งเหมือนโปรแกรมปกติ: Mac เปิดไฟล์ .dmg แล้วลากไป Applications / Windows รัน .exe</li>
+<li>เปิดแอปขึ้นมา แล้วปล่อยให้รันเป็นเบราว์เซอร์ที่ AI ใช้ได้</li>
+</ol>
+<p><strong>การ Set MCP ใน opencode</strong></p>
+<ol>
+<li>เปิดไฟล์ตั้งค่า opencode.json ที่ <code>~/.config/opencode/opencode.json</code> (ถ้ายังไม่มีไฟล์นี้ ให้สร้างขึ้นใหม่) แล้วเพิ่ม BrowserClaw ในส่วน mcp:</li>
+</ol>
+<pre><code>&quot;mcp&quot;: {
+  &quot;browserclaw&quot;: { &quot;type&quot;: &quot;remote&quot;, &quot;url&quot;: &quot;http://127.0.0.1:9210/mcp&quot;, &quot;enabled&quot;: true }
+}
+</code></pre>
+<ol start="2">
+<li>รีสตาร์ท opencode เท่านี้ AI ก็ใช้ BrowserClaw เปิดเว็บให้ได้</li>
+</ol>
+<p>วิธีสร้าง design.json มีหลายวิธี ในตัวอย่างนี้ ผมจะมาสอนใช้วิธีที่ผมใช้ประจำ: ใช้ browserclaw ทำ automate หา template ที่เหมาะกับเรา แล้วให้สร้างไฟล์ design.json</p>
+<ol>
+<li>สั่ง browserclaw ให้ไล่เปิดดูเว็บ template หลายๆ แบบ</li>
+<li>browserclaw จะเปิดเว็บทีละหน้า แล้วให้เราดูว่าแบบไหนถูกใจ</li>
+<li>เจอ template ที่เหมาะกับที่พักของเรา (โทนสี ฟอนต์ สไตล์ที่เข้ากับโรงแรม/รีสอร์ท) ก็บอกให้เก็บแบบนั้นไว้</li>
+<li>สั่งให้สร้างไฟล์ design.json ตาม template ที่เลือก AI จะอ่านสี ฟอนต์ ขนาด จาก template แล้วสรุปออกมาเป็น design.json ให้ใช้ได้ทันที</li>
+</ol>
+<p>ตัวอย่างคำสั่งที่ใช้:</p>
+<pre><code>ใช้ browserclaw เปิดหา template เว็บจองที่พัก 3 แบบ เหมาะกับรีสอร์ทเล็กๆ
+เปิดทีละหน้า แล้วสรุปให้ดูว่าแต่ละแบบ: ใช้สีอะไร ฟอนต์แบบไหน หน้าตาโดยรวมเป็นยังไง
+สุดท้ายแนะนำ 1 แบบที่เหมาะกับเว็บจองรีสอร์ท พร้อมเหตุผลสั้นๆ
+
+สร้าง design.json ใช้สีอะไร ฟอนต์แบบไหน หน้าตาโดยรวมของ component
+</code></pre>
+<p>พร้อมแล้ว ต่อไปคือการสร้างเว็บจริง ด้วยการสั่ง opencode หนึ่งคำสั่งตามนี้</p>
+<pre><code>สร้างเว็บไซต์จองห้องพักของรีสอร์ทเล็กๆ ตามไฟล์ design.json ในโฟลเดอร์นี้
+- หน้าหลัก: ชื่อที่พัก รูปห้องพัก ราคา รายละเอียดห้อง
+- ระบบจอง: วันที่เช็คอิน เช็คเอาต์ จำนวนผู้เข้าพัก
+- แสดงสถานะห้องว่าว่างหรือเต็ม
+- ภาษาไทย สไตล์ตาม design.json ต้องรองรับการเปิดบนมือถือ
+</code></pre>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-working.png" alt="opencode กำลังสร้างเว็บให้"></p>
+<p>มาดูหน้าตาโค้ดที่ opencode เขียนให้กันบ้าง ถึงจะไม่เก่งโค้ด ก็ไม่ต้องเข้าใจทั้งหมด แต่เราสามารถสอบถาม AI ได้ว่าโค้ดส่วนไหนทำงานยังไง เพื่อทำให้เราเรียนรู้เกี่ยวกับ Code ไปด้วย</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-code.png" alt="หน้าตาโค้ดที่ opencode สร้างให้"></p>
+<p>เสร็จแล้ว! นี่คือตัวอย่างเว็บที่ opencode สร้างออกมา</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-1.png" alt="เว็บจองห้องพัก หน้าแรก"></p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-2.png" alt="เว็บจองห้องพัก รายละเอียดห้อง"></p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-3.png" alt="เว็บจองห้องพัก ฟอร์มจอง"></p>
+<p>ถ้ายังไม่ถูกใจ ให้ AI ทำใหม่ได้ แค่บอกสิ่งที่อยากปรับ เช่น &quot;เปลี่ยนสีเป็นโทนทะเล&quot;, &quot;ตัวหนังสือใหญ่ขึ้นหน่อย&quot;, &quot;เพิ่มรูปห้องอื่นๆ อีก&quot; AI จะแก้ให้ทันที โดยเราไม่ต้องไปยุ่งกับโค้ดแม้แต่บรรทัดเดียว</p>
+<h2>สรุป</h2>
+<p>บทความนี้เราลองอะไรไปเยอะเลย สรุปสิ่งที่ได้เรียนรู้:</p>
+<ol>
+<li><strong>ติดตั้งเครื่องมือด้วยตัวเอง</strong> — โหลดและตั้งค่า OpenCode Desktop + BrowserClaw </li>
+<li><strong>เข้าใจ design system</strong> — รู้จัก design.json และวิธีสร้างจาก template ที่ถูกใจ</li>
+<li><strong>สั่ง AI สร้างเว็บ</strong> — เขียน prompt ภาษาไทยง่ายๆ บอกฟีเจอร์ที่อยากได้ ก็ได้เว็บจองห้องพักทั้งเว็บออกมา</li>
+</ol>
+<p>ผลลัพที่เราได้มาคือไฟล์ html + css + js ที่ยังเป็น template อยู่ยังใช้งานจริงไม่ได้
+ตอนต่อไปเราจะมาสร้างระบบหน้าบ้านและหลังบ้านที่ใช้งานได้จริงกัน</p>
+<h2>บทความต่อไป</h2>
+<p>เราจะไปทำระบบ หน้าบ้านและหลังบ้าน จากหน้าเว็บที่เราได้มา</p>
+<ul>
+<li>สร้างระบบหน้าบ้าน สำหรับเว็บไซจองที่พักของเรา</li>
+<li>สร้างระบบหลังบ้าน สำหรับเว็บไซจองที่พักของเรา</li>
+<li>Deploy ระบบขึ้น Server</li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>การมีเว็บไซต์ให้ลูกค้าเข้ามาดูรายละเอียด รูปห้องพัก ราคา และกดจองได้เอง</p>
+<p>เป็นสิ่งที่เจ้าของที่พักทุกคนอยากมี แต่มักติดปัญหาเดิมๆ คือไม่มีพื้นฐานเขียนโค้ด จะจ้างบริษัททำก็แพง เสียเงินหลักหมื่นไปจนถึงหลักแสน</p>
+<p>ในบทความนี้ เราจะมาสอนสร้างเว็บไซต์สำหรับเจ้าของที่พัก โรงแรม รีสอร์ท หรือโฮมสเตย์ กันแบบทีละขั้น โดยใช้ AI</p>
+<h2>Install</h2>
+<p>ก่อนอื่นมาเตรียมเครื่องมือกัน ตัวช่วยหลักของเราในบทความนี้คือ opencode </p>
+<p>โดยก่อนอื่นให้ไปที่เว็บ <a href="https://opencode.ai/download">https://opencode.ai/download</a> เพื่อโหลด OpenCode Desktop เวอร์ชันแอป ไม่ต้องเปิด Terminal หรือพิมพ์คำสั่งอะไรทั้งนั้น เปิดเป็นโปรแกรมธรรมดาเหมือนเปิดโปรแกรมอื่นๆ</p>
+<p><strong>1. เลือกเวอร์ชันให้ตรงกับเครื่องของเรา</strong> บนหน้านี้จะมีปุ่ม Download ให้เลือก:</p>
+<ul>
+<li>Mac → กดปุ่ม Download for macOS</li>
+<li>Windows → กดปุ่ม Windows (x64)</li>
+</ul>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-download.png" alt="หน้า Download OpenCode Desktop"></p>
+<p><strong>2. ติดตั้ง</strong></p>
+<ul>
+<li>Mac: เปิดไฟล์ .dmg ที่โหลดมา → ลาก icon OpenCode ไปที่โฟลเดอร์ Applications</li>
+<li>Windows: เปิดไฟล์ .exe ที่โหลดมา → กด Next ไปเรื่อยๆ จนเสร็จ</li>
+</ul>
+<p><strong>3. เปิดใช้งาน</strong> คลิกที่ไอคอน OpenCode จะเจอหน้าต่างแอป ที่จัดการงานเป็นแท็บๆ ไว้เปิดหลายงานพร้อมกันได้</p>
+<h2>Open Project</h2>
+<p><strong>1. สร้างโฟลเดอร์สำหรับเว็บของเรา</strong> ก่อนเริ่มงาน ให้สร้างโฟลเดอร์ใหม่ไว้ที่ Desktop เช่น ชื่อ booking-web</p>
+<p><strong>2. เปิดโฟลเดอร์ใน OpenCode</strong> กลับมาที่แอป OpenCode Desktop กดเปิดโปรเจกต์ เลือกโฟลเดอร์ booking-web ที่เพิ่งสร้าง เปิดปุ๊บ ก็เหมือนได้ห้องทำงานเปล่าๆ ของเว็บเราแล้ว</p>
+<p><strong>3. เลือก Model</strong> ข้อดีของ opencode คือมี model ที่เราสามารถใช้งานได้ฟรี</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-open.png" alt="หน้าต่าง OpenCode Desktop"></p>
+<h2>Design System</h2>
+<p>ก่อนจะเริ่มให้ AI สร้างเว็บ ขอแนะนำให้รู้จักไฟล์เล็กๆ ที่ชื่อว่า design.json กันสักหน่อย</p>
+<p>มันคือไฟล์ที่บอก &quot;สไตล์&quot; ของเว็บ: ใช้สีอะไร ฟอนต์อะไร ขอบหนาแค่ไหน เหมือนคู่มือของเว็บ ที่ทำให้ทุกหน้าดูเป็นระบบเดียวกัน</p>
+<p>ตัวอย่างหน้าตาเป็นแบบนี้:</p>
+<pre><code>{
+  &quot;colors&quot;: { &quot;primary&quot;: &quot;#1E50FF&quot;, &quot;accent&quot;: &quot;#D9FF2A&quot;, &quot;background&quot;: &quot;#F7F7F4&quot; },
+  &quot;typography&quot;: { &quot;heading&quot;: &quot;Poppins&quot;, &quot;body&quot;: &quot;Inter&quot; }
+}
+</code></pre>
+<p>ซึ่งไฟล์นี้เราจะเอาไปวางไว้ในโฟลเดอร์ booking-web แล้วบอกให้ AI ทำเว็บตามสไตล์นี้</p>
+<h3>เทคนิคการสร้าง design.json</h3>
+<p>ก่อนอื่นมาทำความรู้จักตัวช่วยในวิธีนี้: BrowserClaw เบราว์เซอร์สำหรับ AI โดยเฉพาะ คอยเปิดเว็บและไล่ดู template แทนเรา</p>
+<p><strong>วิธีโหลด BrowserClaw</strong></p>
+<ol>
+<li>เปิดเบราว์เซอร์ไปที่ <a href="https://browseros.com/agents">https://browseros.com/agents</a></li>
+<li>กดปุ่ม Download BrowserClaw ให้ตรงกับเครื่อง (Mac / Windows)</li>
+<li>ติดตั้งเหมือนโปรแกรมปกติ: Mac เปิดไฟล์ .dmg แล้วลากไป Applications / Windows รัน .exe</li>
+<li>เปิดแอปขึ้นมา แล้วปล่อยให้รันเป็นเบราว์เซอร์ที่ AI ใช้ได้</li>
+</ol>
+<p><strong>การ Set MCP ใน opencode</strong></p>
+<ol>
+<li>เปิดไฟล์ตั้งค่า opencode.json ที่ <code>~/.config/opencode/opencode.json</code> (ถ้ายังไม่มีไฟล์นี้ ให้สร้างขึ้นใหม่) แล้วเพิ่ม BrowserClaw ในส่วน mcp:</li>
+</ol>
+<pre><code>&quot;mcp&quot;: {
+  &quot;browserclaw&quot;: { &quot;type&quot;: &quot;remote&quot;, &quot;url&quot;: &quot;http://127.0.0.1:9210/mcp&quot;, &quot;enabled&quot;: true }
+}
+</code></pre>
+<ol start="2">
+<li>รีสตาร์ท opencode เท่านี้ AI ก็ใช้ BrowserClaw เปิดเว็บให้ได้</li>
+</ol>
+<p>วิธีสร้าง design.json มีหลายวิธี ในตัวอย่างนี้ ผมจะมาสอนใช้วิธีที่ผมใช้ประจำ: ใช้ browserclaw ทำ automate หา template ที่เหมาะกับเรา แล้วให้สร้างไฟล์ design.json</p>
+<ol>
+<li>สั่ง browserclaw ให้ไล่เปิดดูเว็บ template หลายๆ แบบ</li>
+<li>browserclaw จะเปิดเว็บทีละหน้า แล้วให้เราดูว่าแบบไหนถูกใจ</li>
+<li>เจอ template ที่เหมาะกับที่พักของเรา (โทนสี ฟอนต์ สไตล์ที่เข้ากับโรงแรม/รีสอร์ท) ก็บอกให้เก็บแบบนั้นไว้</li>
+<li>สั่งให้สร้างไฟล์ design.json ตาม template ที่เลือก AI จะอ่านสี ฟอนต์ ขนาด จาก template แล้วสรุปออกมาเป็น design.json ให้ใช้ได้ทันที</li>
+</ol>
+<p>ตัวอย่างคำสั่งที่ใช้:</p>
+<pre><code>ใช้ browserclaw เปิดหา template เว็บจองที่พัก 3 แบบ เหมาะกับรีสอร์ทเล็กๆ
+เปิดทีละหน้า แล้วสรุปให้ดูว่าแต่ละแบบ: ใช้สีอะไร ฟอนต์แบบไหน หน้าตาโดยรวมเป็นยังไง
+สุดท้ายแนะนำ 1 แบบที่เหมาะกับเว็บจองรีสอร์ท พร้อมเหตุผลสั้นๆ
+
+สร้าง design.json ใช้สีอะไร ฟอนต์แบบไหน หน้าตาโดยรวมของ component
+</code></pre>
+<p>พร้อมแล้ว ต่อไปคือการสร้างเว็บจริง ด้วยการสั่ง opencode หนึ่งคำสั่งตามนี้</p>
+<pre><code>สร้างเว็บไซต์จองห้องพักของรีสอร์ทเล็กๆ ตามไฟล์ design.json ในโฟลเดอร์นี้
+- หน้าหลัก: ชื่อที่พัก รูปห้องพัก ราคา รายละเอียดห้อง
+- ระบบจอง: วันที่เช็คอิน เช็คเอาต์ จำนวนผู้เข้าพัก
+- แสดงสถานะห้องว่าว่างหรือเต็ม
+- ภาษาไทย สไตล์ตาม design.json ต้องรองรับการเปิดบนมือถือ
+</code></pre>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-working.png" alt="opencode กำลังสร้างเว็บให้"></p>
+<p>มาดูหน้าตาโค้ดที่ opencode เขียนให้กันบ้าง ถึงจะไม่เก่งโค้ด ก็ไม่ต้องเข้าใจทั้งหมด แต่เราสามารถสอบถาม AI ได้ว่าโค้ดส่วนไหนทำงานยังไง เพื่อทำให้เราเรียนรู้เกี่ยวกับ Code ไปด้วย</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/opencode-code.png" alt="หน้าตาโค้ดที่ opencode สร้างให้"></p>
+<p>เสร็จแล้ว! นี่คือตัวอย่างเว็บที่ opencode สร้างออกมา</p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-1.png" alt="เว็บจองห้องพัก หน้าแรก"></p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-2.png" alt="เว็บจองห้องพัก รายละเอียดห้อง"></p>
+<p><img src="../image/blog/Create-Booking-Web-With-AI/booking-result-3.png" alt="เว็บจองห้องพัก ฟอร์มจอง"></p>
+<p>ถ้ายังไม่ถูกใจ ให้ AI ทำใหม่ได้ แค่บอกสิ่งที่อยากปรับ เช่น &quot;เปลี่ยนสีเป็นโทนทะเล&quot;, &quot;ตัวหนังสือใหญ่ขึ้นหน่อย&quot;, &quot;เพิ่มรูปห้องอื่นๆ อีก&quot; AI จะแก้ให้ทันที โดยเราไม่ต้องไปยุ่งกับโค้ดแม้แต่บรรทัดเดียว</p>
+<h2>สรุป</h2>
+<p>บทความนี้เราลองอะไรไปเยอะเลย สรุปสิ่งที่ได้เรียนรู้:</p>
+<ol>
+<li><strong>ติดตั้งเครื่องมือด้วยตัวเอง</strong> — โหลดและตั้งค่า OpenCode Desktop + BrowserClaw </li>
+<li><strong>เข้าใจ design system</strong> — รู้จัก design.json และวิธีสร้างจาก template ที่ถูกใจ</li>
+<li><strong>สั่ง AI สร้างเว็บ</strong> — เขียน prompt ภาษาไทยง่ายๆ บอกฟีเจอร์ที่อยากได้ ก็ได้เว็บจองห้องพักทั้งเว็บออกมา</li>
+</ol>
+<p>ผลลัพที่เราได้มาคือไฟล์ html + css + js ที่ยังเป็น template อยู่ยังใช้งานจริงไม่ได้
+ตอนต่อไปเราจะมาสร้างระบบหน้าบ้านและหลังบ้านที่ใช้งานได้จริงกัน</p>
+<h2>บทความต่อไป</h2>
+<p>เราจะไปทำระบบ หน้าบ้านและหลังบ้าน จากหน้าเว็บที่เราได้มา</p>
+<ul>
+<li>สร้างระบบหน้าบ้าน สำหรับเว็บไซจองที่พักของเรา</li>
+<li>สร้างระบบหลังบ้าน สำหรับเว็บไซจองที่พักของเรา</li>
+<li>Deploy ระบบขึ้น Server</li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=%E0%B8%AA%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%87%E0%B9%80%E0%B8%A7%E0%B9%87%E0%B8%9A%E0%B9%84%E0%B8%8B%E0%B8%95%E0%B9%8C%E0%B8%AA%E0%B8%B3%E0%B8%AB%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B8%88%E0%B8%AD%E0%B8%87%E0%B8%97%E0%B8%B5%E0%B9%88%E0%B8%9E%E0%B8%B1%E0%B8%81%E0%B8%82%E0%B8%AD%E0%B8%87%E0%B8%84%E0%B8%B8%E0%B8%93%E0%B9%80%E0%B8%AD%E0%B8%87%20%E0%B8%87%E0%B9%88%E0%B8%B2%E0%B8%A2%E0%B9%86%20%E0%B8%94%E0%B9%89%E0%B8%A7%E0%B8%A2%20AI&url=https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Create-Booking-Web-With-AI" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI",
+                    date: "August 20, 2026",
+                    readingTime: "3 min read",
+                    tags: "<span class=\"tag\">AI</span>\n<span class=\"tag\">Booking</span>\n<span class=\"tag\">No-code</span>\n<span class=\"tag\">Web Development</span>",
+                },
+                th: {
+                    title: "สร้างเว็บไซต์สำหรับจองที่พักของคุณเอง ง่ายๆ ด้วย AI",
+                    date: "August 20, 2026",
+                    readingTime: "3 นาที",
+                    tags: "<span class=\"tag\">AI</span>\n<span class=\"tag\">Booking</span>\n<span class=\"tag\">No-code</span>\n<span class=\"tag\">Web Development</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>

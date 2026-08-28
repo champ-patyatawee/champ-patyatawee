@@ -227,29 +227,29 @@ function fillPostTemplate(template, post, pageUrl, ogImage) {
     // English placeholders
     page = page.replace(/\{\{en_title\}\}/g, escapeHtml(post.en_title || post.th_title || post.slug));
     page = page.replace(/\{\{en_content\}\}/g, post.en_content || post.th_content || '');
-    page = page.replace(/\{\{en_tags\}\}/g, post.en_tagsHtml || '');
-    page = page.replace(/\{\{en_readingTime\}\}/g, String(post.en_readingTime || 0));
+    page = page.replace(/\{\{en_tags\}\}/g, post.en_tagsHtml || post.th_tagsHtml || '');
+    page = page.replace(/\{\{en_readingTime\}\}/g, String(post.en_readingTime || post.th_readingTime || 0));
     page = page.replace(/\{\{en_excerpt\}\}/g, post.en_excerpt || post.th_excerpt || '');
     page = page.replace(/\{\{en_dateFormatted\}\}/g, post.en_dateFormatted || post.dateFormatted);
 
     // Thai placeholders
     page = page.replace(/\{\{th_title\}\}/g, escapeHtml(post.th_title || post.en_title || post.slug));
     page = page.replace(/\{\{th_content\}\}/g, post.th_content || post.en_content || '');
-    page = page.replace(/\{\{th_tags\}\}/g, post.th_tagsHtml || '');
-    page = page.replace(/\{\{th_readingTime\}\}/g, String(post.th_readingTime || 0));
+    page = page.replace(/\{\{th_tags\}\}/g, post.th_tagsHtml || post.en_tagsHtml || '');
+    page = page.replace(/\{\{th_readingTime\}\}/g, String(post.th_readingTime || post.en_readingTime || 0));
     page = page.replace(/\{\{th_excerpt\}\}/g, post.th_excerpt || post.en_excerpt || '');
     page = page.replace(/\{\{th_dateFormatted\}\}/g, post.th_dateFormatted || post.dateFormatted);
 
     // JSON-encoded values for the langData JavaScript object
     // These use JSON.stringify() so they're safe for embedding in JS (handles quotes, newlines, etc.)
-    const enTagsJson = JSON.stringify(post.en_tagsHtml || '');
-    const thTagsJson = JSON.stringify(post.th_tagsHtml || '');
+    const enTagsJson = JSON.stringify(post.en_tagsHtml || post.th_tagsHtml || '');
+    const thTagsJson = JSON.stringify(post.th_tagsHtml || post.en_tagsHtml || '');
     const enTitleJson = JSON.stringify(post.en_title || post.th_title || post.slug);
     const thTitleJson = JSON.stringify(post.th_title || post.en_title || post.slug);
     const enDateJson = JSON.stringify(post.en_dateFormatted || post.dateFormatted);
     const thDateJson = JSON.stringify(post.th_dateFormatted || post.dateFormatted);
-    const enReadingTimeJson = JSON.stringify((post.en_readingTime || 0) + ' min read');
-    const thReadingTimeJson = JSON.stringify((post.th_readingTime || 0) + ' นาที');
+    const enReadingTimeJson = JSON.stringify((post.en_readingTime || post.th_readingTime || 0) + ' min read');
+    const thReadingTimeJson = JSON.stringify((post.th_readingTime || post.en_readingTime || 0) + ' นาที');
 
     page = page.replace(/\{\{en_title_json\}\}/g, enTitleJson);
     page = page.replace(/\{\{en_date_json\}\}/g, enDateJson);

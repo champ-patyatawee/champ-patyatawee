@@ -821,8 +821,8 @@ spec:
                 th: {
                     title: "Managing Multiple Kubernetes Clusters Using Argo CD",
                     date: "July 15, 2025",
-                    readingTime: "0 นาที",
-                    tags: "",
+                    readingTime: "8 นาที",
+                    tags: "<span class=\"tag\">devops</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">argocd</span>",
                 },
             };
 
@@ -889,7 +889,17 @@ spec:
             // Check URL hash on load
             var hash = window.location.hash.replace('#', '');
             if (hash === 'th' || hash === 'en') {
-                switchLang(hash);
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
             }
         })();
 

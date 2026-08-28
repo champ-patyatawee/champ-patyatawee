@@ -945,10 +945,22 @@ img.loaded {
 .post-content code {
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.85rem;
-    background: #F0F0ED;
-    border: 2px solid var(--border);
-    border-radius: 6px;
-    padding: 2px 8px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text);
+}
+
+/* Inline code (not inside a <pre>) — remove the Prism box so
+   short inline snippets read cleanly. Fenced ``` blocks are
+   <pre><code>, whose parent IS <pre>, so they stay styled. */
+.post-content :not(pre) > code[class*="language-"] {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
     color: var(--text);
 }
 

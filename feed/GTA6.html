@@ -127,10 +127,13 @@
                 <h1 class="post-title" id="post-title">รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">August 13, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">0 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">1 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
-                    
+                    <span class="tag">ai</span>
+<span class="tag">gamedev</span>
+<span class="tag">unreal-engine</span>
+<span class="tag">fun</span>
                 </div>
 
                 <!-- Language tabs -->
@@ -284,8 +287,8 @@
                 en: {
                     title: "รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง",
                     date: "August 13, 2026",
-                    readingTime: "0 min read",
-                    tags: "",
+                    readingTime: "1 min read",
+                    tags: "<span class=\"tag\">ai</span>\n<span class=\"tag\">gamedev</span>\n<span class=\"tag\">unreal-engine</span>\n<span class=\"tag\">fun</span>",
                 },
                 th: {
                     title: "รอไม่ไหวแล้วว!!! ผู้ใช้ Reddit รายนึงตัดสินใจสร้าง GTA6 ด้วย Opus 5 และ Unreal Engine 5 ใน 24 ชั่วโมง",
@@ -358,7 +361,15 @@
             // Check URL hash on load
             var hash = window.location.hash.replace('#', '');
             if (hash === 'th' || hash === 'en') {
-                switchLang(hash);
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
             }
         })();
 
