@@ -114,7 +114,7 @@
                 <h1 class="post-title" id="post-title">Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 9, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">8 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">9 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">kubernetes</span>
@@ -160,7 +160,7 @@
 flowchart LR
     B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
     subgraph Docker Desktop / WSL2
-        LB --> ING[ingress-nginx]
+        LB --> ING[Traefik v3.7]
         ING --> R[Rancher 2.15.3]
         R --- CP[server-0 control plane]
         CP --- A0[agent-0]
@@ -219,7 +219,7 @@ winget install -e --id Kubernetes.kubectl
 </tr>
 <tr>
 <td><code>--k3s-arg &quot;--disable=traefik@server:0&quot;</code></td>
-<td>Disable the bundled Traefik; we install ingress-nginx instead</td>
+<td>Disable the bundled Traefik so the Helm-managed Traefik owns ports 80/443</td>
 </tr>
 <tr>
 <td><code>--tls-san=rancher.127.0.0.1.nip.io</code></td>
@@ -237,18 +237,27 @@ k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          v1.36.5+k3s1
 k3d-rancher-lab-server-0   Ready    control-plane   v1.36.5+k3s1
 </code></pre>
 <p>Four <code>Ready</code> nodes. The control plane does not run your application pods by default.</p>
-<h2>Step 4 — Ingress and certificates</h2>
-<p>Rancher needs an ingress controller. k3d&#39;s load balancer forwards traffic to the node&#39;s port 80/443, so the controller must listen on <strong>every</strong> node. That means a DaemonSet with <code>hostPort</code> enabled:</p>
-<pre><code class="language-bash">helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+<h2>Step 4 — Ingress with Traefik</h2>
+<p><code>ingress-nginx</code> was archived in March 2026 — its last release was v1.15.1 — so a new cluster should not start on it. Traefik is the ingress controller bundled with k3s and is actively maintained, so this lab uses the Traefik Helm chart.</p>
+<p>k3d&#39;s load balancer forwards port 80 and 443 to the node, which means the controller must listen on <strong>every</strong> node. The chart&#39;s DaemonSet mode with <code>hostPort</code> does exactly that:</p>
+<pre><code class="language-bash">helm repo add traefik https://traefik.github.io/charts
 helm repo update
 
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace \
-  --set controller.kind=DaemonSet \
-  --set controller.hostPort.enabled=true \
-  --set controller.service.type=ClusterIP \
-  --set controller.ingressClassResource.default=true \
+helm install traefik traefik/traefik \
+  -n traefik --create-namespace \
+  --set deployment.kind=DaemonSet \
+  --set ports.web.hostPort=80 \
+  --set ports.websecure.hostPort=443 \
+  --set service.spec.type=ClusterIP \
   --wait
+</code></pre>
+<p>We disabled k3s&#39;s bundled Traefik when creating the cluster, so this Helm release is the only controller binding ports 80 and 443.</p>
+<p>The chart creates the <code>traefik</code> IngressClass and marks it as the default, so Ingress objects route through it even without an explicit class:</p>
+<pre><code class="language-bash">kubectl -n traefik get ds traefik
+kubectl get ingressclass
+</code></pre>
+<pre><code class="language-text">NAME      DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   AGE
+traefik   4         4         4       4            4           2m
 </code></pre>
 <p>Then cert-manager, which Rancher uses to issue its self-signed certificate:</p>
 <pre><code class="language-bash">helm repo add jetstack https://charts.jetstack.io
@@ -269,7 +278,7 @@ helm install rancher rancher-stable/rancher \
   --set bootstrapPassword=&#39;RancherLab2026!&#39; \
   --set replicas=1 \
   --set ingress.tls.source=rancher \
-  --set ingress.ingressClassName=nginx \
+  --set ingress.ingressClassName=traefik \
   --wait --timeout 12m
 </code></pre>
 <p>Rancher pulls a large image, so this step is the slowest. If it times out, the pods may still be pulling; check <code>kubectl -n cattle-system get pods</code> before reinstalling.</p>
@@ -351,7 +360,7 @@ metadata:
   name: nginx
   namespace: default
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: nginx.127.0.0.1.nip.io
       http:
@@ -398,6 +407,16 @@ kubectl -n default rollout status deploy/nginx
 <p>Some Chromium-based browsers block <code>http://</code> to <code>127.0.0.1</code> hosts. Use HTTPS, or a locally trusted certificate, when demoing ingress endpoints.</p>
 <h3>Rancher routes changed in 2.15</h3>
 <p>Deep links like <code>/explorer/workloads</code> now return <strong>&quot;Resource type workloads not found&quot;</strong>. The current paths are <code>/explorer/apps.deployment</code> and <code>/explorer/pod</code>. When in doubt, navigate through the sidebar instead of bookmarking old URLs.</p>
+<h3>Traefik answers 404 on HTTPS</h3>
+<p>An Ingress is attached to the <code>web</code> entrypoint (port 80) by default. Port 443 only answers when the router has TLS enabled. Either add a <code>tls:</code> block with a certificate secret, or turn on TLS for the router:</p>
+<pre><code class="language-yaml">metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: &quot;true&quot;
+</code></pre>
+<p>Without one of those, <code>https://</code> returns 404 while <code>http://</code> works.</p>
+<h3>ingress-nginx is retired</h3>
+<p>The ingress-nginx project was archived on 23 March 2026 and its final release was v1.15.1. Any guide that installs <code>ingress-nginx/ingress-nginx</code> or sets <code>controller.hostPort.enabled</code> is describing an unmaintained controller. Traefik, used above, is the maintained default in k3s.</p>
 <h2>Tear down</h2>
 <pre><code class="language-powershell">k3d cluster delete rancher-lab
 </code></pre>
@@ -438,7 +457,7 @@ kubectl -n default rollout status deploy/nginx
 flowchart LR
     B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
     subgraph Docker Desktop / WSL2
-        LB --> ING[ingress-nginx]
+        LB --> ING[Traefik v3.7]
         ING --> R[Rancher 2.15.3]
         R --- CP[server-0 control plane]
         CP --- A0[agent-0]
@@ -497,7 +516,7 @@ winget install -e --id Kubernetes.kubectl
 </tr>
 <tr>
 <td><code>--k3s-arg &quot;--disable=traefik@server:0&quot;</code></td>
-<td>Disable the bundled Traefik; we install ingress-nginx instead</td>
+<td>Disable the bundled Traefik so the Helm-managed Traefik owns ports 80/443</td>
 </tr>
 <tr>
 <td><code>--tls-san=rancher.127.0.0.1.nip.io</code></td>
@@ -515,18 +534,27 @@ k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          v1.36.5+k3s1
 k3d-rancher-lab-server-0   Ready    control-plane   v1.36.5+k3s1
 </code></pre>
 <p>Four <code>Ready</code> nodes. The control plane does not run your application pods by default.</p>
-<h2>Step 4 — Ingress and certificates</h2>
-<p>Rancher needs an ingress controller. k3d&#39;s load balancer forwards traffic to the node&#39;s port 80/443, so the controller must listen on <strong>every</strong> node. That means a DaemonSet with <code>hostPort</code> enabled:</p>
-<pre><code class="language-bash">helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+<h2>Step 4 — Ingress with Traefik</h2>
+<p><code>ingress-nginx</code> was archived in March 2026 — its last release was v1.15.1 — so a new cluster should not start on it. Traefik is the ingress controller bundled with k3s and is actively maintained, so this lab uses the Traefik Helm chart.</p>
+<p>k3d&#39;s load balancer forwards port 80 and 443 to the node, which means the controller must listen on <strong>every</strong> node. The chart&#39;s DaemonSet mode with <code>hostPort</code> does exactly that:</p>
+<pre><code class="language-bash">helm repo add traefik https://traefik.github.io/charts
 helm repo update
 
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace \
-  --set controller.kind=DaemonSet \
-  --set controller.hostPort.enabled=true \
-  --set controller.service.type=ClusterIP \
-  --set controller.ingressClassResource.default=true \
+helm install traefik traefik/traefik \
+  -n traefik --create-namespace \
+  --set deployment.kind=DaemonSet \
+  --set ports.web.hostPort=80 \
+  --set ports.websecure.hostPort=443 \
+  --set service.spec.type=ClusterIP \
   --wait
+</code></pre>
+<p>We disabled k3s&#39;s bundled Traefik when creating the cluster, so this Helm release is the only controller binding ports 80 and 443.</p>
+<p>The chart creates the <code>traefik</code> IngressClass and marks it as the default, so Ingress objects route through it even without an explicit class:</p>
+<pre><code class="language-bash">kubectl -n traefik get ds traefik
+kubectl get ingressclass
+</code></pre>
+<pre><code class="language-text">NAME      DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   AGE
+traefik   4         4         4       4            4           2m
 </code></pre>
 <p>Then cert-manager, which Rancher uses to issue its self-signed certificate:</p>
 <pre><code class="language-bash">helm repo add jetstack https://charts.jetstack.io
@@ -547,7 +575,7 @@ helm install rancher rancher-stable/rancher \
   --set bootstrapPassword=&#39;RancherLab2026!&#39; \
   --set replicas=1 \
   --set ingress.tls.source=rancher \
-  --set ingress.ingressClassName=nginx \
+  --set ingress.ingressClassName=traefik \
   --wait --timeout 12m
 </code></pre>
 <p>Rancher pulls a large image, so this step is the slowest. If it times out, the pods may still be pulling; check <code>kubectl -n cattle-system get pods</code> before reinstalling.</p>
@@ -629,7 +657,7 @@ metadata:
   name: nginx
   namespace: default
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: nginx.127.0.0.1.nip.io
       http:
@@ -676,6 +704,16 @@ kubectl -n default rollout status deploy/nginx
 <p>Some Chromium-based browsers block <code>http://</code> to <code>127.0.0.1</code> hosts. Use HTTPS, or a locally trusted certificate, when demoing ingress endpoints.</p>
 <h3>Rancher routes changed in 2.15</h3>
 <p>Deep links like <code>/explorer/workloads</code> now return <strong>&quot;Resource type workloads not found&quot;</strong>. The current paths are <code>/explorer/apps.deployment</code> and <code>/explorer/pod</code>. When in doubt, navigate through the sidebar instead of bookmarking old URLs.</p>
+<h3>Traefik answers 404 on HTTPS</h3>
+<p>An Ingress is attached to the <code>web</code> entrypoint (port 80) by default. Port 443 only answers when the router has TLS enabled. Either add a <code>tls:</code> block with a certificate secret, or turn on TLS for the router:</p>
+<pre><code class="language-yaml">metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: &quot;true&quot;
+</code></pre>
+<p>Without one of those, <code>https://</code> returns 404 while <code>http://</code> works.</p>
+<h3>ingress-nginx is retired</h3>
+<p>The ingress-nginx project was archived on 23 March 2026 and its final release was v1.15.1. Any guide that installs <code>ingress-nginx/ingress-nginx</code> or sets <code>controller.hostPort.enabled</code> is describing an unmaintained controller. Traefik, used above, is the maintained default in k3s.</p>
 <h2>Tear down</h2>
 <pre><code class="language-powershell">k3d cluster delete rancher-lab
 </code></pre>
@@ -955,13 +993,13 @@ kubectl -n default rollout status deploy/nginx
                 en: {
                     title: "Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher",
                     date: "November 9, 2026",
-                    readingTime: "8 min read",
+                    readingTime: "9 min read",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">homelab</span>",
                 },
                 th: {
                     title: "Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher",
                     date: "November 9, 2026",
-                    readingTime: "8 นาที",
+                    readingTime: "9 นาที",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">homelab</span>",
                 },
             };

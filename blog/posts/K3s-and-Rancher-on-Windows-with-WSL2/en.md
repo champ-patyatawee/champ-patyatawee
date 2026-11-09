@@ -40,7 +40,7 @@ I pinned **k3s v1.36.5**, because Rancher 2.15 supports Kubernetes 1.34–1.36. 
 flowchart LR
     B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
     subgraph Docker Desktop / WSL2
-        LB --> ING[ingress-nginx]
+        LB --> ING[Traefik v3.7]
         ING --> R[Rancher 2.15.3]
         R --- CP[server-0 control plane]
         CP --- A0[agent-0]
@@ -95,7 +95,7 @@ What each flag does:
 | `--image rancher/k3s:v1.36.5-k3s1` | Pin a k3s version supported by Rancher |
 | `--api-port 127.0.0.1:6443` | Stable Kubernetes API endpoint on the host |
 | `--port 80:80@loadbalancer` | Publish HTTP through the k3d load balancer |
-| `--k3s-arg "--disable=traefik@server:0"` | Disable the bundled Traefik; we install ingress-nginx instead |
+| `--k3s-arg "--disable=traefik@server:0"` | Disable the bundled Traefik so the Helm-managed Traefik owns ports 80/443 |
 | `--tls-san=rancher.127.0.0.1.nip.io` | Add the Rancher hostname to the API server certificate |
 
 k3d writes a `k3d-rancher-lab` context into your kubeconfig and switches to it automatically.
@@ -116,21 +116,37 @@ k3d-rancher-lab-server-0   Ready    control-plane   v1.36.5+k3s1
 
 Four `Ready` nodes. The control plane does not run your application pods by default.
 
-## Step 4 — Ingress and certificates
+## Step 4 — Ingress with Traefik
 
-Rancher needs an ingress controller. k3d's load balancer forwards traffic to the node's port 80/443, so the controller must listen on **every** node. That means a DaemonSet with `hostPort` enabled:
+`ingress-nginx` was archived in March 2026 — its last release was v1.15.1 — so a new cluster should not start on it. Traefik is the ingress controller bundled with k3s and is actively maintained, so this lab uses the Traefik Helm chart.
+
+k3d's load balancer forwards port 80 and 443 to the node, which means the controller must listen on **every** node. The chart's DaemonSet mode with `hostPort` does exactly that:
 
 ```bash
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo add traefik https://traefik.github.io/charts
 helm repo update
 
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace \
-  --set controller.kind=DaemonSet \
-  --set controller.hostPort.enabled=true \
-  --set controller.service.type=ClusterIP \
-  --set controller.ingressClassResource.default=true \
+helm install traefik traefik/traefik \
+  -n traefik --create-namespace \
+  --set deployment.kind=DaemonSet \
+  --set ports.web.hostPort=80 \
+  --set ports.websecure.hostPort=443 \
+  --set service.spec.type=ClusterIP \
   --wait
+```
+
+We disabled k3s's bundled Traefik when creating the cluster, so this Helm release is the only controller binding ports 80 and 443.
+
+The chart creates the `traefik` IngressClass and marks it as the default, so Ingress objects route through it even without an explicit class:
+
+```bash
+kubectl -n traefik get ds traefik
+kubectl get ingressclass
+```
+
+```text
+NAME      DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   AGE
+traefik   4         4         4       4            4           2m
 ```
 
 Then cert-manager, which Rancher uses to issue its self-signed certificate:
@@ -157,7 +173,7 @@ helm install rancher rancher-stable/rancher \
   --set bootstrapPassword='RancherLab2026!' \
   --set replicas=1 \
   --set ingress.tls.source=rancher \
-  --set ingress.ingressClassName=nginx \
+  --set ingress.ingressClassName=traefik \
   --wait --timeout 12m
 ```
 
@@ -264,7 +280,7 @@ metadata:
   name: nginx
   namespace: default
 spec:
-  ingressClassName: nginx
+  ingressClassName: traefik
   rules:
     - host: nginx.127.0.0.1.nip.io
       http:
@@ -340,6 +356,23 @@ Some Chromium-based browsers block `http://` to `127.0.0.1` hosts. Use HTTPS, or
 ### Rancher routes changed in 2.15
 
 Deep links like `/explorer/workloads` now return **"Resource type workloads not found"**. The current paths are `/explorer/apps.deployment` and `/explorer/pod`. When in doubt, navigate through the sidebar instead of bookmarking old URLs.
+
+### Traefik answers 404 on HTTPS
+
+An Ingress is attached to the `web` entrypoint (port 80) by default. Port 443 only answers when the router has TLS enabled. Either add a `tls:` block with a certificate secret, or turn on TLS for the router:
+
+```yaml
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+```
+
+Without one of those, `https://` returns 404 while `http://` works.
+
+### ingress-nginx is retired
+
+The ingress-nginx project was archived on 23 March 2026 and its final release was v1.15.1. Any guide that installs `ingress-nginx/ingress-nginx` or sets `controller.hostPort.enabled` is describing an unmaintained controller. Traefik, used above, is the maintained default in k3s.
 
 ## Tear down
 
