@@ -1,5 +1,5 @@
 ---
-title: "Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher"
+title: "Build Kubernetes Lab on Windows with k3d and Rancher"
 date: 2026-11-09
 tags: [kubernetes, k3s, rancher, k3d, homelab]
 excerpt: "Run a real 1 control plane + 3 worker k3s cluster on a single Windows PC, then manage it with Rancher 2.15 — step by step, with screenshots."

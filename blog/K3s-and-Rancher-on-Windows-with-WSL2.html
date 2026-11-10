@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Run a real 1 control plane + 3 worker k3s cluster on a single Windows PC, then manage it with Rancher 2.15 — step by step, with screenshots.">
-    <meta property="og:title" content="Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher — Champ Patyatawee">
+    <meta property="og:title" content="Build Kubernetes Lab on Windows with k3d and Rancher — Champ Patyatawee">
     <meta property="og:description" content="Run a real 1 control plane + 3 worker k3s cluster on a single Windows PC, then manage it with Rancher 2.15 — step by step, with screenshots.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2">
@@ -13,10 +13,10 @@
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/jpeg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher">
+    <meta name="twitter:title" content="Build Kubernetes Lab on Windows with k3d and Rancher">
     <meta name="twitter:description" content="Run a real 1 control plane + 3 worker k3s cluster on a single Windows PC, then manage it with Rancher 2.15 — step by step, with screenshots.">
     <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/K3s-and-Rancher-on-Windows-with-WSL2/og.jpg">
-    <meta name="twitter:image:alt" content="Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher">
+    <meta name="twitter:image:alt" content="Build Kubernetes Lab on Windows with k3d and Rancher">
     <!-- Thai alternate meta -->
     <meta name="description" content="Run a real 1 control plane + 3 worker k3s cluster on a single Windows PC, then manage it with Rancher 2.15 — step by step, with screenshots." lang="th">
     <meta property="og:locale:alternate" content="th_TH">
@@ -24,7 +24,7 @@
     <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2">
     <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2">
     <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2">
-    <title>Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher — Champ Patyatawee</title>
+    <title>Build Kubernetes Lab on Windows with k3d and Rancher — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
     <link rel="stylesheet" href="style.css?v=7">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -111,7 +111,7 @@
             <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
             
             <header class="post-header">
-                <h1 class="post-title" id="post-title">Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher</h1>
+                <h1 class="post-title" id="post-title">Build Kubernetes Lab on Windows with k3d and Rancher</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 9, 2026</span></span>
                     <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">9 min read</span></span>
@@ -728,7 +728,7 @@ kubectl -n default rollout status deploy/nginx
             <footer class="post-footer">
                 <div class="share-links">
                     <span class="share-label">Share this post:</span>
-                    <a href="https://twitter.com/intent/tweet?text=Build%20a%204-Node%20Kubernetes%20Lab%20on%20Windows%20with%20k3d%20and%20Rancher&url=https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                    <a href="https://twitter.com/intent/tweet?text=Build%20Kubernetes%20Lab%20on%20Windows%20with%20k3d%20and%20Rancher&url=https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
                     </a>
                     <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/K3s-and-Rancher-on-Windows-with-WSL2" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
@@ -991,13 +991,13 @@ kubectl -n default rollout status deploy/nginx
             // Values use JSON.stringify() in the build script, so no quotes needed here
             const langData = {
                 en: {
-                    title: "Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher",
+                    title: "Build Kubernetes Lab on Windows with k3d and Rancher",
                     date: "November 9, 2026",
                     readingTime: "9 min read",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">homelab</span>",
                 },
                 th: {
-                    title: "Build a 4-Node Kubernetes Lab on Windows with k3d and Rancher",
+                    title: "Build Kubernetes Lab on Windows with k3d and Rancher",
                     date: "November 9, 2026",
                     readingTime: "9 นาที",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">homelab</span>",
