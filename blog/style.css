@@ -1756,3 +1756,39 @@ div.code-toolbar:hover > .toolbar {
     max-width: 100%;
     height: auto;
 }
+
+/* ============================================
+   Post Content Tables
+   ============================================ */
+.post-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+    display: block;
+    overflow-x: auto;
+}
+
+.post-content table th,
+.post-content table td {
+    border: 1px solid var(--border);
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+}
+
+.post-content table th {
+    background: #F3F4F6;
+    font-weight: 700;
+}
+
+@media (max-width: 720px) {
+    .post-content table {
+        font-size: 0.85rem;
+    }
+
+    .post-content table th,
+    .post-content table td {
+        padding: 0.5rem 0.6rem;
+    }
+}

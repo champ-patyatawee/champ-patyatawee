@@ -26,7 +26,7 @@
     <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
     <title>Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
-    <link rel="stylesheet" href="style.css?v=7">
+    <link rel="stylesheet" href="style.css?v=8">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -114,7 +114,7 @@
                 <h1 class="post-title" id="post-title">Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">31 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">33 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">trivy</span>
@@ -417,6 +417,80 @@ trivy:
 <p>That is a real Trivy constraint: a fresh cache cannot skip the database, even if the target image has no Java components. The final design uses the chart’s built-in Trivy server and a persistent 5 GB PVC so the database cache is not thrown away with every scan job. The server’s first start also tripped its liveness probe during the initial download, restarted once, and then became Ready.</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/02-trivy-pods.png" alt="Trivy Operator, Trivy server, and demo pods in Rancher"></p>
 <p>The operator watches workload changes and creates reports automatically. It is not a scheduled cron-only scanner; a new pod or workload change can trigger reconciliation. The compliance reports have a separate cron schedule.</p>
+<h2>What Trivy Operator can scan</h2>
+<p>The operator is easier to reason about when you list its report types instead of calling it &quot;a scanner&quot;. Each CRD answers a different question:</p>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>What it scans</th>
+<th>What it answers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>VulnerabilityReport</code></td>
+<td>Container images referenced by workloads, including OS packages and language dependencies</td>
+<td>Which CVEs are inside this image?</td>
+</tr>
+<tr>
+<td><code>ConfigAuditReport</code></td>
+<td>Pod specs and Kubernetes workload manifests</td>
+<td>Is this workload privileged, root, writable, or missing limits?</td>
+</tr>
+<tr>
+<td><code>ExposedSecretReport</code></td>
+<td>Files inside a container image</td>
+<td>Did the image ship with a credential?</td>
+</tr>
+<tr>
+<td><code>RbacAssessmentReport</code></td>
+<td>Namespace-scoped <code>Role</code> objects</td>
+<td>Can this Role do too much?</td>
+</tr>
+<tr>
+<td><code>ClusterRbacAssessmentReport</code></td>
+<td><code>ClusterRole</code> objects</td>
+<td>Can this cluster identity do too much?</td>
+</tr>
+<tr>
+<td><code>InfraAssessmentReport</code></td>
+<td>Namespaced cluster infrastructure resources</td>
+<td>Is this infrastructure component misconfigured?</td>
+</tr>
+<tr>
+<td><code>ClusterInfraAssessmentReport</code></td>
+<td>Cluster-scoped infrastructure, including node and control-plane components</td>
+<td>Is the cluster&#39;s own infrastructure misconfigured?</td>
+</tr>
+<tr>
+<td><code>SbomReport</code> / <code>ClusterSbomReport</code></td>
+<td>Image and cluster software inventory</td>
+<td>What is installed, independent of whether it has a known CVE?</td>
+</tr>
+<tr>
+<td><code>ClusterComplianceReport</code></td>
+<td>Findings mapped to CIS, NSA, and Pod Security Standards controls</td>
+<td>Which controls pass or fail, and according to which mapping?</td>
+</tr>
+</tbody></table>
+<p>The report types used in the UI screenshots were vulnerabilities, config audits, exposed secrets, and RBAC. Infrastructure assessment, SBOM, and compliance reports are also part of the operator&#39;s API, but they were not the focus of this walkthrough.</p>
+<h3>What it can scan</h3>
+<ul>
+<li>Container images used by Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and ReplicaSets.</li>
+<li>Workload manifests and the Kubernetes resources supported by the config scanner, such as Services, Ingresses, and NetworkPolicies.</li>
+<li>Namespace <code>Role</code> and cluster <code>ClusterRole</code> rules.</li>
+<li>Infra and compliance data exposed as cluster-scoped report objects.</li>
+<li>SBOM inventory for images and the cluster.</li>
+</ul>
+<h3>What it cannot scan</h3>
+<ul>
+<li>Images that exist only in a node&#39;s local container store. A <code>k3d image import</code> makes an image runnable, but the operator&#39;s Trivy server still needs a registry it can pull from.</li>
+<li>The live filesystem, process list, or memory of a running container.</li>
+<li>Secrets stored in environment variables, ConfigMaps, or Kubernetes <code>Secret</code> objects. <code>ExposedSecretReport</code> covers content found inside images.</li>
+<li>Runtime behavior such as shell execution or suspicious network traffic. That requires Falco, Tetragon, or another runtime sensor.</li>
+<li>Admission decisions. The operator reports what is already running; Kyverno or Gatekeeper must prevent a workload from being created.</li>
+</ul>
+<p>Private registries also need credentials available to the operator and its scan jobs. An image that pulls successfully onto a node is not automatically readable by the scanner.</p>
 <h2>Step 9: Read the Kubernetes-native reports</h2>
 <p>List the report resources:</p>
 <pre><code class="language-powershell">kubectl get vulnerabilityreports,configauditreports,exposedsecretreports `
@@ -1144,6 +1218,80 @@ trivy:
 <p>That is a real Trivy constraint: a fresh cache cannot skip the database, even if the target image has no Java components. The final design uses the chart’s built-in Trivy server and a persistent 5 GB PVC so the database cache is not thrown away with every scan job. The server’s first start also tripped its liveness probe during the initial download, restarted once, and then became Ready.</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/02-trivy-pods.png" alt="Trivy Operator, Trivy server, and demo pods in Rancher"></p>
 <p>The operator watches workload changes and creates reports automatically. It is not a scheduled cron-only scanner; a new pod or workload change can trigger reconciliation. The compliance reports have a separate cron schedule.</p>
+<h2>What Trivy Operator can scan</h2>
+<p>The operator is easier to reason about when you list its report types instead of calling it &quot;a scanner&quot;. Each CRD answers a different question:</p>
+<table>
+<thead>
+<tr>
+<th>Report</th>
+<th>What it scans</th>
+<th>What it answers</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>VulnerabilityReport</code></td>
+<td>Container images referenced by workloads, including OS packages and language dependencies</td>
+<td>Which CVEs are inside this image?</td>
+</tr>
+<tr>
+<td><code>ConfigAuditReport</code></td>
+<td>Pod specs and Kubernetes workload manifests</td>
+<td>Is this workload privileged, root, writable, or missing limits?</td>
+</tr>
+<tr>
+<td><code>ExposedSecretReport</code></td>
+<td>Files inside a container image</td>
+<td>Did the image ship with a credential?</td>
+</tr>
+<tr>
+<td><code>RbacAssessmentReport</code></td>
+<td>Namespace-scoped <code>Role</code> objects</td>
+<td>Can this Role do too much?</td>
+</tr>
+<tr>
+<td><code>ClusterRbacAssessmentReport</code></td>
+<td><code>ClusterRole</code> objects</td>
+<td>Can this cluster identity do too much?</td>
+</tr>
+<tr>
+<td><code>InfraAssessmentReport</code></td>
+<td>Namespaced cluster infrastructure resources</td>
+<td>Is this infrastructure component misconfigured?</td>
+</tr>
+<tr>
+<td><code>ClusterInfraAssessmentReport</code></td>
+<td>Cluster-scoped infrastructure, including node and control-plane components</td>
+<td>Is the cluster&#39;s own infrastructure misconfigured?</td>
+</tr>
+<tr>
+<td><code>SbomReport</code> / <code>ClusterSbomReport</code></td>
+<td>Image and cluster software inventory</td>
+<td>What is installed, independent of whether it has a known CVE?</td>
+</tr>
+<tr>
+<td><code>ClusterComplianceReport</code></td>
+<td>Findings mapped to CIS, NSA, and Pod Security Standards controls</td>
+<td>Which controls pass or fail, and according to which mapping?</td>
+</tr>
+</tbody></table>
+<p>The report types used in the UI screenshots were vulnerabilities, config audits, exposed secrets, and RBAC. Infrastructure assessment, SBOM, and compliance reports are also part of the operator&#39;s API, but they were not the focus of this walkthrough.</p>
+<h3>What it can scan</h3>
+<ul>
+<li>Container images used by Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and ReplicaSets.</li>
+<li>Workload manifests and the Kubernetes resources supported by the config scanner, such as Services, Ingresses, and NetworkPolicies.</li>
+<li>Namespace <code>Role</code> and cluster <code>ClusterRole</code> rules.</li>
+<li>Infra and compliance data exposed as cluster-scoped report objects.</li>
+<li>SBOM inventory for images and the cluster.</li>
+</ul>
+<h3>What it cannot scan</h3>
+<ul>
+<li>Images that exist only in a node&#39;s local container store. A <code>k3d image import</code> makes an image runnable, but the operator&#39;s Trivy server still needs a registry it can pull from.</li>
+<li>The live filesystem, process list, or memory of a running container.</li>
+<li>Secrets stored in environment variables, ConfigMaps, or Kubernetes <code>Secret</code> objects. <code>ExposedSecretReport</code> covers content found inside images.</li>
+<li>Runtime behavior such as shell execution or suspicious network traffic. That requires Falco, Tetragon, or another runtime sensor.</li>
+<li>Admission decisions. The operator reports what is already running; Kyverno or Gatekeeper must prevent a workload from being created.</li>
+</ul>
+<p>Private registries also need credentials available to the operator and its scan jobs. An image that pulls successfully onto a node is not automatically readable by the scanner.</p>
 <h2>Step 9: Read the Kubernetes-native reports</h2>
 <p>List the report resources:</p>
 <pre><code class="language-powershell">kubectl get vulnerabilityreports,configauditreports,exposedsecretreports `
@@ -1858,13 +2006,13 @@ kubectl get clustercompliancereports
                 en: {
                     title: "Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI",
                     date: "November 10, 2026",
-                    readingTime: "31 min read",
+                    readingTime: "33 min read",
                     tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>",
                 },
                 th: {
                     title: "Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI",
                     date: "November 10, 2026",
-                    readingTime: "31 นาที",
+                    readingTime: "33 นาที",
                     tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>",
                 },
             };

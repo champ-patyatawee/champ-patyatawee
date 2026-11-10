@@ -391,6 +391,42 @@ That is a real Trivy constraint: a fresh cache cannot skip the database, even if
 
 The operator watches workload changes and creates reports automatically. It is not a scheduled cron-only scanner; a new pod or workload change can trigger reconciliation. The compliance reports have a separate cron schedule.
 
+## What Trivy Operator can scan
+
+The operator is easier to reason about when you list its report types instead of calling it "a scanner". Each CRD answers a different question:
+
+| Report | What it scans | What it answers |
+|---|---|---|
+| `VulnerabilityReport` | Container images referenced by workloads, including OS packages and language dependencies | Which CVEs are inside this image? |
+| `ConfigAuditReport` | Pod specs and Kubernetes workload manifests | Is this workload privileged, root, writable, or missing limits? |
+| `ExposedSecretReport` | Files inside a container image | Did the image ship with a credential? |
+| `RbacAssessmentReport` | Namespace-scoped `Role` objects | Can this Role do too much? |
+| `ClusterRbacAssessmentReport` | `ClusterRole` objects | Can this cluster identity do too much? |
+| `InfraAssessmentReport` | Namespaced cluster infrastructure resources | Is this infrastructure component misconfigured? |
+| `ClusterInfraAssessmentReport` | Cluster-scoped infrastructure, including node and control-plane components | Is the cluster's own infrastructure misconfigured? |
+| `SbomReport` / `ClusterSbomReport` | Image and cluster software inventory | What is installed, independent of whether it has a known CVE? |
+| `ClusterComplianceReport` | Findings mapped to CIS, NSA, and Pod Security Standards controls | Which controls pass or fail, and according to which mapping? |
+
+The report types used in the UI screenshots were vulnerabilities, config audits, exposed secrets, and RBAC. Infrastructure assessment, SBOM, and compliance reports are also part of the operator's API, but they were not the focus of this walkthrough.
+
+### What it can scan
+
+- Container images used by Pods, Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, and ReplicaSets.
+- Workload manifests and the Kubernetes resources supported by the config scanner, such as Services, Ingresses, and NetworkPolicies.
+- Namespace `Role` and cluster `ClusterRole` rules.
+- Infra and compliance data exposed as cluster-scoped report objects.
+- SBOM inventory for images and the cluster.
+
+### What it cannot scan
+
+- Images that exist only in a node's local container store. A `k3d image import` makes an image runnable, but the operator's Trivy server still needs a registry it can pull from.
+- The live filesystem, process list, or memory of a running container.
+- Secrets stored in environment variables, ConfigMaps, or Kubernetes `Secret` objects. `ExposedSecretReport` covers content found inside images.
+- Runtime behavior such as shell execution or suspicious network traffic. That requires Falco, Tetragon, or another runtime sensor.
+- Admission decisions. The operator reports what is already running; Kyverno or Gatekeeper must prevent a workload from being created.
+
+Private registries also need credentials available to the operator and its scan jobs. An image that pulls successfully onto a node is not automatically readable by the scanner.
+
 ## Step 9: Read the Kubernetes-native reports
 
 List the report resources:
