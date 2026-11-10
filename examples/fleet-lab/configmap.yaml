@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleet-demo-config
+  namespace: fleet-demo
+data:
+  APP_ENV: lab
+  MANAGED_BY: rancher-fleet

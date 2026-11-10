@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-demo
+  namespace: fleet-demo
+  labels:
+    app: fleet-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fleet-demo
+  template:
+    metadata:
+      labels:
+        app: fleet-demo
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.11.0
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: fleet-demo-config
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            runAsNonRoot: true
+            runAsUser: 65532
+            readOnlyRootFilesystem: true

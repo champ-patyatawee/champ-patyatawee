@@ -1,0 +1,3 @@
+defaultNamespace: fleet-demo
+labels:
+  app.kubernetes.io/part-of: fleet-demo
