@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A UI-first tour of Trivy Operator: how its CRDs become Policy Reports, what every Policy Reporter tab actually shows, and the real vulnerability, config, secret, and RBAC findings behind each screen.">
+    <meta property="og:title" content="Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings — Champ Patyatawee">
+    <meta property="og:description" content="A UI-first tour of Trivy Operator: how its CRDs become Policy Reports, what every Policy Reporter tab actually shows, and the real vulnerability, config, secret, and RBAC findings behind each screen.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Trivy-Operator-Continuous-Kubernetes-Security/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings">
+    <meta name="twitter:description" content="A UI-first tour of Trivy Operator: how its CRDs become Policy Reports, what every Policy Reporter tab actually shows, and the real vulnerability, config, secret, and RBAC findings behind each screen.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Trivy-Operator-Continuous-Kubernetes-Security/og.jpg">
+    <meta name="twitter:image:alt" content="Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="A UI-first tour of Trivy Operator: how its CRDs become Policy Reports, what every Policy Reporter tab actually shows, and the real vulnerability, config, secret, and RBAC findings behind each screen." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security">
+    <title>Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=7">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">13 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">trivy</span>
+<span class="tag">trivy-operator</span>
+<span class="tag">kubernetes</span>
+<span class="tag">security</span>
+<span class="tag">policy-reporter</span>
+<span class="tag">rbac</span>
+<span class="tag">ui</span>
+<span class="tag">k3d</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Trivy Operator does not have a UI. It has a report API.</p>
+<p>That distinction sounds like a technicality until you try to use it during an incident. The operator writes <code>VulnerabilityReport</code>, <code>ConfigAuditReport</code>, <code>ExposedSecretReport</code>, <code>RbacAssessmentReport</code>, <code>SbomReport</code>, and <code>ClusterComplianceReport</code> objects. You can read them with <code>kubectl</code>, but a wall of YAML is not a triage workflow.</p>
+<p>This article is a UI-first deep dive into the operator. I ran it on a 4-node k3d cluster, installed Policy Reporter with the Trivy adapter, and walked every tab against real findings. The goal is not “install another dashboard.” The goal is to understand what each screen is actually telling you, what it is not telling you, and which report object sits behind it.</p>
+<h2>The UI layer, and why it exists</h2>
+<p>The operator&#39;s job is to watch Kubernetes, run scans, and publish reports. The UI&#39;s job is to answer questions:</p>
+<ul>
+<li>Which running image has the worst CVEs?</li>
+<li>Which workload is privileged or shares the host network?</li>
+<li>Did an image ship with a credential?</li>
+<li>Which ServiceAccount can do too much?</li>
+<li>Is this finding new, or inherited from the base image?</li>
+</ul>
+<p>Rancher can show the raw CRDs, but it is a generic Kubernetes browser:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/02-rancher-vulnerability-crds.png" alt="Rancher CRD browser showing VulnerabilityReports, ExposedSecretReports, and ClusterRbacAssessmentReports"></p>
+<p>There is no CVE search, no owner, no suppression, no notification, and no cross-source view. That is the gap Policy Reporter fills.</p>
+<p>The pipeline is: workload change → scan Job → report CRD → adapter → PolicyReport → UI.</p>
+<p>The adapter is the important translation layer. Trivy Operator emits its own CRDs; Policy Reporter consumes the Kubernetes Policy Working Group&#39;s <code>PolicyReport</code> format. Without the adapter, the UI has nothing to display.</p>
+<h2>Versions and the lab</h2>
+<ul>
+<li>k3s <code>v1.36.5+k3s1</code>, 1 server + 3 agents</li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Trivy Operator chart <code>0.38.1</code>, application <code>0.36.1</code></li>
+<li>Scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code></li>
+<li>Trivy Operator PolicyReport adapter <code>0.11.5</code></li>
+</ul>
+<p>The operator was already running with <code>targetNamespaces: trivy-demo</code>. The UI deep dive is based on four workloads:</p>
+<ul>
+<li><code>payments-api</code> — <code>nginx:1.19</code>, privileged, host network, host PID, hostPath, root.</li>
+<li><code>legacy-web</code> — <code>nginx:1.19</code>, the older workload from the previous lab.</li>
+<li><code>data-exporter</code> — <code>python:3.6-slim</code>, a language-runtime image with a very different CVE profile.</li>
+<li><code>leaky-app</code> — <code>josedonizetti/trivy:secrettest</code>, a public test image containing a synthetic Stripe key.</li>
+</ul>
+<p>The operator produced four reports per source, plus cluster-scoped RBAC and compliance reports. That is the data set behind the screenshots.</p>
+<h2>Install the UI in the right order</h2>
+<p>Policy Reporter needs the PolicyReport CRDs before its core starts. The adapter chart can install them.</p>
+<p>Adapter values:</p>
+<pre><code class="language-yaml">crds:
+  install: true
+adapters:
+  vulnerabilityReports:
+    enabled: true
+  configAuditReports:
+    enabled: true
+  rbacAssessmentReports:
+    enabled: true
+  exposedSecretReports:
+    enabled: true
+  complianceReports:
+    enabled: true
+  infraAssessmentReports:
+    enabled: true
+  clusterInfraAssessmentReports:
+    enabled: true
+</code></pre>
+<p>Install the adapter first:</p>
+<pre><code class="language-powershell">helm repo add policy-reporter https://kyverno.github.io/policy-reporter
+helm repo add trivy-operator-polr-adapter https://fjogeleit.github.io/trivy-operator-polr-adapter
+helm repo update
+helm upgrade --install trivy-operator-polr-adapter trivy-operator-polr-adapter/trivy-operator-polr-adapter -n policy-reporter --create-namespace -f .\adapter-values.yaml --wait
+</code></pre>
+<p>Then install the core with the UI:</p>
+<pre><code class="language-yaml"># policy-reporter-values.yaml
+ui:
+  enabled: true
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: policy-reporter.127.0.0.1.nip.io
+        paths:
+          - path: /
+            pathType: Prefix
+metrics:
+  enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm upgrade --install policy-reporter policy-reporter/policy-reporter -n policy-reporter -f .\policy-reporter-values.yaml --wait --timeout 5m
+</code></pre>
+<p>I did this in the opposite order first. The core crash-looped with:</p>
+<pre><code class="language-text">no valid reporting API group found in the cluster
+</code></pre>
+<p>The missing dependency was the <code>PolicyReport</code> CRD. Installing the adapter with <code>crds.install=true</code> created the API, and the core recovered on its next restart. If a controller says it cannot find a reporting API, check the CRDs before you debug the UI.</p>
+<h2>Open the UI</h2>
+<p>For the screenshots I used a port-forward because the browser blocked the <code>.nip.io</code> host locally:</p>
+<pre><code class="language-powershell">kubectl -n policy-reporter port-forward svc/policy-reporter-ui 8082:8080
+</code></pre>
+<p>Open <code>http://localhost:8082</code>.</p>
+<p>The left navigation has two groups: the default source dashboards and the policy dashboards. The source dashboards map directly to Trivy Operator report types:</p>
+<ul>
+<li><strong>Dashboard</strong> — aggregate counts across sources.</li>
+<li><strong>Trivy Vulnerability</strong> — image CVEs.</li>
+<li><strong>Trivy ConfigAudit</strong> — workload and resource configuration checks.</li>
+<li><strong>Trivy ExposedSecrets</strong> — secrets found inside images.</li>
+<li><strong>Trivy RbacAssessment</strong> — Roles and ClusterRoles.</li>
+</ul>
+<p>Each tab accepts the same basic controls: a result filter, a <code>Kinds</code> filter, and a search box. The <code>detailed</code> selector changes the results table; the default view is the right starting point.</p>
+<h2>Dashboard: what the 699 means</h2>
+<p>The landing page is an aggregate, not a unique-issue count:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/03-policy-reporter-dashboard.png" alt="Policy Reporter dashboard showing 699 fail results across Trivy vulnerability, config audit, RBAC, and secret sources"></p>
+<p>The 699 fail total decomposes exactly:</p>
+<ul>
+<li><strong>515 vulnerability failures</strong> from the four scans: 185 + 185 + 145 + 0.</li>
+<li><strong>72 configuration failures</strong>: 23 + 17 + 16 + 16.</li>
+<li><strong>112 RBAC failures</strong>: 111 cluster-scoped plus 1 namespace Role.</li>
+<li><strong>0 secret failures</strong>: both secret findings are mapped to <code>warn</code>.</li>
+</ul>
+<p>This is the first thing to understand about the UI. A number like 699 is not “699 problems to fix.” It is 699 report results, many of them duplicates across package versions, ReplicaSets, or related checks. The useful workflow is to move from the aggregate to one source tab, then to one resource.</p>
+<h2>Trivy Vulnerability tab</h2>
+<p>The Vulnerability tab shows <strong>1,694 results</strong>:</p>
+<ul>
+<li><code>payments-api</code>: 423</li>
+<li><code>legacy-web</code>: 423</li>
+<li><code>data-exporter</code>: 708</li>
+<li><code>leaky-app</code>: 140</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/04-policy-reporter-tab-vulnerability.png" alt="Policy Reporter Trivy Vulnerability tab showing 1,694 results for the trivy-demo namespace"></p>
+<p>The page mixes <code>fail</code>, <code>warn</code>, and <code>skip</code>. <strong>Skip is not pass.</strong> A skip usually means the scanner could not evaluate the finding, the package is not applicable, or the result is outside the selected scope. Treating skip as success is how a dashboard becomes misleading.</p>
+<p>The 1,694 rows also are not 1,694 unique CVEs. The same CVE can appear for multiple package instances, and the same image can appear in more than one ReplicaSet. The source <code>VulnerabilityReport</code> is the authoritative per-image object; the UI is an index over those objects.</p>
+<h3>Drilling into one workload</h3>
+<p>Opening <code>payments-api</code> shows the distribution clearly:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/08-policy-reporter-vulnerability-detail.png" alt="Policy Reporter vulnerability detail for payments-api showing 185 failed and 202 warning results"></p>
+<p>The summary is:</p>
+<pre><code class="language-text">fail results   185
+warn results   202
+error results  0
+pass results   0
+</code></pre>
+<p>The table is the useful part: CVE ID, severity, and status. The severity comes from Trivy; the status comes from the PolicyReport mapping. They are different fields.</p>
+<p>Behind that screen is a <code>VulnerabilityReport</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-demo get vulnerabilityreport replicaset-payments-api-867449445b-api -o json
+</code></pre>
+<pre><code class="language-json">{&quot;criticalCount&quot;:42,&quot;highCount&quot;:143,&quot;mediumCount&quot;:175,&quot;lowCount&quot;:27,&quot;unknownCount&quot;:36}
+</code></pre>
+<p>The first package rows included:</p>
+<pre><code class="language-text">CVE-2022-32221  CRITICAL  curl      7.64.0-4+deb10u4
+CVE-2021-22946  HIGH      curl      7.64.0-3+deb10u3
+CVE-2021-37600  MEDIUM    bsdutils  2.33.1-0.1+deb10u1
+CVE-2016-2781   LOW       coreutils
+</code></pre>
+<p>What this tab answers: <strong>which running workload has CVEs, and what are they?</strong></p>
+<p>What it does not answer: whether the vulnerable package is reachable, whether the workload processes untrusted input, or whether the image is actually deployed in production. That requires context outside the scanner.</p>
+<h2>Trivy ConfigAudit tab</h2>
+<p>The ConfigAudit tab shows <strong>72 failures</strong>, all of them configuration checks:</p>
+<ul>
+<li><code>payments-api</code>: 23</li>
+<li><code>legacy-web</code>: 17</li>
+<li><code>data-exporter</code>: 16</li>
+<li><code>leaky-app</code>: 16</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/05-policy-reporter-tab-config-audit.png" alt="Policy Reporter Trivy ConfigAudit tab showing 72 failures across four workloads"></p>
+<p>This tab is the highest-signal view for a Kubernetes security review because it tells you what the workload is allowed to do, not just what packages it contains.</p>
+<h3>Drilling into payments-api</h3>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/09-policy-reporter-config-audit-detail.png" alt="Policy Reporter config audit detail for payments-api showing 23 failures, including host PID and host network"></p>
+<p>The high-severity checks were:</p>
+<pre><code class="language-text">Access to host PID                          AVD-KSV-0010   high
+Access to host network                      AVD-KSV-0009   high
+Default security context configured          AVD-KSV-0118   high
+Privileged                                  AVD-KSV-0017   high
+SYS_ADMIN capability added                  AVD-KSV-0005   high
+Root file system is not read-only           AVD-KSV-0014   high
+Kubernetes resource with disallowed volumes AVD-KSV-0121   high
+</code></pre>
+<p>The same screen also shows medium and low findings: hostPath mounted, seccomp disabled, runs as root, CPU and memory limits missing. This is the value of the tab: one screen connects “what the manifest says” to “why it matters.”</p>
+<p>Behind the screen is a <code>ConfigAuditReport</code> with the same check IDs and remediations. The UI is a reader over that report, not a separate scanner.</p>
+<p>What this tab answers: <strong>what is dangerous about this workload&#39;s configuration?</strong></p>
+<p>What it does not answer: whether the Pod actually behaved maliciously. That is runtime security, not configuration scanning.</p>
+<h2>Trivy ExposedSecrets tab</h2>
+<p>The ExposedSecrets tab shows <strong>2 results</strong> for the test image:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/06-policy-reporter-tab-exposed-secrets.png" alt="Policy Reporter Trivy ExposedSecrets tab showing two Stripe findings mapped to warn"></p>
+<p>Both are <code>warn</code>, even though one is a critical Stripe secret. Open the resource to see why:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/10-policy-reporter-exposed-secret-detail.png" alt="Policy Reporter exposed secret detail showing a critical Stripe secret and a low-severity publishable key"></p>
+<p>The report behind it:</p>
+<pre><code class="language-yaml">secrets:
+  - category: Stripe
+    ruleID: stripe-secret-token
+    title: Stripe Secret Key
+    severity: CRITICAL
+    target: /app/config/secret.yaml
+    match: &#39;    secret_key: **************************************&#39;
+  - category: Stripe
+    ruleID: stripe-publishable-token
+    title: Stripe Publishable Key
+    severity: LOW
+    target: /app/config/secret.yaml
+</code></pre>
+<p>Three points matter:</p>
+<ul>
+<li>The value is masked. The operator is not a secret-recovery tool.</li>
+<li>The adapter maps both findings to <code>result: warn</code>, so a policy that only routes <code>fail</code> will miss a critical secret.</li>
+<li>The scanner is image/content-based. Environment variables in the Deployment did not produce an <code>ExposedSecretReport</code> in this lab. A Kubernetes Secret object is a different exposure problem, handled by RBAC and etcd encryption.</li>
+</ul>
+<p>What this tab answers: <strong>did an image ship with a credential in its filesystem?</strong></p>
+<p>What it does not answer: whether the credential is still valid. If it is real, rotate it. Deleting the workload does not invalidate the key.</p>
+<h2>Trivy RbacAssessment tab</h2>
+<p>The RbacAssessment tab shows <strong>112 failures</strong>: 111 from cluster-scoped roles and 1 from a namespace Role.</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/07-policy-reporter-tab-rbac.png" alt="Policy Reporter Trivy RbacAssessment tab showing 112 failures, mostly cluster-scoped roles"></p>
+<p>The cluster list is noisy because Trivy scans roles that existed before this lab. Use the search box to narrow to the role you care about.</p>
+<p>Opening the lab&#39;s <code>support-admin</code> ClusterRole shows why the tab is worth checking:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/11-policy-reporter-rbac-detail.png" alt="Policy Reporter RBAC detail for a wildcard ClusterRole showing two critical failures"></p>
+<pre><code class="language-yaml">checks:
+  - checkID: AVD-KSV-0046
+    title: Manage all resources
+    severity: CRITICAL
+    remediation: Remove &#39;*&#39; from &#39;rules.resources&#39;.
+  - checkID: AVD-KSV-0044
+    title: No wildcard verb and resource roles
+    severity: CRITICAL
+    remediation: Create a role which does not permit wildcard verb on wildcard resource.
+summary:
+  criticalCount: 2
+</code></pre>
+<p>The namespace Role <code>secret-reader</code> produced a medium result instead:</p>
+<pre><code class="language-yaml">checkID: AVD-KSV-0113
+title: Manage namespace secrets
+severity: MEDIUM
+</code></pre>
+<p>What this tab answers: <strong>which identities can do too much?</strong></p>
+<p>What it does not answer: who actually used that permission. For that you need Kubernetes audit logs, not an RBAC assessment.</p>
+<h2>Status semantics: the part that trips people up</h2>
+<p>The UI shows two different concepts that look similar:</p>
+<ul>
+<li><strong>Severity</strong> comes from Trivy: <code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>, <code>UNKNOWN</code>.</li>
+<li><strong>Result</strong> comes from the PolicyReport mapping: <code>fail</code>, <code>warn</code>, <code>pass</code>, <code>error</code>, <code>skip</code>.</li>
+</ul>
+<p>They do not have to agree. In this lab, a critical Stripe secret was mapped to <code>warn</code>. That is why the dashboard&#39;s fail total was 699 while the secret tab showed two findings that were not part of that number.</p>
+<p><code>skip</code> is not <code>pass</code>. A skipped check can mean the scanner could not evaluate it, the resource kind is out of scope, or the policy does not apply. Read the result column, not just the color.</p>
+<p>There is also a time dimension:</p>
+<ul>
+<li>Reports are snapshots tied to a resource revision or a scheduled compliance run.</li>
+<li><code>scannerReportTTL</code> was <code>24h</code>; old ReplicaSet reports can remain after a rollout.</li>
+<li>Compliance ran on a six-hour cron in this lab.</li>
+<li>The PSS report showed <code>17 PASS / 0 FAIL</code> even after a privileged workload was created, because the report predated the workload.</li>
+</ul>
+<p>A green compliance panel is not a live control. Check the timestamp and the scope.</p>
+<h2>Metrics and Grafana</h2>
+<p>The UI is for reading individual findings. Metrics are for trends and alerting.</p>
+<p>The operator exposes Prometheus metrics on port <code>8080</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-system port-forward deploy/trivy-operator 8081:8080
+curl.exe http://localhost:8081/metrics
+</code></pre>
+<p>Real samples:</p>
+<pre><code class="language-text">trivy_image_vulnerabilities{...,image_repository=&quot;library/nginx&quot;,image_tag=&quot;1.19&quot;,...severity=&quot;Critical&quot;} 42
+trivy_image_exposedsecrets{...,image_repository=&quot;josedonizetti/trivy&quot;,image_tag=&quot;secrettest&quot;,...severity=&quot;Critical&quot;} 1
+trivy_cluster_compliance{...,status=&quot;Fail&quot;,title=&quot;Kubernetes Pod Security Standards - Restricted&quot;} 0
+</code></pre>
+<p>Useful queries:</p>
+<pre><code class="language-promql">sum by (namespace, resource_name) (trivy_image_vulnerabilities{severity=&quot;Critical&quot;})
+sum by (namespace, image_repository, image_tag) (trivy_image_exposedsecrets{severity=&quot;Critical&quot;})
+sum by (title, status) (trivy_cluster_compliance)
+</code></pre>
+<p>For a Grafana view, the official dashboard ID is <code>17813</code>. That gives time series and alerting; it does not replace the per-finding tabs.</p>
+<h2>Operator behavior the UI reveals</h2>
+<p>The tabs are only half the lesson. The report counts expose how the operator works.</p>
+<h3>Reports follow ReplicaSets, not Deployments</h3>
+<p>A Pod template change creates a new ReplicaSet, which creates a new report. That is why the same image can appear more than once, and why old reports can linger after a rollout. Filter by namespace and resource, and use the report TTL as part of your retention policy.</p>
+<h3><code>targetNamespaces</code> does not scope everything</h3>
+<p>The operator was configured with <code>targetNamespaces: trivy-demo</code>, but the RBAC tab still showed 111 cluster-scoped failures. Workload scanning is namespaced; cluster-scoped RBAC assessment is not. Plan for that volume.</p>
+<h3>Client/server scanning cannot read node-local images</h3>
+<p>I built a local test image and imported it into the k3d nodes. The scan job failed:</p>
+<pre><code class="language-text">unable to find the specified image &quot;lab/leaky-app:1.0&quot; in [&quot;docker&quot; &quot;containerd&quot; &quot;podman&quot; &quot;remote&quot;]
+containerd socket not found: /run/containerd/containerd.sock
+</code></pre>
+<p>The operator&#39;s Trivy server pulls images; it does not read the kubelet&#39;s containerd store. A <code>k3d image import</code> makes an image runnable, not pullable by the scanner. Push it to a reachable registry, or change the scan architecture deliberately.</p>
+<h3>The operator reports; it does not prevent</h3>
+<p>Every bad workload in this lab was already running before its report existed. If a resource must never run, use admission policy such as Kyverno or Gatekeeper. The operator is the continuous backstop for drift, legacy workloads, and manual <code>kubectl</code> changes.</p>
+<h3>The UI needs authentication</h3>
+<p>Policy Reporter exposes namespace names, image names, CVEs, and RBAC posture. The lab UI had no authentication because it was local. In production, put OIDC or an authenticated proxy in front of it.</p>
+<h2>What each tab is best at</h2>
+<p>Use this as a reading order:</p>
+<ul>
+<li><strong>Dashboard</strong> — a health summary, not a work queue.</li>
+<li><strong>Vulnerability</strong> — image ownership and patch planning.</li>
+<li><strong>ConfigAudit</strong> — workload hardening and admission-policy design.</li>
+<li><strong>ExposedSecrets</strong> — incident response and credential rotation.</li>
+<li><strong>RbacAssessment</strong> — privilege review and least-privilege cleanup.</li>
+</ul>
+<p>The fastest useful loop is: start at the Dashboard, pick the source with the highest fail count, filter to one namespace, open one resource, then trace the finding back to its CRD with <code>kubectl</code>.</p>
+<h2>Cleanup</h2>
+<p>The operator itself is part of the earlier lab. To remove only this UI and the added cases:</p>
+<pre><code class="language-powershell">helm uninstall policy-reporter -n policy-reporter
+helm uninstall trivy-operator-polr-adapter -n policy-reporter
+kubectl delete namespace policy-reporter
+
+kubectl -n trivy-demo delete deployment payments-api data-exporter leaky-app
+kubectl delete clusterrolebinding support-bot-support-admin
+kubectl delete clusterrole support-admin
+kubectl -n trivy-demo delete rolebinding support-bot-secret-reader
+kubectl -n trivy-demo delete role secret-reader
+kubectl -n trivy-demo delete serviceaccount support-bot
+kubectl -n trivy-demo delete configmap payments-config
+</code></pre>
+<p>If you also want to remove the operator:</p>
+<pre><code class="language-powershell">helm uninstall trivy-operator -n trivy-system
+</code></pre>
+<p>Check for leftover report CRDs and PVCs before assuming cleanup is complete.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator documentation</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/docs/crds/">Trivy Operator CRDs</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/metrics/">Trivy Operator metrics</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/grafana-dashboard/">Trivy Operator Grafana dashboard</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/policy-reporter/">Policy Reporter integration</a></li>
+<li><a href="https://github.com/fjogeleit/trivy-operator-polr-adapter">Trivy Operator PolicyReport adapter</a></li>
+<li><a href="https://kyverno.github.io/policy-reporter/">Policy Reporter documentation</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Trivy Operator does not have a UI. It has a report API.</p>
+<p>That distinction sounds like a technicality until you try to use it during an incident. The operator writes <code>VulnerabilityReport</code>, <code>ConfigAuditReport</code>, <code>ExposedSecretReport</code>, <code>RbacAssessmentReport</code>, <code>SbomReport</code>, and <code>ClusterComplianceReport</code> objects. You can read them with <code>kubectl</code>, but a wall of YAML is not a triage workflow.</p>
+<p>This article is a UI-first deep dive into the operator. I ran it on a 4-node k3d cluster, installed Policy Reporter with the Trivy adapter, and walked every tab against real findings. The goal is not “install another dashboard.” The goal is to understand what each screen is actually telling you, what it is not telling you, and which report object sits behind it.</p>
+<h2>The UI layer, and why it exists</h2>
+<p>The operator&#39;s job is to watch Kubernetes, run scans, and publish reports. The UI&#39;s job is to answer questions:</p>
+<ul>
+<li>Which running image has the worst CVEs?</li>
+<li>Which workload is privileged or shares the host network?</li>
+<li>Did an image ship with a credential?</li>
+<li>Which ServiceAccount can do too much?</li>
+<li>Is this finding new, or inherited from the base image?</li>
+</ul>
+<p>Rancher can show the raw CRDs, but it is a generic Kubernetes browser:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/02-rancher-vulnerability-crds.png" alt="Rancher CRD browser showing VulnerabilityReports, ExposedSecretReports, and ClusterRbacAssessmentReports"></p>
+<p>There is no CVE search, no owner, no suppression, no notification, and no cross-source view. That is the gap Policy Reporter fills.</p>
+<p>The pipeline is: workload change → scan Job → report CRD → adapter → PolicyReport → UI.</p>
+<p>The adapter is the important translation layer. Trivy Operator emits its own CRDs; Policy Reporter consumes the Kubernetes Policy Working Group&#39;s <code>PolicyReport</code> format. Without the adapter, the UI has nothing to display.</p>
+<h2>Versions and the lab</h2>
+<ul>
+<li>k3s <code>v1.36.5+k3s1</code>, 1 server + 3 agents</li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Trivy Operator chart <code>0.38.1</code>, application <code>0.36.1</code></li>
+<li>Scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code></li>
+<li>Trivy Operator PolicyReport adapter <code>0.11.5</code></li>
+</ul>
+<p>The operator was already running with <code>targetNamespaces: trivy-demo</code>. The UI deep dive is based on four workloads:</p>
+<ul>
+<li><code>payments-api</code> — <code>nginx:1.19</code>, privileged, host network, host PID, hostPath, root.</li>
+<li><code>legacy-web</code> — <code>nginx:1.19</code>, the older workload from the previous lab.</li>
+<li><code>data-exporter</code> — <code>python:3.6-slim</code>, a language-runtime image with a very different CVE profile.</li>
+<li><code>leaky-app</code> — <code>josedonizetti/trivy:secrettest</code>, a public test image containing a synthetic Stripe key.</li>
+</ul>
+<p>The operator produced four reports per source, plus cluster-scoped RBAC and compliance reports. That is the data set behind the screenshots.</p>
+<h2>Install the UI in the right order</h2>
+<p>Policy Reporter needs the PolicyReport CRDs before its core starts. The adapter chart can install them.</p>
+<p>Adapter values:</p>
+<pre><code class="language-yaml">crds:
+  install: true
+adapters:
+  vulnerabilityReports:
+    enabled: true
+  configAuditReports:
+    enabled: true
+  rbacAssessmentReports:
+    enabled: true
+  exposedSecretReports:
+    enabled: true
+  complianceReports:
+    enabled: true
+  infraAssessmentReports:
+    enabled: true
+  clusterInfraAssessmentReports:
+    enabled: true
+</code></pre>
+<p>Install the adapter first:</p>
+<pre><code class="language-powershell">helm repo add policy-reporter https://kyverno.github.io/policy-reporter
+helm repo add trivy-operator-polr-adapter https://fjogeleit.github.io/trivy-operator-polr-adapter
+helm repo update
+helm upgrade --install trivy-operator-polr-adapter trivy-operator-polr-adapter/trivy-operator-polr-adapter -n policy-reporter --create-namespace -f .\adapter-values.yaml --wait
+</code></pre>
+<p>Then install the core with the UI:</p>
+<pre><code class="language-yaml"># policy-reporter-values.yaml
+ui:
+  enabled: true
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: policy-reporter.127.0.0.1.nip.io
+        paths:
+          - path: /
+            pathType: Prefix
+metrics:
+  enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm upgrade --install policy-reporter policy-reporter/policy-reporter -n policy-reporter -f .\policy-reporter-values.yaml --wait --timeout 5m
+</code></pre>
+<p>I did this in the opposite order first. The core crash-looped with:</p>
+<pre><code class="language-text">no valid reporting API group found in the cluster
+</code></pre>
+<p>The missing dependency was the <code>PolicyReport</code> CRD. Installing the adapter with <code>crds.install=true</code> created the API, and the core recovered on its next restart. If a controller says it cannot find a reporting API, check the CRDs before you debug the UI.</p>
+<h2>Open the UI</h2>
+<p>For the screenshots I used a port-forward because the browser blocked the <code>.nip.io</code> host locally:</p>
+<pre><code class="language-powershell">kubectl -n policy-reporter port-forward svc/policy-reporter-ui 8082:8080
+</code></pre>
+<p>Open <code>http://localhost:8082</code>.</p>
+<p>The left navigation has two groups: the default source dashboards and the policy dashboards. The source dashboards map directly to Trivy Operator report types:</p>
+<ul>
+<li><strong>Dashboard</strong> — aggregate counts across sources.</li>
+<li><strong>Trivy Vulnerability</strong> — image CVEs.</li>
+<li><strong>Trivy ConfigAudit</strong> — workload and resource configuration checks.</li>
+<li><strong>Trivy ExposedSecrets</strong> — secrets found inside images.</li>
+<li><strong>Trivy RbacAssessment</strong> — Roles and ClusterRoles.</li>
+</ul>
+<p>Each tab accepts the same basic controls: a result filter, a <code>Kinds</code> filter, and a search box. The <code>detailed</code> selector changes the results table; the default view is the right starting point.</p>
+<h2>Dashboard: what the 699 means</h2>
+<p>The landing page is an aggregate, not a unique-issue count:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/03-policy-reporter-dashboard.png" alt="Policy Reporter dashboard showing 699 fail results across Trivy vulnerability, config audit, RBAC, and secret sources"></p>
+<p>The 699 fail total decomposes exactly:</p>
+<ul>
+<li><strong>515 vulnerability failures</strong> from the four scans: 185 + 185 + 145 + 0.</li>
+<li><strong>72 configuration failures</strong>: 23 + 17 + 16 + 16.</li>
+<li><strong>112 RBAC failures</strong>: 111 cluster-scoped plus 1 namespace Role.</li>
+<li><strong>0 secret failures</strong>: both secret findings are mapped to <code>warn</code>.</li>
+</ul>
+<p>This is the first thing to understand about the UI. A number like 699 is not “699 problems to fix.” It is 699 report results, many of them duplicates across package versions, ReplicaSets, or related checks. The useful workflow is to move from the aggregate to one source tab, then to one resource.</p>
+<h2>Trivy Vulnerability tab</h2>
+<p>The Vulnerability tab shows <strong>1,694 results</strong>:</p>
+<ul>
+<li><code>payments-api</code>: 423</li>
+<li><code>legacy-web</code>: 423</li>
+<li><code>data-exporter</code>: 708</li>
+<li><code>leaky-app</code>: 140</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/04-policy-reporter-tab-vulnerability.png" alt="Policy Reporter Trivy Vulnerability tab showing 1,694 results for the trivy-demo namespace"></p>
+<p>The page mixes <code>fail</code>, <code>warn</code>, and <code>skip</code>. <strong>Skip is not pass.</strong> A skip usually means the scanner could not evaluate the finding, the package is not applicable, or the result is outside the selected scope. Treating skip as success is how a dashboard becomes misleading.</p>
+<p>The 1,694 rows also are not 1,694 unique CVEs. The same CVE can appear for multiple package instances, and the same image can appear in more than one ReplicaSet. The source <code>VulnerabilityReport</code> is the authoritative per-image object; the UI is an index over those objects.</p>
+<h3>Drilling into one workload</h3>
+<p>Opening <code>payments-api</code> shows the distribution clearly:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/08-policy-reporter-vulnerability-detail.png" alt="Policy Reporter vulnerability detail for payments-api showing 185 failed and 202 warning results"></p>
+<p>The summary is:</p>
+<pre><code class="language-text">fail results   185
+warn results   202
+error results  0
+pass results   0
+</code></pre>
+<p>The table is the useful part: CVE ID, severity, and status. The severity comes from Trivy; the status comes from the PolicyReport mapping. They are different fields.</p>
+<p>Behind that screen is a <code>VulnerabilityReport</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-demo get vulnerabilityreport replicaset-payments-api-867449445b-api -o json
+</code></pre>
+<pre><code class="language-json">{&quot;criticalCount&quot;:42,&quot;highCount&quot;:143,&quot;mediumCount&quot;:175,&quot;lowCount&quot;:27,&quot;unknownCount&quot;:36}
+</code></pre>
+<p>The first package rows included:</p>
+<pre><code class="language-text">CVE-2022-32221  CRITICAL  curl      7.64.0-4+deb10u4
+CVE-2021-22946  HIGH      curl      7.64.0-3+deb10u3
+CVE-2021-37600  MEDIUM    bsdutils  2.33.1-0.1+deb10u1
+CVE-2016-2781   LOW       coreutils
+</code></pre>
+<p>What this tab answers: <strong>which running workload has CVEs, and what are they?</strong></p>
+<p>What it does not answer: whether the vulnerable package is reachable, whether the workload processes untrusted input, or whether the image is actually deployed in production. That requires context outside the scanner.</p>
+<h2>Trivy ConfigAudit tab</h2>
+<p>The ConfigAudit tab shows <strong>72 failures</strong>, all of them configuration checks:</p>
+<ul>
+<li><code>payments-api</code>: 23</li>
+<li><code>legacy-web</code>: 17</li>
+<li><code>data-exporter</code>: 16</li>
+<li><code>leaky-app</code>: 16</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/05-policy-reporter-tab-config-audit.png" alt="Policy Reporter Trivy ConfigAudit tab showing 72 failures across four workloads"></p>
+<p>This tab is the highest-signal view for a Kubernetes security review because it tells you what the workload is allowed to do, not just what packages it contains.</p>
+<h3>Drilling into payments-api</h3>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/09-policy-reporter-config-audit-detail.png" alt="Policy Reporter config audit detail for payments-api showing 23 failures, including host PID and host network"></p>
+<p>The high-severity checks were:</p>
+<pre><code class="language-text">Access to host PID                          AVD-KSV-0010   high
+Access to host network                      AVD-KSV-0009   high
+Default security context configured          AVD-KSV-0118   high
+Privileged                                  AVD-KSV-0017   high
+SYS_ADMIN capability added                  AVD-KSV-0005   high
+Root file system is not read-only           AVD-KSV-0014   high
+Kubernetes resource with disallowed volumes AVD-KSV-0121   high
+</code></pre>
+<p>The same screen also shows medium and low findings: hostPath mounted, seccomp disabled, runs as root, CPU and memory limits missing. This is the value of the tab: one screen connects “what the manifest says” to “why it matters.”</p>
+<p>Behind the screen is a <code>ConfigAuditReport</code> with the same check IDs and remediations. The UI is a reader over that report, not a separate scanner.</p>
+<p>What this tab answers: <strong>what is dangerous about this workload&#39;s configuration?</strong></p>
+<p>What it does not answer: whether the Pod actually behaved maliciously. That is runtime security, not configuration scanning.</p>
+<h2>Trivy ExposedSecrets tab</h2>
+<p>The ExposedSecrets tab shows <strong>2 results</strong> for the test image:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/06-policy-reporter-tab-exposed-secrets.png" alt="Policy Reporter Trivy ExposedSecrets tab showing two Stripe findings mapped to warn"></p>
+<p>Both are <code>warn</code>, even though one is a critical Stripe secret. Open the resource to see why:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/10-policy-reporter-exposed-secret-detail.png" alt="Policy Reporter exposed secret detail showing a critical Stripe secret and a low-severity publishable key"></p>
+<p>The report behind it:</p>
+<pre><code class="language-yaml">secrets:
+  - category: Stripe
+    ruleID: stripe-secret-token
+    title: Stripe Secret Key
+    severity: CRITICAL
+    target: /app/config/secret.yaml
+    match: &#39;    secret_key: **************************************&#39;
+  - category: Stripe
+    ruleID: stripe-publishable-token
+    title: Stripe Publishable Key
+    severity: LOW
+    target: /app/config/secret.yaml
+</code></pre>
+<p>Three points matter:</p>
+<ul>
+<li>The value is masked. The operator is not a secret-recovery tool.</li>
+<li>The adapter maps both findings to <code>result: warn</code>, so a policy that only routes <code>fail</code> will miss a critical secret.</li>
+<li>The scanner is image/content-based. Environment variables in the Deployment did not produce an <code>ExposedSecretReport</code> in this lab. A Kubernetes Secret object is a different exposure problem, handled by RBAC and etcd encryption.</li>
+</ul>
+<p>What this tab answers: <strong>did an image ship with a credential in its filesystem?</strong></p>
+<p>What it does not answer: whether the credential is still valid. If it is real, rotate it. Deleting the workload does not invalidate the key.</p>
+<h2>Trivy RbacAssessment tab</h2>
+<p>The RbacAssessment tab shows <strong>112 failures</strong>: 111 from cluster-scoped roles and 1 from a namespace Role.</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/07-policy-reporter-tab-rbac.png" alt="Policy Reporter Trivy RbacAssessment tab showing 112 failures, mostly cluster-scoped roles"></p>
+<p>The cluster list is noisy because Trivy scans roles that existed before this lab. Use the search box to narrow to the role you care about.</p>
+<p>Opening the lab&#39;s <code>support-admin</code> ClusterRole shows why the tab is worth checking:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/11-policy-reporter-rbac-detail.png" alt="Policy Reporter RBAC detail for a wildcard ClusterRole showing two critical failures"></p>
+<pre><code class="language-yaml">checks:
+  - checkID: AVD-KSV-0046
+    title: Manage all resources
+    severity: CRITICAL
+    remediation: Remove &#39;*&#39; from &#39;rules.resources&#39;.
+  - checkID: AVD-KSV-0044
+    title: No wildcard verb and resource roles
+    severity: CRITICAL
+    remediation: Create a role which does not permit wildcard verb on wildcard resource.
+summary:
+  criticalCount: 2
+</code></pre>
+<p>The namespace Role <code>secret-reader</code> produced a medium result instead:</p>
+<pre><code class="language-yaml">checkID: AVD-KSV-0113
+title: Manage namespace secrets
+severity: MEDIUM
+</code></pre>
+<p>What this tab answers: <strong>which identities can do too much?</strong></p>
+<p>What it does not answer: who actually used that permission. For that you need Kubernetes audit logs, not an RBAC assessment.</p>
+<h2>Status semantics: the part that trips people up</h2>
+<p>The UI shows two different concepts that look similar:</p>
+<ul>
+<li><strong>Severity</strong> comes from Trivy: <code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>, <code>UNKNOWN</code>.</li>
+<li><strong>Result</strong> comes from the PolicyReport mapping: <code>fail</code>, <code>warn</code>, <code>pass</code>, <code>error</code>, <code>skip</code>.</li>
+</ul>
+<p>They do not have to agree. In this lab, a critical Stripe secret was mapped to <code>warn</code>. That is why the dashboard&#39;s fail total was 699 while the secret tab showed two findings that were not part of that number.</p>
+<p><code>skip</code> is not <code>pass</code>. A skipped check can mean the scanner could not evaluate it, the resource kind is out of scope, or the policy does not apply. Read the result column, not just the color.</p>
+<p>There is also a time dimension:</p>
+<ul>
+<li>Reports are snapshots tied to a resource revision or a scheduled compliance run.</li>
+<li><code>scannerReportTTL</code> was <code>24h</code>; old ReplicaSet reports can remain after a rollout.</li>
+<li>Compliance ran on a six-hour cron in this lab.</li>
+<li>The PSS report showed <code>17 PASS / 0 FAIL</code> even after a privileged workload was created, because the report predated the workload.</li>
+</ul>
+<p>A green compliance panel is not a live control. Check the timestamp and the scope.</p>
+<h2>Metrics and Grafana</h2>
+<p>The UI is for reading individual findings. Metrics are for trends and alerting.</p>
+<p>The operator exposes Prometheus metrics on port <code>8080</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-system port-forward deploy/trivy-operator 8081:8080
+curl.exe http://localhost:8081/metrics
+</code></pre>
+<p>Real samples:</p>
+<pre><code class="language-text">trivy_image_vulnerabilities{...,image_repository=&quot;library/nginx&quot;,image_tag=&quot;1.19&quot;,...severity=&quot;Critical&quot;} 42
+trivy_image_exposedsecrets{...,image_repository=&quot;josedonizetti/trivy&quot;,image_tag=&quot;secrettest&quot;,...severity=&quot;Critical&quot;} 1
+trivy_cluster_compliance{...,status=&quot;Fail&quot;,title=&quot;Kubernetes Pod Security Standards - Restricted&quot;} 0
+</code></pre>
+<p>Useful queries:</p>
+<pre><code class="language-promql">sum by (namespace, resource_name) (trivy_image_vulnerabilities{severity=&quot;Critical&quot;})
+sum by (namespace, image_repository, image_tag) (trivy_image_exposedsecrets{severity=&quot;Critical&quot;})
+sum by (title, status) (trivy_cluster_compliance)
+</code></pre>
+<p>For a Grafana view, the official dashboard ID is <code>17813</code>. That gives time series and alerting; it does not replace the per-finding tabs.</p>
+<h2>Operator behavior the UI reveals</h2>
+<p>The tabs are only half the lesson. The report counts expose how the operator works.</p>
+<h3>Reports follow ReplicaSets, not Deployments</h3>
+<p>A Pod template change creates a new ReplicaSet, which creates a new report. That is why the same image can appear more than once, and why old reports can linger after a rollout. Filter by namespace and resource, and use the report TTL as part of your retention policy.</p>
+<h3><code>targetNamespaces</code> does not scope everything</h3>
+<p>The operator was configured with <code>targetNamespaces: trivy-demo</code>, but the RBAC tab still showed 111 cluster-scoped failures. Workload scanning is namespaced; cluster-scoped RBAC assessment is not. Plan for that volume.</p>
+<h3>Client/server scanning cannot read node-local images</h3>
+<p>I built a local test image and imported it into the k3d nodes. The scan job failed:</p>
+<pre><code class="language-text">unable to find the specified image &quot;lab/leaky-app:1.0&quot; in [&quot;docker&quot; &quot;containerd&quot; &quot;podman&quot; &quot;remote&quot;]
+containerd socket not found: /run/containerd/containerd.sock
+</code></pre>
+<p>The operator&#39;s Trivy server pulls images; it does not read the kubelet&#39;s containerd store. A <code>k3d image import</code> makes an image runnable, not pullable by the scanner. Push it to a reachable registry, or change the scan architecture deliberately.</p>
+<h3>The operator reports; it does not prevent</h3>
+<p>Every bad workload in this lab was already running before its report existed. If a resource must never run, use admission policy such as Kyverno or Gatekeeper. The operator is the continuous backstop for drift, legacy workloads, and manual <code>kubectl</code> changes.</p>
+<h3>The UI needs authentication</h3>
+<p>Policy Reporter exposes namespace names, image names, CVEs, and RBAC posture. The lab UI had no authentication because it was local. In production, put OIDC or an authenticated proxy in front of it.</p>
+<h2>What each tab is best at</h2>
+<p>Use this as a reading order:</p>
+<ul>
+<li><strong>Dashboard</strong> — a health summary, not a work queue.</li>
+<li><strong>Vulnerability</strong> — image ownership and patch planning.</li>
+<li><strong>ConfigAudit</strong> — workload hardening and admission-policy design.</li>
+<li><strong>ExposedSecrets</strong> — incident response and credential rotation.</li>
+<li><strong>RbacAssessment</strong> — privilege review and least-privilege cleanup.</li>
+</ul>
+<p>The fastest useful loop is: start at the Dashboard, pick the source with the highest fail count, filter to one namespace, open one resource, then trace the finding back to its CRD with <code>kubectl</code>.</p>
+<h2>Cleanup</h2>
+<p>The operator itself is part of the earlier lab. To remove only this UI and the added cases:</p>
+<pre><code class="language-powershell">helm uninstall policy-reporter -n policy-reporter
+helm uninstall trivy-operator-polr-adapter -n policy-reporter
+kubectl delete namespace policy-reporter
+
+kubectl -n trivy-demo delete deployment payments-api data-exporter leaky-app
+kubectl delete clusterrolebinding support-bot-support-admin
+kubectl delete clusterrole support-admin
+kubectl -n trivy-demo delete rolebinding support-bot-secret-reader
+kubectl -n trivy-demo delete role secret-reader
+kubectl -n trivy-demo delete serviceaccount support-bot
+kubectl -n trivy-demo delete configmap payments-config
+</code></pre>
+<p>If you also want to remove the operator:</p>
+<pre><code class="language-powershell">helm uninstall trivy-operator -n trivy-system
+</code></pre>
+<p>Check for leftover report CRDs and PVCs before assuming cleanup is complete.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator documentation</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/docs/crds/">Trivy Operator CRDs</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/metrics/">Trivy Operator metrics</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/grafana-dashboard/">Trivy Operator Grafana dashboard</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/policy-reporter/">Policy Reporter integration</a></li>
+<li><a href="https://github.com/fjogeleit/trivy-operator-polr-adapter">Trivy Operator PolicyReport adapter</a></li>
+<li><a href="https://kyverno.github.io/policy-reporter/">Policy Reporter documentation</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Trivy%20Operator%20UI%20Deep%20Dive%3A%20Every%20Report%20Tab%2C%20Explained%20with%20Real%20Findings&url=https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Trivy-Operator-Continuous-Kubernetes-Security" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings",
+                    date: "November 10, 2026",
+                    readingTime: "13 min read",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>\n<span class=\"tag\">k3d</span>",
+                },
+                th: {
+                    title: "Trivy Operator UI Deep Dive: Every Report Tab, Explained with Real Findings",
+                    date: "November 10, 2026",
+                    readingTime: "13 นาที",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>\n<span class=\"tag\">k3d</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
