@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta property="og:title" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts — Champ Patyatawee">
+    <meta property="og:description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Rancher-Fleet-GitOps-on-k3d/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts">
+    <meta name="twitter:description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Rancher-Fleet-GitOps-on-k3d/og.jpg">
+    <meta name="twitter:image:alt" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
+    <title>Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">12 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">fleet</span>
+<span class="tag">rancher</span>
+<span class="tag">gitops</span>
+<span class="tag">kubernetes</span>
+<span class="tag">k3d</span>
+<span class="tag">traefik</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Rancher 2.15 installs Fleet by default. Most people never notice. It sits in <code>cattle-fleet-system</code>, waits for a <code>GitRepo</code>, and does nothing until you give it a repository to reconcile.</p>
+<p>That is a useful starting point for a GitOps lab. There is no extra controller to install and no second management plane to run. The question is whether Fleet&#39;s reconciliation model is actually understandable when you watch it work: what is a Bundle, why does a cluster get its own namespace, and what happens when someone changes a Deployment by hand?</p>
+<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, one small application, and two deliberate changes — one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
+<h2>What Fleet actually manages</h2>
+<p>Fleet has four objects worth understanding before touching YAML:</p>
+<ul>
+<li><strong>GitRepo</strong> — the desired source: repository URL, branch, path, and target clusters.</li>
+<li><strong>Bundle</strong> — the content Fleet produced from that path. A Bundle is cluster-independent.</li>
+<li><strong>BundleDeployment</strong> — the per-cluster assignment of a Bundle, created in a generated namespace such as <code>cluster-fleet-local-local-1a3d67d0a899</code>.</li>
+<li><strong>Cluster / ClusterGroup</strong> — the targets. A <code>GitRepo</code> can target one cluster by name, a label selector, or a group.</li>
+</ul>
+<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
+<p>The local Rancher cluster is registered as <code>fleet-local/local</code>. That is the only target in this POC.</p>
+<h2>Scope: one cluster, not a multi-cluster claim</h2>
+<p>This lab proves:</p>
+<ul>
+<li>a public Git repository can drive resources into the Rancher local cluster;</li>
+<li>the same commit produces a Bundle and a BundleDeployment;</li>
+<li>a Git change updates running resources;</li>
+<li>drift correction can revert a manual <code>kubectl</code> change.</li>
+</ul>
+<p>It does <strong>not</strong> prove multi-cluster targeting, private-repository credentials, webhook latency, or Fleet HA. Those are production topics, not claims from this single-cluster run.</p>
+<h2>Versions in the lab</h2>
+<ul>
+<li>k3d <code>v5.9.0</code></li>
+<li>k3s <code>v1.36.5+k3s1</code>, one server and three agents</li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Fleet chart <code>110.0.3+up0.16.3</code>, Fleet <code>0.16.3</code></li>
+<li>Traefik chart <code>42.3.1</code>, app <code>v3.7.17</code></li>
+<li>Demo image <code>traefik/whoami:v1.11.0</code></li>
+</ul>
+<p>Fleet was already installed by Rancher. I did not install a second copy.</p>
+<h2>Prerequisites and context lock</h2>
+<p>Run the Kubernetes commands from WSL with the Windows kubeconfig:</p>
+<pre><code class="language-bash">export KUBECONFIG=/mnt/c/Users/C/.kube/config
+kubectl config current-context
+kubectl get nodes -o wide
+</code></pre>
+<p>The context must be <code>k3d-rancher-lab</code>. The lab had four Ready nodes:</p>
+<pre><code class="language-text">NAME                       STATUS   ROLES           AGE   VERSION
+k3d-rancher-lab-agent-0    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-agent-1    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-server-0   Ready    control-plane    27h   v1.36.5+k3s1
+</code></pre>
+<p>Everything below targets this context. Do not apply a <code>GitRepo</code> while pointed at another cluster.</p>
+<h2>Step 1: Confirm Fleet is already running</h2>
+<p>Check the Rancher-managed releases and pods:</p>
+<pre><code class="language-bash">helm list -n cattle-fleet-system
+kubectl -n cattle-fleet-system get pods
+</code></pre>
+<pre><code class="language-text">NAME        NAMESPACE            CHART                    APP VERSION
+fleet       cattle-fleet-system  fleet-110.0.3+up0.16.3   0.16.3
+fleet-crd   cattle-fleet-system  fleet-crd-110.0.3+up0.16.3 0.16.3
+
+NAME                                READY   STATUS    RESTARTS
+fleet-controller-7bbf999986-jtbwx   3/3     Running   6
+gitjob-7b44bfbb8b-nlzcf             1/1     Running   2
+helmops-699498bc87-pqxbt            1/1     Running   2
+</code></pre>
+<p>The CRDs are the API surface you will use:</p>
+<pre><code class="language-bash">kubectl get crd | grep fleet.cattle.io
+</code></pre>
+<pre><code class="language-text">bundledeployments.fleet.cattle.io
+bundles.fleet.cattle.io
+clustergroups.fleet.cattle.io
+clusters.fleet.cattle.io
+gitrepos.fleet.cattle.io
+</code></pre>
+<p>Open Rancher and go to <strong>Continuous Delivery</strong>. The dashboard is empty until a Git source exists:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/01-fleet-dashboard.png" alt="Rancher Continuous Delivery dashboard with no application bundles yet"></p>
+<p>The <code>fleet-local</code> workspace already contains one cluster — the local Rancher cluster. That is the target for this POC.</p>
+<h2>Step 2: Put the application in Git</h2>
+<p>I added the manifests under <code>examples/fleet-lab/</code> in the same public repository as this blog. The path is part of the GitOps contract, so keep it explicit.</p>
+<pre><code class="language-text">examples/fleet-lab/
+├── namespace.yaml
+├── configmap.yaml
+├── deployment.yaml
+├── service.yaml
+├── ingress.yaml
+├── fleet.yaml
+└── README.md
+</code></pre>
+<p>The Deployment runs <code>traefik/whoami</code>, a tiny HTTP server that prints the pod hostname and request headers. That makes it obvious which replica answered through Traefik.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-demo
+  namespace: fleet-demo
+  labels:
+    app: fleet-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fleet-demo
+  template:
+    metadata:
+      labels:
+        app: fleet-demo
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.11.0
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: fleet-demo-config
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [&quot;ALL&quot;]
+            runAsNonRoot: true
+            runAsUser: 65532
+            readOnlyRootFilesystem: true
+</code></pre>
+<p>The Ingress uses the existing Traefik class and a <code>nip.io</code> hostname:</p>
+<pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fleet-demo
+  namespace: fleet-demo
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: fleet-demo.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fleet-demo
+                port:
+                  number: 80
+</code></pre>
+<p>Fleet also supports a <code>fleet.yaml</code> next to the manifests. This one sets the default namespace for resources that do not declare one:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-demo
+labels:
+  app.kubernetes.io/part-of: fleet-demo
+</code></pre>
+<p>Commit and push that directory before creating the GitRepo. Fleet checks out a commit; it does not read your working tree.</p>
+<h2>Step 3: Create the GitRepo</h2>
+<p>A GitRepo is a normal Fleet custom resource. This one targets the local cluster by name:</p>
+<pre><code class="language-yaml">apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: fleet-demo
+  namespace: fleet-local
+spec:
+  repo: https://github.com/champ-patyatawee/champ-patyatawee
+  branch: main
+  paths:
+    - examples/fleet-lab
+  targets:
+    - clusterName: local
+  correctDrift:
+    enabled: true
+</code></pre>
+<p>Apply it:</p>
+<pre><code class="language-bash">kubectl apply -f fleet-gitrepo.yaml
+kubectl -n fleet-local get gitrepo fleet-demo -o wide
+</code></pre>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   0/0
+</code></pre>
+<p><code>0/0</code> is normal for the first few seconds. Fleet has recorded the Git commit but has not created and scheduled the BundleDeployment yet.</p>
+<p>You can also create the same object in Rancher under <strong>Continuous Delivery → App Bundles → Create App Bundle</strong>, but applying the CR makes the spec easier to review in Git.</p>
+<h2>Step 4: Watch Fleet build the deployment chain</h2>
+<p>After a few seconds, the Bundle and BundleDeployment appear:</p>
+<pre><code class="language-bash">kubectl -n fleet-local get gitrepo fleet-demo -o wide
+kubectl -n fleet-local get bundles
+kubectl -n cluster-fleet-local-local-1a3d67d0a899 get bundledeployments
+</code></pre>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   0/1
+  NotReady(1) [Cluster fleet-local/local]; deployment.apps fleet-demo/fleet-demo
+  [progressing] Deployment does not have minimum availability., Available: 0/2
+</code></pre>
+<p>That first <code>NotReady</code> is not a Fleet failure. The two pods were still pulling <code>traefik/whoami:v1.11.0</code>. Fleet reported what the Deployment reported, then recovered:</p>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   1/1
+</code></pre>
+<p>The generated namespace is the important detail. <code>cluster-fleet-local-local-1a3d67d0a899</code> is Fleet&#39;s per-cluster workspace for the <code>local</code> cluster; do not create resources there by hand.</p>
+<p>In Rancher, the workspace now shows one GitRepo, one cluster, and one cluster group:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/02-fleet-workspace.png" alt="Fleet workspace showing one Git repo, one cluster, and one cluster group"></p>
+<p>The App Bundles list shows the source commit, the target, and the resource count:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/03-gitrepo-list.png" alt="Fleet App Bundles list showing fleet-demo Active, source commit cb50c64, target Local, 1/1 clusters ready"></p>
+<p>Open the bundle to see the per-cluster readiness:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/04-gitrepo-detail.png" alt="Fleet App Bundle fleet-demo with 1/1 bundles ready and 5/5 resources ready"></p>
+<p>The Resources tab is the useful audit view. It lists every object Fleet applied, with its cluster and namespace:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/05-gitrepo-resources.png" alt="Fleet Resources tab showing Namespace, Deployment, Ingress, Service, and ConfigMap Ready in the local cluster"></p>
+<p>Five resources are expected from the manifest path: Namespace, Deployment, Ingress, Service, and ConfigMap.</p>
+<h2>Step 5: Verify the application, not just the status</h2>
+<p>Fleet being <code>Active</code> does not prove the Ingress routes traffic. Check the user-facing result:</p>
+<pre><code class="language-bash">curl -sk https://fleet-demo.127.0.0.1.nip.io/
+</code></pre>
+<pre><code class="language-text">Hostname: fleet-demo-5db4f5f9cb-xkw6d
+IP: 127.0.0.1
+IP: 10.42.1.52
+Host: fleet-demo.127.0.0.1.nip.io
+X-Forwarded-Proto: https
+X-Forwarded-Server: traefik-5wrpc
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/06-app-whoami.png" alt="The fleet-demo application served through Traefik, showing the pod hostname and forwarded headers"></p>
+<p>The <code>Hostname</code> field changes between replicas. That is also a quick way to see whether a rollout created new pods.</p>
+<h2>Step 6: Change the Deployment through Git</h2>
+<p>The initial commit had <code>replicas: 2</code>. I changed it to <code>replicas: 3</code> in Git and pushed:</p>
+<pre><code class="language-bash">git add examples/fleet-lab/deployment.yaml
+git commit -m &quot;Scale Fleet demo to three replicas&quot;
+git push origin main
+</code></pre>
+<p>The GitRepo status moved to the new commit:</p>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   0711294a4e555560186034fc085c9bfc5b4a9f48   1/1
+</code></pre>
+<p>The Deployment followed:</p>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   3/3     3            3           9m44s
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/07-gitrepo-new-commit.png" alt="Fleet App Bundles list after the Git commit changed the source to 0711294"></p>
+<p>The delay was about a minute. Fleet polls the repository by default; a webhook can shorten the feedback loop, but the commit is still the source of truth. The Bundle changed because the path content changed, and Fleet created a new BundleDeployment revision for the same cluster.</p>
+<p>I reverted the manifest to <code>replicas: 2</code> and pushed again afterward, so the final lab state matches the article&#39;s starting point.</p>
+<h2>Step 7: Prove drift correction</h2>
+<p>This is the part worth testing yourself. With <code>correctDrift.enabled: true</code>, scale the Deployment by hand:</p>
+<pre><code class="language-bash">kubectl -n fleet-demo scale deployment fleet-demo --replicas=5
+kubectl -n fleet-demo get deployment fleet-demo
+</code></pre>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   2/5     5            2           6m56s
+</code></pre>
+<p>Fleet noticed the difference and marked the BundleDeployment <code>Modified</code> instead of silently accepting it:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/08-drift-modified.png" alt="Fleet App Bundle marked Modified after a manual kubectl scale, with 4/5 resources ready"></p>
+<p>With drift correction enabled, it restored the replica count from Git within about 30 seconds:</p>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   2/2     2            2           8m5s
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/09-drift-corrected.png" alt="Fleet App Bundle back to Active with 5/5 resources ready after drift correction"></p>
+<p>The first time I tested this, the Bundle went to <code>Modified</code> but stayed there. The GitRepo had been created without a <code>correctDrift</code> block, so Fleet stored the patch it would apply (<code>{&quot;spec&quot;:{&quot;replicas&quot;:2}}</code>) without reverting the live object. Enabling the field changed the behavior:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo \
+  --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;correctDrift&quot;:{&quot;enabled&quot;:true}}}&#39;
+</code></pre>
+<p>That is a real operational trap. If you expect Fleet to undo manual changes, make <code>correctDrift</code> an explicit part of the GitRepo spec and verify it with a deliberate scale test. Do not assume “GitOps” means “drift is always reverted.”</p>
+<h2>How this maps to production</h2>
+<p>The single-cluster flow above is the same model used for many clusters, with a few additions:</p>
+<ul>
+<li><strong>Target by labels, not names.</strong> Label downstream clusters with <code>env=prod</code> or <code>team=platform</code>, then use a <code>clusterSelector</code> or <code>ClusterGroup</code>. A list of cluster names becomes stale as soon as the fleet grows.</li>
+<li><strong>Use <code>targetCustomizations</code> for per-cluster overrides.</strong> Different replicas, domains, or Helm values belong in <code>fleet.yaml</code>, not in duplicated directories.</li>
+<li><strong>Authenticate private repositories properly.</strong> Use a GitRepo secret or a Rancher Git account; never put a token in the manifest.</li>
+<li><strong>Decide on drift policy deliberately.</strong> <code>correctDrift.enabled: true</code> is a strong statement about ownership. It is appropriate for resources Fleet owns and dangerous for resources another controller also mutates.</li>
+<li><strong>Keep secrets out of the Bundle.</strong> Fleet stores the content and applies it. Use External Secrets, Sealed Secrets, or another secret workflow rather than committing plaintext.</li>
+<li><strong>Watch the generated namespaces.</strong> BundleDeployments live under <code>cluster-fleet-*</code>; those objects are Fleet&#39;s bookkeeping, not a place for manual edits.</li>
+<li><strong>Set expectations for latency.</strong> Polling is simple and works without inbound webhooks; it is not instant. If you need faster feedback, configure the repository webhook rather than shortening the polling interval blindly.</li>
+</ul>
+<p>Fleet and Argo CD solve overlapping problems. Fleet is already integrated with Rancher and its cluster registration model; Argo CD has a different UI and application model. Running both against the same resources is a good way to create ownership conflicts. Pick one per resource set.</p>
+<h2>Troubleshooting notes from the lab</h2>
+<ul>
+<li><strong><code>BUNDLEDEPLOYMENTS-READY</code> shows <code>0/1</code> at first.</strong> Check the BundleDeployment status before assuming Fleet is broken. In this lab the Deployment was still pulling the image.</li>
+<li><strong><code>Modified</code> does not always mean corrected.</strong> Check <code>spec.correctDrift.enabled</code> on the GitRepo. Fleet can detect drift and still leave it in place.</li>
+<li><strong>The BundleDeployment namespace is generated.</strong> Find it with <code>kubectl get ns | grep cluster-fleet</code>; do not hard-code the hash in automation.</li>
+<li><strong>A Git push is not a sync.</strong> Confirm the GitRepo <code>status.commit</code> matches the commit you expect. Fleet reads commits, not local uncommitted files.</li>
+<li><strong>The Ingress can be Ready before the app is reachable.</strong> Check the Service endpoints and the Traefik route with <code>curl</code>, not only the Fleet resource list.</li>
+<li><strong>Private repositories fail differently.</strong> A public HTTPS clone can work with no credentials; a private repository needs a secret and the GitRepo must reference it. The failure usually appears in the GitRepo conditions, not in the workload.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Deleting the GitRepo tells Fleet to clean up the resources it owns:</p>
+<pre><code class="language-bash">kubectl -n fleet-local delete gitrepo fleet-demo
+kubectl get ns fleet-demo
+</code></pre>
+<p>If the namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
+<pre><code class="language-bash">kubectl delete namespace fleet-demo
+</code></pre>
+<p>Do not uninstall <code>fleet</code>, <code>fleet-crd</code>, or <code>fleet-agent-local</code> just to clean up one application. Rancher owns those components and other features depend on them.</p>
+<h2>What I would keep</h2>
+<p>Fleet is a good fit when Rancher is already the control plane. The useful pattern is not “put YAML in Git”; it is:</p>
+<ul>
+<li>one reviewable source path per application;</li>
+<li>a target defined by cluster identity or labels;</li>
+<li>a BundleDeployment status that tells you which cluster failed;</li>
+<li>drift policy that matches who owns the resource;</li>
+<li>a workflow that treats the Git commit as the audit record.</li>
+</ul>
+<p>The most valuable result from this lab was not the green 5/5. It was seeing the <code>Modified</code> state and learning that Fleet will report drift long before it necessarily reverts it. That distinction is the difference between a dashboard and an operational control.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://fleet.rancher.io/">Rancher Fleet documentation</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo">Fleet GitRepo reference</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#correctdrift">Fleet drift correction</a></li>
+<li><a href="https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/continuous-delivery">Rancher Continuous Delivery</a></li>
+<li><a href="https://fleet.rancher.io/ref-bundledeployment">Fleet bundledeployments</a></li>
+<li><a href="https://doc.traefik.io/traefik/providers/kubernetes-ingress/">Traefik Kubernetes Ingress</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Rancher 2.15 installs Fleet by default. Most people never notice. It sits in <code>cattle-fleet-system</code>, waits for a <code>GitRepo</code>, and does nothing until you give it a repository to reconcile.</p>
+<p>That is a useful starting point for a GitOps lab. There is no extra controller to install and no second management plane to run. The question is whether Fleet&#39;s reconciliation model is actually understandable when you watch it work: what is a Bundle, why does a cluster get its own namespace, and what happens when someone changes a Deployment by hand?</p>
+<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, one small application, and two deliberate changes — one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
+<h2>What Fleet actually manages</h2>
+<p>Fleet has four objects worth understanding before touching YAML:</p>
+<ul>
+<li><strong>GitRepo</strong> — the desired source: repository URL, branch, path, and target clusters.</li>
+<li><strong>Bundle</strong> — the content Fleet produced from that path. A Bundle is cluster-independent.</li>
+<li><strong>BundleDeployment</strong> — the per-cluster assignment of a Bundle, created in a generated namespace such as <code>cluster-fleet-local-local-1a3d67d0a899</code>.</li>
+<li><strong>Cluster / ClusterGroup</strong> — the targets. A <code>GitRepo</code> can target one cluster by name, a label selector, or a group.</li>
+</ul>
+<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
+<p>The local Rancher cluster is registered as <code>fleet-local/local</code>. That is the only target in this POC.</p>
+<h2>Scope: one cluster, not a multi-cluster claim</h2>
+<p>This lab proves:</p>
+<ul>
+<li>a public Git repository can drive resources into the Rancher local cluster;</li>
+<li>the same commit produces a Bundle and a BundleDeployment;</li>
+<li>a Git change updates running resources;</li>
+<li>drift correction can revert a manual <code>kubectl</code> change.</li>
+</ul>
+<p>It does <strong>not</strong> prove multi-cluster targeting, private-repository credentials, webhook latency, or Fleet HA. Those are production topics, not claims from this single-cluster run.</p>
+<h2>Versions in the lab</h2>
+<ul>
+<li>k3d <code>v5.9.0</code></li>
+<li>k3s <code>v1.36.5+k3s1</code>, one server and three agents</li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Fleet chart <code>110.0.3+up0.16.3</code>, Fleet <code>0.16.3</code></li>
+<li>Traefik chart <code>42.3.1</code>, app <code>v3.7.17</code></li>
+<li>Demo image <code>traefik/whoami:v1.11.0</code></li>
+</ul>
+<p>Fleet was already installed by Rancher. I did not install a second copy.</p>
+<h2>Prerequisites and context lock</h2>
+<p>Run the Kubernetes commands from WSL with the Windows kubeconfig:</p>
+<pre><code class="language-bash">export KUBECONFIG=/mnt/c/Users/C/.kube/config
+kubectl config current-context
+kubectl get nodes -o wide
+</code></pre>
+<p>The context must be <code>k3d-rancher-lab</code>. The lab had four Ready nodes:</p>
+<pre><code class="language-text">NAME                       STATUS   ROLES           AGE   VERSION
+k3d-rancher-lab-agent-0    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-agent-1    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          27h   v1.36.5+k3s1
+k3d-rancher-lab-server-0   Ready    control-plane    27h   v1.36.5+k3s1
+</code></pre>
+<p>Everything below targets this context. Do not apply a <code>GitRepo</code> while pointed at another cluster.</p>
+<h2>Step 1: Confirm Fleet is already running</h2>
+<p>Check the Rancher-managed releases and pods:</p>
+<pre><code class="language-bash">helm list -n cattle-fleet-system
+kubectl -n cattle-fleet-system get pods
+</code></pre>
+<pre><code class="language-text">NAME        NAMESPACE            CHART                    APP VERSION
+fleet       cattle-fleet-system  fleet-110.0.3+up0.16.3   0.16.3
+fleet-crd   cattle-fleet-system  fleet-crd-110.0.3+up0.16.3 0.16.3
+
+NAME                                READY   STATUS    RESTARTS
+fleet-controller-7bbf999986-jtbwx   3/3     Running   6
+gitjob-7b44bfbb8b-nlzcf             1/1     Running   2
+helmops-699498bc87-pqxbt            1/1     Running   2
+</code></pre>
+<p>The CRDs are the API surface you will use:</p>
+<pre><code class="language-bash">kubectl get crd | grep fleet.cattle.io
+</code></pre>
+<pre><code class="language-text">bundledeployments.fleet.cattle.io
+bundles.fleet.cattle.io
+clustergroups.fleet.cattle.io
+clusters.fleet.cattle.io
+gitrepos.fleet.cattle.io
+</code></pre>
+<p>Open Rancher and go to <strong>Continuous Delivery</strong>. The dashboard is empty until a Git source exists:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/01-fleet-dashboard.png" alt="Rancher Continuous Delivery dashboard with no application bundles yet"></p>
+<p>The <code>fleet-local</code> workspace already contains one cluster — the local Rancher cluster. That is the target for this POC.</p>
+<h2>Step 2: Put the application in Git</h2>
+<p>I added the manifests under <code>examples/fleet-lab/</code> in the same public repository as this blog. The path is part of the GitOps contract, so keep it explicit.</p>
+<pre><code class="language-text">examples/fleet-lab/
+├── namespace.yaml
+├── configmap.yaml
+├── deployment.yaml
+├── service.yaml
+├── ingress.yaml
+├── fleet.yaml
+└── README.md
+</code></pre>
+<p>The Deployment runs <code>traefik/whoami</code>, a tiny HTTP server that prints the pod hostname and request headers. That makes it obvious which replica answered through Traefik.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-demo
+  namespace: fleet-demo
+  labels:
+    app: fleet-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fleet-demo
+  template:
+    metadata:
+      labels:
+        app: fleet-demo
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.11.0
+          ports:
+            - name: http
+              containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: fleet-demo-config
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [&quot;ALL&quot;]
+            runAsNonRoot: true
+            runAsUser: 65532
+            readOnlyRootFilesystem: true
+</code></pre>
+<p>The Ingress uses the existing Traefik class and a <code>nip.io</code> hostname:</p>
+<pre><code class="language-yaml">apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fleet-demo
+  namespace: fleet-demo
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: fleet-demo.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fleet-demo
+                port:
+                  number: 80
+</code></pre>
+<p>Fleet also supports a <code>fleet.yaml</code> next to the manifests. This one sets the default namespace for resources that do not declare one:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-demo
+labels:
+  app.kubernetes.io/part-of: fleet-demo
+</code></pre>
+<p>Commit and push that directory before creating the GitRepo. Fleet checks out a commit; it does not read your working tree.</p>
+<h2>Step 3: Create the GitRepo</h2>
+<p>A GitRepo is a normal Fleet custom resource. This one targets the local cluster by name:</p>
+<pre><code class="language-yaml">apiVersion: fleet.cattle.io/v1alpha1
+kind: GitRepo
+metadata:
+  name: fleet-demo
+  namespace: fleet-local
+spec:
+  repo: https://github.com/champ-patyatawee/champ-patyatawee
+  branch: main
+  paths:
+    - examples/fleet-lab
+  targets:
+    - clusterName: local
+  correctDrift:
+    enabled: true
+</code></pre>
+<p>Apply it:</p>
+<pre><code class="language-bash">kubectl apply -f fleet-gitrepo.yaml
+kubectl -n fleet-local get gitrepo fleet-demo -o wide
+</code></pre>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   0/0
+</code></pre>
+<p><code>0/0</code> is normal for the first few seconds. Fleet has recorded the Git commit but has not created and scheduled the BundleDeployment yet.</p>
+<p>You can also create the same object in Rancher under <strong>Continuous Delivery → App Bundles → Create App Bundle</strong>, but applying the CR makes the spec easier to review in Git.</p>
+<h2>Step 4: Watch Fleet build the deployment chain</h2>
+<p>After a few seconds, the Bundle and BundleDeployment appear:</p>
+<pre><code class="language-bash">kubectl -n fleet-local get gitrepo fleet-demo -o wide
+kubectl -n fleet-local get bundles
+kubectl -n cluster-fleet-local-local-1a3d67d0a899 get bundledeployments
+</code></pre>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   0/1
+  NotReady(1) [Cluster fleet-local/local]; deployment.apps fleet-demo/fleet-demo
+  [progressing] Deployment does not have minimum availability., Available: 0/2
+</code></pre>
+<p>That first <code>NotReady</code> is not a Fleet failure. The two pods were still pulling <code>traefik/whoami:v1.11.0</code>. Fleet reported what the Deployment reported, then recovered:</p>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   cb50c64a01a5a1b4d34f255a2c9cb8c6981a1884   1/1
+</code></pre>
+<p>The generated namespace is the important detail. <code>cluster-fleet-local-local-1a3d67d0a899</code> is Fleet&#39;s per-cluster workspace for the <code>local</code> cluster; do not create resources there by hand.</p>
+<p>In Rancher, the workspace now shows one GitRepo, one cluster, and one cluster group:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/02-fleet-workspace.png" alt="Fleet workspace showing one Git repo, one cluster, and one cluster group"></p>
+<p>The App Bundles list shows the source commit, the target, and the resource count:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/03-gitrepo-list.png" alt="Fleet App Bundles list showing fleet-demo Active, source commit cb50c64, target Local, 1/1 clusters ready"></p>
+<p>Open the bundle to see the per-cluster readiness:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/04-gitrepo-detail.png" alt="Fleet App Bundle fleet-demo with 1/1 bundles ready and 5/5 resources ready"></p>
+<p>The Resources tab is the useful audit view. It lists every object Fleet applied, with its cluster and namespace:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/05-gitrepo-resources.png" alt="Fleet Resources tab showing Namespace, Deployment, Ingress, Service, and ConfigMap Ready in the local cluster"></p>
+<p>Five resources are expected from the manifest path: Namespace, Deployment, Ingress, Service, and ConfigMap.</p>
+<h2>Step 5: Verify the application, not just the status</h2>
+<p>Fleet being <code>Active</code> does not prove the Ingress routes traffic. Check the user-facing result:</p>
+<pre><code class="language-bash">curl -sk https://fleet-demo.127.0.0.1.nip.io/
+</code></pre>
+<pre><code class="language-text">Hostname: fleet-demo-5db4f5f9cb-xkw6d
+IP: 127.0.0.1
+IP: 10.42.1.52
+Host: fleet-demo.127.0.0.1.nip.io
+X-Forwarded-Proto: https
+X-Forwarded-Server: traefik-5wrpc
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/06-app-whoami.png" alt="The fleet-demo application served through Traefik, showing the pod hostname and forwarded headers"></p>
+<p>The <code>Hostname</code> field changes between replicas. That is also a quick way to see whether a rollout created new pods.</p>
+<h2>Step 6: Change the Deployment through Git</h2>
+<p>The initial commit had <code>replicas: 2</code>. I changed it to <code>replicas: 3</code> in Git and pushed:</p>
+<pre><code class="language-bash">git add examples/fleet-lab/deployment.yaml
+git commit -m &quot;Scale Fleet demo to three replicas&quot;
+git push origin main
+</code></pre>
+<p>The GitRepo status moved to the new commit:</p>
+<pre><code class="language-text">NAME         REPO                                                   COMMIT                                     BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-demo   https://github.com/champ-patyatawee/champ-patyatawee   0711294a4e555560186034fc085c9bfc5b4a9f48   1/1
+</code></pre>
+<p>The Deployment followed:</p>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   3/3     3            3           9m44s
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/07-gitrepo-new-commit.png" alt="Fleet App Bundles list after the Git commit changed the source to 0711294"></p>
+<p>The delay was about a minute. Fleet polls the repository by default; a webhook can shorten the feedback loop, but the commit is still the source of truth. The Bundle changed because the path content changed, and Fleet created a new BundleDeployment revision for the same cluster.</p>
+<p>I reverted the manifest to <code>replicas: 2</code> and pushed again afterward, so the final lab state matches the article&#39;s starting point.</p>
+<h2>Step 7: Prove drift correction</h2>
+<p>This is the part worth testing yourself. With <code>correctDrift.enabled: true</code>, scale the Deployment by hand:</p>
+<pre><code class="language-bash">kubectl -n fleet-demo scale deployment fleet-demo --replicas=5
+kubectl -n fleet-demo get deployment fleet-demo
+</code></pre>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   2/5     5            2           6m56s
+</code></pre>
+<p>Fleet noticed the difference and marked the BundleDeployment <code>Modified</code> instead of silently accepting it:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/08-drift-modified.png" alt="Fleet App Bundle marked Modified after a manual kubectl scale, with 4/5 resources ready"></p>
+<p>With drift correction enabled, it restored the replica count from Git within about 30 seconds:</p>
+<pre><code class="language-text">NAME         READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-demo   2/2     2            2           8m5s
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/09-drift-corrected.png" alt="Fleet App Bundle back to Active with 5/5 resources ready after drift correction"></p>
+<p>The first time I tested this, the Bundle went to <code>Modified</code> but stayed there. The GitRepo had been created without a <code>correctDrift</code> block, so Fleet stored the patch it would apply (<code>{&quot;spec&quot;:{&quot;replicas&quot;:2}}</code>) without reverting the live object. Enabling the field changed the behavior:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo \
+  --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;correctDrift&quot;:{&quot;enabled&quot;:true}}}&#39;
+</code></pre>
+<p>That is a real operational trap. If you expect Fleet to undo manual changes, make <code>correctDrift</code> an explicit part of the GitRepo spec and verify it with a deliberate scale test. Do not assume “GitOps” means “drift is always reverted.”</p>
+<h2>How this maps to production</h2>
+<p>The single-cluster flow above is the same model used for many clusters, with a few additions:</p>
+<ul>
+<li><strong>Target by labels, not names.</strong> Label downstream clusters with <code>env=prod</code> or <code>team=platform</code>, then use a <code>clusterSelector</code> or <code>ClusterGroup</code>. A list of cluster names becomes stale as soon as the fleet grows.</li>
+<li><strong>Use <code>targetCustomizations</code> for per-cluster overrides.</strong> Different replicas, domains, or Helm values belong in <code>fleet.yaml</code>, not in duplicated directories.</li>
+<li><strong>Authenticate private repositories properly.</strong> Use a GitRepo secret or a Rancher Git account; never put a token in the manifest.</li>
+<li><strong>Decide on drift policy deliberately.</strong> <code>correctDrift.enabled: true</code> is a strong statement about ownership. It is appropriate for resources Fleet owns and dangerous for resources another controller also mutates.</li>
+<li><strong>Keep secrets out of the Bundle.</strong> Fleet stores the content and applies it. Use External Secrets, Sealed Secrets, or another secret workflow rather than committing plaintext.</li>
+<li><strong>Watch the generated namespaces.</strong> BundleDeployments live under <code>cluster-fleet-*</code>; those objects are Fleet&#39;s bookkeeping, not a place for manual edits.</li>
+<li><strong>Set expectations for latency.</strong> Polling is simple and works without inbound webhooks; it is not instant. If you need faster feedback, configure the repository webhook rather than shortening the polling interval blindly.</li>
+</ul>
+<p>Fleet and Argo CD solve overlapping problems. Fleet is already integrated with Rancher and its cluster registration model; Argo CD has a different UI and application model. Running both against the same resources is a good way to create ownership conflicts. Pick one per resource set.</p>
+<h2>Troubleshooting notes from the lab</h2>
+<ul>
+<li><strong><code>BUNDLEDEPLOYMENTS-READY</code> shows <code>0/1</code> at first.</strong> Check the BundleDeployment status before assuming Fleet is broken. In this lab the Deployment was still pulling the image.</li>
+<li><strong><code>Modified</code> does not always mean corrected.</strong> Check <code>spec.correctDrift.enabled</code> on the GitRepo. Fleet can detect drift and still leave it in place.</li>
+<li><strong>The BundleDeployment namespace is generated.</strong> Find it with <code>kubectl get ns | grep cluster-fleet</code>; do not hard-code the hash in automation.</li>
+<li><strong>A Git push is not a sync.</strong> Confirm the GitRepo <code>status.commit</code> matches the commit you expect. Fleet reads commits, not local uncommitted files.</li>
+<li><strong>The Ingress can be Ready before the app is reachable.</strong> Check the Service endpoints and the Traefik route with <code>curl</code>, not only the Fleet resource list.</li>
+<li><strong>Private repositories fail differently.</strong> A public HTTPS clone can work with no credentials; a private repository needs a secret and the GitRepo must reference it. The failure usually appears in the GitRepo conditions, not in the workload.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Deleting the GitRepo tells Fleet to clean up the resources it owns:</p>
+<pre><code class="language-bash">kubectl -n fleet-local delete gitrepo fleet-demo
+kubectl get ns fleet-demo
+</code></pre>
+<p>If the namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
+<pre><code class="language-bash">kubectl delete namespace fleet-demo
+</code></pre>
+<p>Do not uninstall <code>fleet</code>, <code>fleet-crd</code>, or <code>fleet-agent-local</code> just to clean up one application. Rancher owns those components and other features depend on them.</p>
+<h2>What I would keep</h2>
+<p>Fleet is a good fit when Rancher is already the control plane. The useful pattern is not “put YAML in Git”; it is:</p>
+<ul>
+<li>one reviewable source path per application;</li>
+<li>a target defined by cluster identity or labels;</li>
+<li>a BundleDeployment status that tells you which cluster failed;</li>
+<li>drift policy that matches who owns the resource;</li>
+<li>a workflow that treats the Git commit as the audit record.</li>
+</ul>
+<p>The most valuable result from this lab was not the green 5/5. It was seeing the <code>Modified</code> state and learning that Fleet will report drift long before it necessarily reverts it. That distinction is the difference between a dashboard and an operational control.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://fleet.rancher.io/">Rancher Fleet documentation</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo">Fleet GitRepo reference</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#correctdrift">Fleet drift correction</a></li>
+<li><a href="https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/continuous-delivery">Rancher Continuous Delivery</a></li>
+<li><a href="https://fleet.rancher.io/ref-bundledeployment">Fleet bundledeployments</a></li>
+<li><a href="https://doc.traefik.io/traefik/providers/kubernetes-ingress/">Traefik Kubernetes Ingress</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Rancher%20Fleet%20in%20a%20Single-Cluster%20Lab%3A%20GitOps%20and%20Drift%20Correction%20That%20Actually%20Reverts&url=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts",
+                    date: "November 10, 2026",
+                    readingTime: "12 min read",
+                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>",
+                },
+                th: {
+                    title: "Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts",
+                    date: "November 10, 2026",
+                    readingTime: "12 นาที",
+                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
