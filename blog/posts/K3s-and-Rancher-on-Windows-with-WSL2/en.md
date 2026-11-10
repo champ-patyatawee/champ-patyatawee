@@ -34,20 +34,9 @@ What you get:
 
 I pinned **k3s v1.36.5**, because Rancher 2.15 supports Kubernetes 1.34–1.36. The newest k3s at the time (v1.37) was not yet supported by Rancher, and this mismatch is the kind of thing that causes confusing failures later.
 
-## Architecture
+## How the pieces connect
 
-```mermaid
-flowchart LR
-    B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
-    subgraph Docker Desktop / WSL2
-        LB --> ING[Traefik v3.7]
-        ING --> R[Rancher 2.15.3]
-        R --- CP[server-0 control plane]
-        CP --- A0[agent-0]
-        CP --- A1[agent-1]
-        CP --- A2[agent-2]
-    end
-```
+Docker Desktop runs the k3d cluster inside WSL2. k3d publishes port 443 to the host, Traefik v3.7 inside the cluster terminates TLS, and Rancher 2.15.3 runs as a workload behind it. One server node (`server-0`) holds the control plane and three agent nodes (`agent-0` to `agent-2`) carry the workloads. From the Windows browser, the whole lab is reachable at `https://rancher.127.0.0.1.nip.io`.
 
 ## Step 1 — Install the tooling
 

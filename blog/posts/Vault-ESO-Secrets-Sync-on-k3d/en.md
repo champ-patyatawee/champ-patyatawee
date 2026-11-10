@@ -26,25 +26,11 @@ This is the setup I actually deployed on my Windows k3d lab: **one control plane
 - External Secrets Operator `2.14.0`
 - A demo workload that receives the secret as a mounted file and sees a rotation without restarting
 
-## Architecture
+## How the secrets flow
 
-```mermaid
-flowchart LR
-    Browser["Windows browser"] -->|HTTPS| Traefik["Traefik 3.7.17<br/>re-encrypt to Vault"]
-    Traefik --> Active["vault-active Service"]
-    Active --> V0["vault-0<br/>Raft leader"]
-    Active -.-> V1["vault-1<br/>standby"]
-    Active -.-> V2["vault-2<br/>standby"]
-    V0 --- Raft["Raft quorum<br/>2 of 3"]
-    V1 --- Raft
-    V2 --- Raft
+Traefik terminates TLS on the host and re-encrypts traffic to the `vault-active` Service, which points at the Raft leader. Vault runs three pods with a quorum of two, so one standby can disappear without losing the cluster. External Secrets Operator authenticates to Vault through the `vault-active` Service and writes the result into a native Kubernetes Secret named `demo-credentials`, which the `secrets-demo` pod reads as a mounted file.
 
-    ESO["External Secrets Operator"] -->|"Kubernetes auth<br/>audience=vault"| Active
-    ESO --> K8sSecret["Kubernetes Secret<br/>demo-credentials"]
-    K8sSecret --> Pod["secrets-demo Pod<br/>mounted file"]
-```
-
-The important part is not the diagram. It is the trust chain:
+The trust chain matters more than the service topology:
 
 1. ESO asks Kubernetes for a short-lived service account token with audience `vault`.
 2. Vault verifies that token with the Kubernetes TokenReview API.

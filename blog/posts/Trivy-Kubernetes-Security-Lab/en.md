@@ -54,21 +54,9 @@ A runtime sensor detects behavior.
 Your process decides and tracks.
 ```
 
-## Architecture of the lab
+## How the lab fits together
 
-```mermaid
-flowchart LR
-    Dev["Windows workstation"] --> CLI["Trivy CLI 0.76.2"]
-    CLI --> Image["nginx:1.19 image<br/>CVEs + secrets"]
-    CLI --> YAML["Kubernetes YAML<br/>misconfiguration checks"]
-    CLI --> Live["k3s API<br/>live cluster scan"]
-
-    Operator["Trivy Operator 0.36.1<br/>chart 0.38.1"] --> Server["trivy-server<br/>persistent DB cache"]
-    Operator --> Jobs["scan jobs<br/>vulnerability + config audit"]
-    Jobs --> CRDs["VulnerabilityReport<br/>ConfigAuditReport<br/>ExposedSecretReport"]
-    CRDs --> API["Kubernetes API"]
-    API --> Rancher["Rancher 2.15.3 UI"]
-```
+Everything runs from the Windows workstation. The Trivy CLI scans a local `nginx:1.19` image, a directory of Kubernetes manifests, and the live k3s API. The Trivy Operator runs inside the cluster with a `trivy-server` pod that keeps the vulnerability database cached. The operator spawns scan jobs, and those jobs write `VulnerabilityReport`, `ConfigAuditReport`, and `ExposedSecretReport` objects into the Kubernetes API, where Rancher can display them.
 
 The lab versions were:
 

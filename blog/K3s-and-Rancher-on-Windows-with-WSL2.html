@@ -155,19 +155,8 @@
 <li><code>kubectl</code>, <code>helm</code>, and <code>k3d</code></li>
 </ul>
 <p>I pinned <strong>k3s v1.36.5</strong>, because Rancher 2.15 supports Kubernetes 1.34–1.36. The newest k3s at the time (v1.37) was not yet supported by Rancher, and this mismatch is the kind of thing that causes confusing failures later.</p>
-<h2>Architecture</h2>
-<pre class="mermaid">
-flowchart LR
-    B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
-    subgraph Docker Desktop / WSL2
-        LB --> ING[Traefik v3.7]
-        ING --> R[Rancher 2.15.3]
-        R --- CP[server-0 control plane]
-        CP --- A0[agent-0]
-        CP --- A1[agent-1]
-        CP --- A2[agent-2]
-    end
-</pre>
+<h2>How the pieces connect</h2>
+<p>Docker Desktop runs the k3d cluster inside WSL2. k3d publishes port 443 to the host, Traefik v3.7 inside the cluster terminates TLS, and Rancher 2.15.3 runs as a workload behind it. One server node (<code>server-0</code>) holds the control plane and three agent nodes (<code>agent-0</code> to <code>agent-2</code>) carry the workloads. From the Windows browser, the whole lab is reachable at <code>https://rancher.127.0.0.1.nip.io</code>.</p>
 <h2>Step 1 — Install the tooling</h2>
 <pre><code class="language-powershell">winget install -e --id Docker.DockerDesktop
 winget install -e --id k3d.k3d
@@ -452,19 +441,8 @@ kubectl -n default rollout status deploy/nginx
 <li><code>kubectl</code>, <code>helm</code>, and <code>k3d</code></li>
 </ul>
 <p>I pinned <strong>k3s v1.36.5</strong>, because Rancher 2.15 supports Kubernetes 1.34–1.36. The newest k3s at the time (v1.37) was not yet supported by Rancher, and this mismatch is the kind of thing that causes confusing failures later.</p>
-<h2>Architecture</h2>
-<pre class="mermaid">
-flowchart LR
-    B[Windows browser] -->|https://rancher.127.0.0.1.nip.io| LB[k3d load balancer :443]
-    subgraph Docker Desktop / WSL2
-        LB --> ING[Traefik v3.7]
-        ING --> R[Rancher 2.15.3]
-        R --- CP[server-0 control plane]
-        CP --- A0[agent-0]
-        CP --- A1[agent-1]
-        CP --- A2[agent-2]
-    end
-</pre>
+<h2>How the pieces connect</h2>
+<p>Docker Desktop runs the k3d cluster inside WSL2. k3d publishes port 443 to the host, Traefik v3.7 inside the cluster terminates TLS, and Rancher 2.15.3 runs as a workload behind it. One server node (<code>server-0</code>) holds the control plane and three agent nodes (<code>agent-0</code> to <code>agent-2</code>) carry the workloads. From the Windows browser, the whole lab is reachable at <code>https://rancher.127.0.0.1.nip.io</code>.</p>
 <h2>Step 1 — Install the tooling</h2>
 <pre><code class="language-powershell">winget install -e --id Docker.DockerDesktop
 winget install -e --id k3d.k3d
