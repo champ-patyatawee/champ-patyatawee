@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
-    <meta property="og:title" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports — Champ Patyatawee">
-    <meta property="og:description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
+    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster: scan an EOL nginx image, catch misconfigurations and synthetic secrets, run Trivy Operator, and read every Policy Reporter UI tab against real findings.">
+    <meta property="og:title" content="Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI — Champ Patyatawee">
+    <meta property="og:description" content="Build a real Trivy lab on a 4-node k3d cluster: scan an EOL nginx image, catch misconfigurations and synthetic secrets, run Trivy Operator, and read every Policy Reporter UI tab against real findings.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
     <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Trivy-Kubernetes-Security-Lab/og.jpg">
@@ -13,18 +13,18 @@
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/jpeg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports">
-    <meta name="twitter:description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
+    <meta name="twitter:title" content="Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI">
+    <meta name="twitter:description" content="Build a real Trivy lab on a 4-node k3d cluster: scan an EOL nginx image, catch misconfigurations and synthetic secrets, run Trivy Operator, and read every Policy Reporter UI tab against real findings.">
     <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Trivy-Kubernetes-Security-Lab/og.jpg">
-    <meta name="twitter:image:alt" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports">
+    <meta name="twitter:image:alt" content="Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI">
     <!-- Thai alternate meta -->
-    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports." lang="th">
+    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster: scan an EOL nginx image, catch misconfigurations and synthetic secrets, run Trivy Operator, and read every Policy Reporter UI tab against real findings." lang="th">
     <meta property="og:locale:alternate" content="th_TH">
     <link rel="canonical" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
     <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
     <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
     <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
-    <title>Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports — Champ Patyatawee</title>
+    <title>Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
     <link rel="stylesheet" href="style.css?v=7">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -111,18 +111,22 @@
             <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
             
             <header class="post-header">
-                <h1 class="post-title" id="post-title">Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports</h1>
+                <h1 class="post-title" id="post-title">Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">19 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">31 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">trivy</span>
+<span class="tag">trivy-operator</span>
 <span class="tag">kubernetes</span>
 <span class="tag">security</span>
+<span class="tag">policy-reporter</span>
 <span class="tag">k3d</span>
 <span class="tag">rancher</span>
 <span class="tag">sbom</span>
+<span class="tag">rbac</span>
+<span class="tag">ui</span>
                 </div>
 
                 <!-- Language tabs -->
@@ -137,7 +141,7 @@
                 <div class="post-content en-content">
                     <p>Trivy is often described as “a vulnerability scanner for containers.” That is true, but incomplete. In a Kubernetes cluster it can inspect an image, a YAML manifest, a file tree, and a live cluster. It can also run continuously as an operator and publish findings as Kubernetes custom resources.</p>
 <p>The important question is not “can it scan?” It is “which layer is this finding coming from, and what decision can I actually make from it?”</p>
-<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, and Trivy Operator</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, and Kubernetes-native reports. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
+<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, Trivy Operator, and Policy Reporter</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, Kubernetes-native reports, and a UI that made the reports readable. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/01-workload-legacy-web.png" alt="Rancher deployment detail showing legacy-web running nginx:1.19"></p>
 <h2>What this lab found</h2>
 <ul>
@@ -146,7 +150,8 @@
 <li>A deliberately unsafe fixture that was <strong>never applied</strong> had <strong>5 HIGH misconfigurations</strong>, including host networking, privileged mode, and a hostPath mount.</li>
 <li>A synthetic credentials file produced <strong>2 exposed-secret findings</strong>: one critical GitHub token pattern and one high Slack token pattern.</li>
 <li>Trivy Operator generated a <code>VulnerabilityReport</code> with <strong>42 critical, 143 high, 175 medium, 27 low, and 36 unknown</strong> findings. The small difference from the CLI is expected: the operator chart shipped Trivy <code>0.76.1</code>, while the CLI was <code>0.76.2</code>, and vulnerability databases change between scans.</li>
-<li>The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
+<li>Policy Reporter turned those CRDs into a usable dashboard: <strong>699 failed results</strong> in the aggregate, made up of <strong>515 vulnerability failures, 72 configuration failures, 112 RBAC failures, and 0 secret failures</strong>. The UI held <strong>1,694 vulnerability rows</strong> because one CVE can appear for multiple packages and ReplicaSets; the aggregate is not a unique-issue count.</li>
+<li>The UI also exposed a critical <strong>Stripe secret</strong> that the adapter mapped to <code>warn</code>, so a policy that alerts only on <code>fail</code> would have missed it. Severity and result are different fields.- The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
 </ul>
 <h2>What Trivy can do, and what it cannot</h2>
 <p>Trivy is a scanner and report generator. It is not an admission controller, a runtime security monitor, or a vulnerability management program by itself.</p>
@@ -182,6 +187,7 @@ Your process decides and tracks.
 <li>Trivy CLI <code>0.76.2</code></li>
 <li>Trivy Operator chart <code>0.38.1</code>, operator app <code>0.36.1</code></li>
 <li>Operator scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code>, Trivy adapter <code>0.11.5</code></li>
 <li>Demo image <code>nginx:1.19</code>, based on Debian <code>10.9</code></li>
 </ul>
 <h2>Prerequisites and context lock</h2>
@@ -460,7 +466,261 @@ replicaset-legacy-web-785d7ddfdb          Trivy     43m
 <p>The operator also generated an ExposedSecretReport for the image. It was clean:</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/06-exposed-secret-list.png" alt="ExposedSecretReport with zero secret findings"></p>
 <p>That result does not contradict the earlier synthetic file scan. The operator scanned the <code>nginx:1.19</code> image and its Kubernetes resources, not my local <code>fake-secrets.env</code> fixture. Scan scope matters more than a generic “Trivy found secrets” statement.</p>
-<h2>Step 10: The compliance report can be wrong</h2>
+<h2>Step 10: Add Policy Reporter for a real UI</h2>
+<p>Trivy Operator does not ship a UI. It ships a report API. Rancher can display the raw custom resources, but a generic YAML browser is not a triage workflow:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/02-rancher-vulnerability-crds.png" alt="Rancher CRD browser showing VulnerabilityReports, ExposedSecretReports, and ClusterRbacAssessmentReports"></p>
+<p>There is no CVE search, no owner, no suppression, and no cross-source view. Policy Reporter fills that gap. The pipeline is: workload change → scan Job → report CRD → adapter → <code>PolicyReport</code> → UI.</p>
+<p>The adapter is the part people skip. Trivy Operator emits its own CRDs; Policy Reporter consumes the Kubernetes Policy Working Group&#39;s <code>PolicyReport</code> format. Without the adapter, the UI has nothing to display.</p>
+<p>The versions in this lab were:</p>
+<ul>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code></li>
+<li>Trivy Operator PolicyReport adapter <code>0.11.5</code></li>
+</ul>
+<p>Install the adapter first, because it can also install the <code>PolicyReport</code> CRDs:</p>
+<pre><code class="language-yaml"># adapter-values.yaml
+crds:
+  install: true
+adapters:
+  vulnerabilityReports:
+    enabled: true
+  configAuditReports:
+    enabled: true
+  rbacAssessmentReports:
+    enabled: true
+  exposedSecretReports:
+    enabled: true
+  complianceReports:
+    enabled: true
+  infraAssessmentReports:
+    enabled: true
+  clusterInfraAssessmentReports:
+    enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm repo add policy-reporter https://kyverno.github.io/policy-reporter
+helm repo add trivy-operator-polr-adapter https://fjogeleit.github.io/trivy-operator-polr-adapter
+helm repo update
+
+helm upgrade --install trivy-operator-polr-adapter trivy-operator-polr-adapter/trivy-operator-polr-adapter `
+  -n policy-reporter --create-namespace `
+  -f .\work\trivy-lab\adapter-values.yaml --wait
+</code></pre>
+<p>Then install the core with the UI:</p>
+<pre><code class="language-yaml"># policy-reporter-values.yaml
+ui:
+  enabled: true
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: policy-reporter.127.0.0.1.nip.io
+        paths:
+          - path: /
+            pathType: Prefix
+metrics:
+  enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm upgrade --install policy-reporter policy-reporter/policy-reporter `
+  -n policy-reporter `
+  -f .\work\trivy-lab\policy-reporter-values.yaml `
+  --wait --timeout 5m
+</code></pre>
+<p>I did this in the opposite order first. The core crash-looped with:</p>
+<pre><code class="language-text">no valid reporting API group found in the cluster
+</code></pre>
+<p>The missing dependency was the <code>PolicyReport</code> CRD. Installing the adapter with <code>crds.install=true</code> created the API, and the core recovered on its next restart. If a controller says it cannot find a reporting API, check the CRDs before debugging the UI.</p>
+<p>For the screenshots I used a port-forward because the local browser blocked the <code>.nip.io</code> host:</p>
+<pre><code class="language-powershell">kubectl -n policy-reporter port-forward svc/policy-reporter-ui 8082:8080
+</code></pre>
+<p>Open <code>http://localhost:8082</code>. The left navigation maps directly to the report types:</p>
+<ul>
+<li><strong>Dashboard</strong> — aggregate counts across sources.</li>
+<li><strong>Trivy Vulnerability</strong> — image CVEs.</li>
+<li><strong>Trivy ConfigAudit</strong> — workload and resource configuration checks.</li>
+<li><strong>Trivy ExposedSecrets</strong> — secrets found inside images.</li>
+<li><strong>Trivy RbacAssessment</strong> — Roles and ClusterRoles.</li>
+</ul>
+<p>Each tab accepts the same basic controls: a result filter, a <code>Kinds</code> filter, and a search box.</p>
+<h2>Step 11: Read every UI tab</h2>
+<p>The UI was populated by four workloads in <code>trivy-demo</code>:</p>
+<ul>
+<li><code>payments-api</code> — <code>nginx:1.19</code>, privileged, host network, host PID, hostPath, root.</li>
+<li><code>legacy-web</code> — <code>nginx:1.19</code>, the original workload from Step 1.</li>
+<li><code>data-exporter</code> — <code>python:3.6-slim</code>, a language runtime with a different CVE profile.</li>
+<li><code>leaky-app</code> — <code>josedonizetti/trivy:secrettest</code>, a public test image containing a synthetic Stripe key.</li>
+</ul>
+<h3>Dashboard: what the 699 means</h3>
+<p>The landing page is an aggregate, not a unique-issue count:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/03-policy-reporter-dashboard.png" alt="Policy Reporter dashboard showing 699 fail results across Trivy vulnerability, config audit, RBAC, and secret sources"></p>
+<p>The 699 fail total decomposes exactly:</p>
+<ul>
+<li><strong>515 vulnerability failures</strong> from the four scans: 185 + 185 + 145 + 0.</li>
+<li><strong>72 configuration failures</strong>: 23 + 17 + 16 + 16.</li>
+<li><strong>112 RBAC failures</strong>: 111 cluster-scoped plus 1 namespace Role.</li>
+<li><strong>0 secret failures</strong>: both secret findings are mapped to <code>warn</code>.</li>
+</ul>
+<p>A number like 699 is not &quot;699 problems to fix.&quot; It is 699 report results, many of them duplicates across package versions, ReplicaSets, or related checks. Move from the aggregate to one source tab, then to one resource.</p>
+<h3>Trivy Vulnerability tab</h3>
+<p>The Vulnerability tab shows <strong>1,694 results</strong>:</p>
+<ul>
+<li><code>payments-api</code>: 423</li>
+<li><code>legacy-web</code>: 423</li>
+<li><code>data-exporter</code>: 708</li>
+<li><code>leaky-app</code>: 140</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/04-policy-reporter-tab-vulnerability.png" alt="Policy Reporter Trivy Vulnerability tab showing 1,694 results for the trivy-demo namespace"></p>
+<p>The page mixes <code>fail</code>, <code>warn</code>, and <code>skip</code>. <strong>Skip is not pass.</strong> A skip usually means the scanner could not evaluate the finding, the package is not applicable, or the result is outside the selected scope. Treating skip as success is how a dashboard becomes misleading.</p>
+<p>The 1,694 rows are also not 1,694 unique CVEs. The same CVE can appear for multiple package instances, and the same image can appear in more than one ReplicaSet. The source <code>VulnerabilityReport</code> is the authoritative per-image object; the UI is an index over those objects.</p>
+<h4>Drilling into one workload</h4>
+<p>Opening <code>payments-api</code> shows the distribution clearly:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/08-policy-reporter-vulnerability-detail.png" alt="Policy Reporter vulnerability detail for payments-api showing 185 failed and 202 warning results"></p>
+<pre><code class="language-text">fail results   185
+warn results   202
+error results  0
+pass results   0
+</code></pre>
+<p>The table is the useful part: CVE ID, severity, and status. The severity comes from Trivy; the status comes from the PolicyReport mapping. They are different fields.</p>
+<p>Behind that screen is a <code>VulnerabilityReport</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-demo get vulnerabilityreport replicaset-payments-api-867449445b-api -o json
+</code></pre>
+<pre><code class="language-json">{&quot;criticalCount&quot;:42,&quot;highCount&quot;:143,&quot;mediumCount&quot;:175,&quot;lowCount&quot;:27,&quot;unknownCount&quot;:36}
+</code></pre>
+<p>The first package rows included:</p>
+<pre><code class="language-text">CVE-2022-32221  CRITICAL  curl      7.64.0-4+deb10u4
+CVE-2021-22946  HIGH      curl      7.64.0-3+deb10u3
+CVE-2021-37600  MEDIUM    bsdutils  2.33.1-0.1+deb10u1
+CVE-2016-2781   LOW       coreutils
+</code></pre>
+<p>What this tab answers: <strong>which running workload has CVEs, and what are they?</strong> It does not tell you whether the vulnerable package is reachable, whether the workload processes untrusted input, or whether the image is actually deployed in production.</p>
+<h3>Trivy ConfigAudit tab</h3>
+<p>The ConfigAudit tab shows <strong>72 failures</strong>, all configuration checks:</p>
+<ul>
+<li><code>payments-api</code>: 23</li>
+<li><code>legacy-web</code>: 17</li>
+<li><code>data-exporter</code>: 16</li>
+<li><code>leaky-app</code>: 16</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/05-policy-reporter-tab-config-audit.png" alt="Policy Reporter Trivy ConfigAudit tab showing 72 failures across four workloads"></p>
+<p>This is the highest-signal view for a Kubernetes security review because it tells you what the workload is allowed to do, not just what packages it contains.</p>
+<h4>Drilling into payments-api</h4>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/09-policy-reporter-config-audit-detail.png" alt="Policy Reporter config audit detail for payments-api showing 23 failures, including host PID and host network"></p>
+<p>The high-severity checks were:</p>
+<pre><code class="language-text">Access to host PID                          AVD-KSV-0010   high
+Access to host network                      AVD-KSV-0009   high
+Default security context configured          AVD-KSV-0118   high
+Privileged                                  AVD-KSV-0017   high
+SYS_ADMIN capability added                  AVD-KSV-0005   high
+Root file system is not read-only           AVD-KSV-0014   high
+Kubernetes resource with disallowed volumes AVD-KSV-0121   high
+</code></pre>
+<p>The same screen also shows medium and low findings: hostPath mounted, seccomp disabled, runs as root, CPU and memory limits missing. One screen connects &quot;what the manifest says&quot; to &quot;why it matters.&quot;</p>
+<p>Behind the screen is a <code>ConfigAuditReport</code> with the same check IDs and remediations. The UI is a reader over that report, not a separate scanner. It does not tell you whether the Pod actually behaved maliciously; that is runtime security.</p>
+<h3>Trivy ExposedSecrets tab</h3>
+<p>The ExposedSecrets tab shows <strong>2 results</strong> for the test image:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/06-policy-reporter-tab-exposed-secrets.png" alt="Policy Reporter Trivy ExposedSecrets tab showing two Stripe findings mapped to warn"></p>
+<p>Both are <code>warn</code>, even though one is a critical Stripe secret:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/10-policy-reporter-exposed-secret-detail.png" alt="Policy Reporter exposed secret detail showing a critical Stripe secret and a low-severity publishable key"></p>
+<p>The report behind it:</p>
+<pre><code class="language-yaml">secrets:
+  - category: Stripe
+    ruleID: stripe-secret-token
+    title: Stripe Secret Key
+    severity: CRITICAL
+    target: /app/config/secret.yaml
+    match: &#39;    secret_key: **************************************&#39;
+  - category: Stripe
+    ruleID: stripe-publishable-token
+    title: Stripe Publishable Key
+    severity: LOW
+    target: /app/config/secret.yaml
+</code></pre>
+<p>Three points matter:</p>
+<ul>
+<li>The value is masked. The operator is not a secret-recovery tool.</li>
+<li>The adapter maps both findings to <code>result: warn</code>, so a policy that only routes <code>fail</code> will miss a critical secret.</li>
+<li>The scanner is image/content-based. Environment variables in the Deployment did not produce an <code>ExposedSecretReport</code> in this lab. A Kubernetes Secret object is a different exposure problem, handled by RBAC and etcd encryption.</li>
+</ul>
+<p>This tab answers <strong>did an image ship with a credential in its filesystem?</strong> It does not tell you whether the credential is still valid. If it is real, rotate it. Deleting the workload does not invalidate the key.</p>
+<h3>Trivy RbacAssessment tab</h3>
+<p>The RbacAssessment tab shows <strong>112 failures</strong>: 111 from cluster-scoped roles and 1 from a namespace Role.</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/07-policy-reporter-tab-rbac.png" alt="Policy Reporter Trivy RbacAssessment tab showing 112 failures, mostly cluster-scoped roles"></p>
+<p>The cluster list is noisy because Trivy scans roles that existed before this lab. Use the search box to narrow to the role you care about. Opening the lab&#39;s <code>support-admin</code> ClusterRole shows why the tab is worth checking:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/11-policy-reporter-rbac-detail.png" alt="Policy Reporter RBAC detail for a wildcard ClusterRole showing two critical failures"></p>
+<pre><code class="language-yaml">checks:
+  - checkID: AVD-KSV-0046
+    title: Manage all resources
+    severity: CRITICAL
+    remediation: Remove &#39;*&#39; from &#39;rules.resources&#39;.
+  - checkID: AVD-KSV-0044
+    title: No wildcard verb and resource roles
+    severity: CRITICAL
+    remediation: Create a role which does not permit wildcard verb on wildcard resource.
+summary:
+  criticalCount: 2
+</code></pre>
+<p>The namespace Role <code>secret-reader</code> produced a medium result instead:</p>
+<pre><code class="language-yaml">checkID: AVD-KSV-0113
+title: Manage namespace secrets
+severity: MEDIUM
+</code></pre>
+<p>This tab answers <strong>which identities can do too much?</strong> It does not tell you who actually used that permission. For that you need Kubernetes audit logs.</p>
+<h3>Status semantics: the part that trips people up</h3>
+<p>The UI shows two different concepts that look similar:</p>
+<ul>
+<li><strong>Severity</strong> comes from Trivy: <code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>, <code>UNKNOWN</code>.</li>
+<li><strong>Result</strong> comes from the PolicyReport mapping: <code>fail</code>, <code>warn</code>, <code>pass</code>, <code>error</code>, <code>skip</code>.</li>
+</ul>
+<p>They do not have to agree. In this lab, a critical Stripe secret was mapped to <code>warn</code>. That is why the dashboard&#39;s fail total was 699 while the secret tab showed two findings outside that number.</p>
+<p><code>skip</code> is not <code>pass</code>. A skipped check can mean the scanner could not evaluate it, the resource kind is out of scope, or the policy does not apply. Read the result column, not just the color.</p>
+<p>There is also a time dimension:</p>
+<ul>
+<li>Reports are snapshots tied to a resource revision or a scheduled compliance run.</li>
+<li><code>scannerReportTTL</code> was <code>24h</code>; old ReplicaSet reports can remain after a rollout.</li>
+<li>Compliance ran on a six-hour cron in this lab.</li>
+<li>The PSS report showed <code>17 PASS / 0 FAIL</code> even after a privileged workload was created, because the report predated the workload.</li>
+</ul>
+<p>A green compliance panel is not a live control. Check the timestamp and the scope.</p>
+<h3>Metrics and Grafana</h3>
+<p>The UI is for reading individual findings. Metrics are for trends and alerting. The operator exposes Prometheus metrics on port <code>8080</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-system port-forward deploy/trivy-operator 8081:8080
+curl.exe http://localhost:8081/metrics
+</code></pre>
+<p>Real samples:</p>
+<pre><code class="language-text">trivy_image_vulnerabilities{...,image_repository=&quot;library/nginx&quot;,image_tag=&quot;1.19&quot;,...severity=&quot;Critical&quot;} 42
+trivy_image_exposedsecrets{...,image_repository=&quot;josedonizetti/trivy&quot;,image_tag=&quot;secrettest&quot;,...severity=&quot;Critical&quot;} 1
+trivy_cluster_compliance{...,status=&quot;Fail&quot;,title=&quot;Kubernetes Pod Security Standards - Restricted&quot;} 0
+</code></pre>
+<p>Useful queries:</p>
+<pre><code class="language-promql">sum by (namespace, resource_name) (trivy_image_vulnerabilities{severity=&quot;Critical&quot;})
+sum by (namespace, image_repository, image_tag) (trivy_image_exposedsecrets{severity=&quot;Critical&quot;})
+sum by (title, status) (trivy_cluster_compliance)
+</code></pre>
+<p>For a Grafana view, the official dashboard ID is <code>17813</code>. That gives time series and alerting; it does not replace the per-finding tabs.</p>
+<h2>What the UI reveals about the operator</h2>
+<p>The tabs are only half the lesson. The report counts expose how the operator works.</p>
+<h3>Reports follow ReplicaSets, not Deployments</h3>
+<p>A Pod template change creates a new ReplicaSet, which creates a new report. That is why the same image can appear more than once, and why old reports can linger after a rollout. Filter by namespace and resource, and use the report TTL as part of your retention policy.</p>
+<h3><code>targetNamespaces</code> does not scope everything</h3>
+<p>The operator was configured with <code>targetNamespaces: trivy-demo</code>, but the RBAC tab still showed 111 cluster-scoped failures. Workload scanning is namespaced; cluster-scoped RBAC assessment is not. Plan for that volume.</p>
+<h3>Client/server scanning cannot read node-local images</h3>
+<p>I built a local test image and imported it into the k3d nodes. The scan job failed:</p>
+<pre><code class="language-text">unable to find the specified image &quot;lab/leaky-app:1.0&quot; in [&quot;docker&quot; &quot;containerd&quot; &quot;podman&quot; &quot;remote&quot;]
+containerd socket not found: /run/containerd/containerd.sock
+</code></pre>
+<p>The operator&#39;s Trivy server pulls images; it does not read the kubelet&#39;s containerd store. A <code>k3d image import</code> makes an image runnable, not pullable by the scanner. Push it to a reachable registry, or change the scan architecture deliberately.</p>
+<h3>The operator reports; it does not prevent</h3>
+<p>Every bad workload in this lab was already running before its report existed. If a resource must never run, use admission policy such as Kyverno or Gatekeeper. The operator is the continuous backstop for drift, legacy workloads, and manual <code>kubectl</code> changes.</p>
+<h3>The UI needs authentication</h3>
+<p>Policy Reporter exposes namespace names, image names, CVEs, and RBAC posture. The lab UI had no authentication because it was local. In production, put OIDC or an authenticated proxy in front of it.</p>
+<h3>What each tab is best at</h3>
+<ul>
+<li><strong>Dashboard</strong> — a health summary, not a work queue.</li>
+<li><strong>Vulnerability</strong> — image ownership and patch planning.</li>
+<li><strong>ConfigAudit</strong> — workload hardening and admission-policy design.</li>
+<li><strong>ExposedSecrets</strong> — incident response and credential rotation.</li>
+<li><strong>RbacAssessment</strong> — privilege review and least-privilege cleanup.</li>
+</ul>
+<p>The fastest useful loop is: start at the Dashboard, pick the source with the highest fail count, filter to one namespace, open one resource, then trace the finding back to its CRD with <code>kubectl</code>.</p>
+<h2>Step 12: The compliance report can be wrong</h2>
 <p>The operator registered four compliance reports:</p>
 <ul>
 <li><code>k8s-cis-1.23</code></li>
@@ -551,7 +811,20 @@ kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
 <li><input disabled="" type="checkbox"> Add runtime detection because scanning is point-in-time.</li>
 </ul>
 <h2>Cleanup</h2>
-<p>Remove the demo workload and the operator when the lab is finished:</p>
+<p>Remove the UI and the extra workloads first:</p>
+<pre><code class="language-powershell">helm uninstall policy-reporter -n policy-reporter
+helm uninstall trivy-operator-polr-adapter -n policy-reporter
+kubectl delete namespace policy-reporter
+
+kubectl -n trivy-demo delete deployment payments-api data-exporter leaky-app
+kubectl delete clusterrolebinding support-bot-support-admin
+kubectl delete clusterrole support-admin
+kubectl -n trivy-demo delete rolebinding support-bot-secret-reader
+kubectl -n trivy-demo delete role secret-reader
+kubectl -n trivy-demo delete serviceaccount support-bot
+kubectl -n trivy-demo delete configmap payments-config
+</code></pre>
+<p>Then remove the demo namespace and the operator:</p>
 <pre><code class="language-powershell">kubectl delete namespace trivy-demo
 helm uninstall trivy-operator -n trivy-system
 </code></pre>
@@ -566,6 +839,7 @@ kubectl get clustercompliancereports
 <li>CLI scans in CI for fast feedback;</li>
 <li>manifest scans before apply;</li>
 <li>Operator reports for continuous inventory;</li>
+<li>Policy Reporter for triage and a shared view;</li>
 <li>admission policy for enforcement;</li>
 <li>runtime detection for behavior;</li>
 <li>a triage process that turns findings into owned actions.</li>
@@ -579,6 +853,10 @@ kubectl get clustercompliancereports
 <li><a href="https://trivy.dev/docs/latest/scanner/secret/">Trivy secret scanning</a></li>
 <li><a href="https://trivy.dev/docs/latest/configuration/reporting/">Trivy reporting formats</a></li>
 <li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator overview</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/metrics/">Trivy Operator metrics</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/policy-reporter/">Policy Reporter integration</a></li>
+<li><a href="https://github.com/fjogeleit/trivy-operator-polr-adapter">Trivy Operator PolicyReport adapter</a></li>
+<li><a href="https://kyverno.github.io/policy-reporter/">Policy Reporter documentation</a></li>
 <li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Kubernetes Pod Security Standards</a></li>
 </ul>
 
@@ -590,7 +868,7 @@ kubectl get clustercompliancereports
                 <div class="post-content th-content">
                     <p>Trivy is often described as “a vulnerability scanner for containers.” That is true, but incomplete. In a Kubernetes cluster it can inspect an image, a YAML manifest, a file tree, and a live cluster. It can also run continuously as an operator and publish findings as Kubernetes custom resources.</p>
 <p>The important question is not “can it scan?” It is “which layer is this finding coming from, and what decision can I actually make from it?”</p>
-<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, and Trivy Operator</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, and Kubernetes-native reports. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
+<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, Trivy Operator, and Policy Reporter</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, Kubernetes-native reports, and a UI that made the reports readable. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/01-workload-legacy-web.png" alt="Rancher deployment detail showing legacy-web running nginx:1.19"></p>
 <h2>What this lab found</h2>
 <ul>
@@ -599,7 +877,8 @@ kubectl get clustercompliancereports
 <li>A deliberately unsafe fixture that was <strong>never applied</strong> had <strong>5 HIGH misconfigurations</strong>, including host networking, privileged mode, and a hostPath mount.</li>
 <li>A synthetic credentials file produced <strong>2 exposed-secret findings</strong>: one critical GitHub token pattern and one high Slack token pattern.</li>
 <li>Trivy Operator generated a <code>VulnerabilityReport</code> with <strong>42 critical, 143 high, 175 medium, 27 low, and 36 unknown</strong> findings. The small difference from the CLI is expected: the operator chart shipped Trivy <code>0.76.1</code>, while the CLI was <code>0.76.2</code>, and vulnerability databases change between scans.</li>
-<li>The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
+<li>Policy Reporter turned those CRDs into a usable dashboard: <strong>699 failed results</strong> in the aggregate, made up of <strong>515 vulnerability failures, 72 configuration failures, 112 RBAC failures, and 0 secret failures</strong>. The UI held <strong>1,694 vulnerability rows</strong> because one CVE can appear for multiple packages and ReplicaSets; the aggregate is not a unique-issue count.</li>
+<li>The UI also exposed a critical <strong>Stripe secret</strong> that the adapter mapped to <code>warn</code>, so a policy that alerts only on <code>fail</code> would have missed it. Severity and result are different fields.- The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
 </ul>
 <h2>What Trivy can do, and what it cannot</h2>
 <p>Trivy is a scanner and report generator. It is not an admission controller, a runtime security monitor, or a vulnerability management program by itself.</p>
@@ -635,6 +914,7 @@ Your process decides and tracks.
 <li>Trivy CLI <code>0.76.2</code></li>
 <li>Trivy Operator chart <code>0.38.1</code>, operator app <code>0.36.1</code></li>
 <li>Operator scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code>, Trivy adapter <code>0.11.5</code></li>
 <li>Demo image <code>nginx:1.19</code>, based on Debian <code>10.9</code></li>
 </ul>
 <h2>Prerequisites and context lock</h2>
@@ -913,7 +1193,261 @@ replicaset-legacy-web-785d7ddfdb          Trivy     43m
 <p>The operator also generated an ExposedSecretReport for the image. It was clean:</p>
 <p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/06-exposed-secret-list.png" alt="ExposedSecretReport with zero secret findings"></p>
 <p>That result does not contradict the earlier synthetic file scan. The operator scanned the <code>nginx:1.19</code> image and its Kubernetes resources, not my local <code>fake-secrets.env</code> fixture. Scan scope matters more than a generic “Trivy found secrets” statement.</p>
-<h2>Step 10: The compliance report can be wrong</h2>
+<h2>Step 10: Add Policy Reporter for a real UI</h2>
+<p>Trivy Operator does not ship a UI. It ships a report API. Rancher can display the raw custom resources, but a generic YAML browser is not a triage workflow:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/02-rancher-vulnerability-crds.png" alt="Rancher CRD browser showing VulnerabilityReports, ExposedSecretReports, and ClusterRbacAssessmentReports"></p>
+<p>There is no CVE search, no owner, no suppression, and no cross-source view. Policy Reporter fills that gap. The pipeline is: workload change → scan Job → report CRD → adapter → <code>PolicyReport</code> → UI.</p>
+<p>The adapter is the part people skip. Trivy Operator emits its own CRDs; Policy Reporter consumes the Kubernetes Policy Working Group&#39;s <code>PolicyReport</code> format. Without the adapter, the UI has nothing to display.</p>
+<p>The versions in this lab were:</p>
+<ul>
+<li>Policy Reporter chart <code>3.11.2</code>, UI <code>2.9.1</code></li>
+<li>Trivy Operator PolicyReport adapter <code>0.11.5</code></li>
+</ul>
+<p>Install the adapter first, because it can also install the <code>PolicyReport</code> CRDs:</p>
+<pre><code class="language-yaml"># adapter-values.yaml
+crds:
+  install: true
+adapters:
+  vulnerabilityReports:
+    enabled: true
+  configAuditReports:
+    enabled: true
+  rbacAssessmentReports:
+    enabled: true
+  exposedSecretReports:
+    enabled: true
+  complianceReports:
+    enabled: true
+  infraAssessmentReports:
+    enabled: true
+  clusterInfraAssessmentReports:
+    enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm repo add policy-reporter https://kyverno.github.io/policy-reporter
+helm repo add trivy-operator-polr-adapter https://fjogeleit.github.io/trivy-operator-polr-adapter
+helm repo update
+
+helm upgrade --install trivy-operator-polr-adapter trivy-operator-polr-adapter/trivy-operator-polr-adapter `
+  -n policy-reporter --create-namespace `
+  -f .\work\trivy-lab\adapter-values.yaml --wait
+</code></pre>
+<p>Then install the core with the UI:</p>
+<pre><code class="language-yaml"># policy-reporter-values.yaml
+ui:
+  enabled: true
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: policy-reporter.127.0.0.1.nip.io
+        paths:
+          - path: /
+            pathType: Prefix
+metrics:
+  enabled: true
+</code></pre>
+<pre><code class="language-powershell">helm upgrade --install policy-reporter policy-reporter/policy-reporter `
+  -n policy-reporter `
+  -f .\work\trivy-lab\policy-reporter-values.yaml `
+  --wait --timeout 5m
+</code></pre>
+<p>I did this in the opposite order first. The core crash-looped with:</p>
+<pre><code class="language-text">no valid reporting API group found in the cluster
+</code></pre>
+<p>The missing dependency was the <code>PolicyReport</code> CRD. Installing the adapter with <code>crds.install=true</code> created the API, and the core recovered on its next restart. If a controller says it cannot find a reporting API, check the CRDs before debugging the UI.</p>
+<p>For the screenshots I used a port-forward because the local browser blocked the <code>.nip.io</code> host:</p>
+<pre><code class="language-powershell">kubectl -n policy-reporter port-forward svc/policy-reporter-ui 8082:8080
+</code></pre>
+<p>Open <code>http://localhost:8082</code>. The left navigation maps directly to the report types:</p>
+<ul>
+<li><strong>Dashboard</strong> — aggregate counts across sources.</li>
+<li><strong>Trivy Vulnerability</strong> — image CVEs.</li>
+<li><strong>Trivy ConfigAudit</strong> — workload and resource configuration checks.</li>
+<li><strong>Trivy ExposedSecrets</strong> — secrets found inside images.</li>
+<li><strong>Trivy RbacAssessment</strong> — Roles and ClusterRoles.</li>
+</ul>
+<p>Each tab accepts the same basic controls: a result filter, a <code>Kinds</code> filter, and a search box.</p>
+<h2>Step 11: Read every UI tab</h2>
+<p>The UI was populated by four workloads in <code>trivy-demo</code>:</p>
+<ul>
+<li><code>payments-api</code> — <code>nginx:1.19</code>, privileged, host network, host PID, hostPath, root.</li>
+<li><code>legacy-web</code> — <code>nginx:1.19</code>, the original workload from Step 1.</li>
+<li><code>data-exporter</code> — <code>python:3.6-slim</code>, a language runtime with a different CVE profile.</li>
+<li><code>leaky-app</code> — <code>josedonizetti/trivy:secrettest</code>, a public test image containing a synthetic Stripe key.</li>
+</ul>
+<h3>Dashboard: what the 699 means</h3>
+<p>The landing page is an aggregate, not a unique-issue count:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/03-policy-reporter-dashboard.png" alt="Policy Reporter dashboard showing 699 fail results across Trivy vulnerability, config audit, RBAC, and secret sources"></p>
+<p>The 699 fail total decomposes exactly:</p>
+<ul>
+<li><strong>515 vulnerability failures</strong> from the four scans: 185 + 185 + 145 + 0.</li>
+<li><strong>72 configuration failures</strong>: 23 + 17 + 16 + 16.</li>
+<li><strong>112 RBAC failures</strong>: 111 cluster-scoped plus 1 namespace Role.</li>
+<li><strong>0 secret failures</strong>: both secret findings are mapped to <code>warn</code>.</li>
+</ul>
+<p>A number like 699 is not &quot;699 problems to fix.&quot; It is 699 report results, many of them duplicates across package versions, ReplicaSets, or related checks. Move from the aggregate to one source tab, then to one resource.</p>
+<h3>Trivy Vulnerability tab</h3>
+<p>The Vulnerability tab shows <strong>1,694 results</strong>:</p>
+<ul>
+<li><code>payments-api</code>: 423</li>
+<li><code>legacy-web</code>: 423</li>
+<li><code>data-exporter</code>: 708</li>
+<li><code>leaky-app</code>: 140</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/04-policy-reporter-tab-vulnerability.png" alt="Policy Reporter Trivy Vulnerability tab showing 1,694 results for the trivy-demo namespace"></p>
+<p>The page mixes <code>fail</code>, <code>warn</code>, and <code>skip</code>. <strong>Skip is not pass.</strong> A skip usually means the scanner could not evaluate the finding, the package is not applicable, or the result is outside the selected scope. Treating skip as success is how a dashboard becomes misleading.</p>
+<p>The 1,694 rows are also not 1,694 unique CVEs. The same CVE can appear for multiple package instances, and the same image can appear in more than one ReplicaSet. The source <code>VulnerabilityReport</code> is the authoritative per-image object; the UI is an index over those objects.</p>
+<h4>Drilling into one workload</h4>
+<p>Opening <code>payments-api</code> shows the distribution clearly:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/08-policy-reporter-vulnerability-detail.png" alt="Policy Reporter vulnerability detail for payments-api showing 185 failed and 202 warning results"></p>
+<pre><code class="language-text">fail results   185
+warn results   202
+error results  0
+pass results   0
+</code></pre>
+<p>The table is the useful part: CVE ID, severity, and status. The severity comes from Trivy; the status comes from the PolicyReport mapping. They are different fields.</p>
+<p>Behind that screen is a <code>VulnerabilityReport</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-demo get vulnerabilityreport replicaset-payments-api-867449445b-api -o json
+</code></pre>
+<pre><code class="language-json">{&quot;criticalCount&quot;:42,&quot;highCount&quot;:143,&quot;mediumCount&quot;:175,&quot;lowCount&quot;:27,&quot;unknownCount&quot;:36}
+</code></pre>
+<p>The first package rows included:</p>
+<pre><code class="language-text">CVE-2022-32221  CRITICAL  curl      7.64.0-4+deb10u4
+CVE-2021-22946  HIGH      curl      7.64.0-3+deb10u3
+CVE-2021-37600  MEDIUM    bsdutils  2.33.1-0.1+deb10u1
+CVE-2016-2781   LOW       coreutils
+</code></pre>
+<p>What this tab answers: <strong>which running workload has CVEs, and what are they?</strong> It does not tell you whether the vulnerable package is reachable, whether the workload processes untrusted input, or whether the image is actually deployed in production.</p>
+<h3>Trivy ConfigAudit tab</h3>
+<p>The ConfigAudit tab shows <strong>72 failures</strong>, all configuration checks:</p>
+<ul>
+<li><code>payments-api</code>: 23</li>
+<li><code>legacy-web</code>: 17</li>
+<li><code>data-exporter</code>: 16</li>
+<li><code>leaky-app</code>: 16</li>
+</ul>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/05-policy-reporter-tab-config-audit.png" alt="Policy Reporter Trivy ConfigAudit tab showing 72 failures across four workloads"></p>
+<p>This is the highest-signal view for a Kubernetes security review because it tells you what the workload is allowed to do, not just what packages it contains.</p>
+<h4>Drilling into payments-api</h4>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/09-policy-reporter-config-audit-detail.png" alt="Policy Reporter config audit detail for payments-api showing 23 failures, including host PID and host network"></p>
+<p>The high-severity checks were:</p>
+<pre><code class="language-text">Access to host PID                          AVD-KSV-0010   high
+Access to host network                      AVD-KSV-0009   high
+Default security context configured          AVD-KSV-0118   high
+Privileged                                  AVD-KSV-0017   high
+SYS_ADMIN capability added                  AVD-KSV-0005   high
+Root file system is not read-only           AVD-KSV-0014   high
+Kubernetes resource with disallowed volumes AVD-KSV-0121   high
+</code></pre>
+<p>The same screen also shows medium and low findings: hostPath mounted, seccomp disabled, runs as root, CPU and memory limits missing. One screen connects &quot;what the manifest says&quot; to &quot;why it matters.&quot;</p>
+<p>Behind the screen is a <code>ConfigAuditReport</code> with the same check IDs and remediations. The UI is a reader over that report, not a separate scanner. It does not tell you whether the Pod actually behaved maliciously; that is runtime security.</p>
+<h3>Trivy ExposedSecrets tab</h3>
+<p>The ExposedSecrets tab shows <strong>2 results</strong> for the test image:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/06-policy-reporter-tab-exposed-secrets.png" alt="Policy Reporter Trivy ExposedSecrets tab showing two Stripe findings mapped to warn"></p>
+<p>Both are <code>warn</code>, even though one is a critical Stripe secret:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/10-policy-reporter-exposed-secret-detail.png" alt="Policy Reporter exposed secret detail showing a critical Stripe secret and a low-severity publishable key"></p>
+<p>The report behind it:</p>
+<pre><code class="language-yaml">secrets:
+  - category: Stripe
+    ruleID: stripe-secret-token
+    title: Stripe Secret Key
+    severity: CRITICAL
+    target: /app/config/secret.yaml
+    match: &#39;    secret_key: **************************************&#39;
+  - category: Stripe
+    ruleID: stripe-publishable-token
+    title: Stripe Publishable Key
+    severity: LOW
+    target: /app/config/secret.yaml
+</code></pre>
+<p>Three points matter:</p>
+<ul>
+<li>The value is masked. The operator is not a secret-recovery tool.</li>
+<li>The adapter maps both findings to <code>result: warn</code>, so a policy that only routes <code>fail</code> will miss a critical secret.</li>
+<li>The scanner is image/content-based. Environment variables in the Deployment did not produce an <code>ExposedSecretReport</code> in this lab. A Kubernetes Secret object is a different exposure problem, handled by RBAC and etcd encryption.</li>
+</ul>
+<p>This tab answers <strong>did an image ship with a credential in its filesystem?</strong> It does not tell you whether the credential is still valid. If it is real, rotate it. Deleting the workload does not invalidate the key.</p>
+<h3>Trivy RbacAssessment tab</h3>
+<p>The RbacAssessment tab shows <strong>112 failures</strong>: 111 from cluster-scoped roles and 1 from a namespace Role.</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/07-policy-reporter-tab-rbac.png" alt="Policy Reporter Trivy RbacAssessment tab showing 112 failures, mostly cluster-scoped roles"></p>
+<p>The cluster list is noisy because Trivy scans roles that existed before this lab. Use the search box to narrow to the role you care about. Opening the lab&#39;s <code>support-admin</code> ClusterRole shows why the tab is worth checking:</p>
+<p><img src="../image/blog/Trivy-Operator-Continuous-Kubernetes-Security/11-policy-reporter-rbac-detail.png" alt="Policy Reporter RBAC detail for a wildcard ClusterRole showing two critical failures"></p>
+<pre><code class="language-yaml">checks:
+  - checkID: AVD-KSV-0046
+    title: Manage all resources
+    severity: CRITICAL
+    remediation: Remove &#39;*&#39; from &#39;rules.resources&#39;.
+  - checkID: AVD-KSV-0044
+    title: No wildcard verb and resource roles
+    severity: CRITICAL
+    remediation: Create a role which does not permit wildcard verb on wildcard resource.
+summary:
+  criticalCount: 2
+</code></pre>
+<p>The namespace Role <code>secret-reader</code> produced a medium result instead:</p>
+<pre><code class="language-yaml">checkID: AVD-KSV-0113
+title: Manage namespace secrets
+severity: MEDIUM
+</code></pre>
+<p>This tab answers <strong>which identities can do too much?</strong> It does not tell you who actually used that permission. For that you need Kubernetes audit logs.</p>
+<h3>Status semantics: the part that trips people up</h3>
+<p>The UI shows two different concepts that look similar:</p>
+<ul>
+<li><strong>Severity</strong> comes from Trivy: <code>CRITICAL</code>, <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>, <code>UNKNOWN</code>.</li>
+<li><strong>Result</strong> comes from the PolicyReport mapping: <code>fail</code>, <code>warn</code>, <code>pass</code>, <code>error</code>, <code>skip</code>.</li>
+</ul>
+<p>They do not have to agree. In this lab, a critical Stripe secret was mapped to <code>warn</code>. That is why the dashboard&#39;s fail total was 699 while the secret tab showed two findings outside that number.</p>
+<p><code>skip</code> is not <code>pass</code>. A skipped check can mean the scanner could not evaluate it, the resource kind is out of scope, or the policy does not apply. Read the result column, not just the color.</p>
+<p>There is also a time dimension:</p>
+<ul>
+<li>Reports are snapshots tied to a resource revision or a scheduled compliance run.</li>
+<li><code>scannerReportTTL</code> was <code>24h</code>; old ReplicaSet reports can remain after a rollout.</li>
+<li>Compliance ran on a six-hour cron in this lab.</li>
+<li>The PSS report showed <code>17 PASS / 0 FAIL</code> even after a privileged workload was created, because the report predated the workload.</li>
+</ul>
+<p>A green compliance panel is not a live control. Check the timestamp and the scope.</p>
+<h3>Metrics and Grafana</h3>
+<p>The UI is for reading individual findings. Metrics are for trends and alerting. The operator exposes Prometheus metrics on port <code>8080</code>:</p>
+<pre><code class="language-powershell">kubectl -n trivy-system port-forward deploy/trivy-operator 8081:8080
+curl.exe http://localhost:8081/metrics
+</code></pre>
+<p>Real samples:</p>
+<pre><code class="language-text">trivy_image_vulnerabilities{...,image_repository=&quot;library/nginx&quot;,image_tag=&quot;1.19&quot;,...severity=&quot;Critical&quot;} 42
+trivy_image_exposedsecrets{...,image_repository=&quot;josedonizetti/trivy&quot;,image_tag=&quot;secrettest&quot;,...severity=&quot;Critical&quot;} 1
+trivy_cluster_compliance{...,status=&quot;Fail&quot;,title=&quot;Kubernetes Pod Security Standards - Restricted&quot;} 0
+</code></pre>
+<p>Useful queries:</p>
+<pre><code class="language-promql">sum by (namespace, resource_name) (trivy_image_vulnerabilities{severity=&quot;Critical&quot;})
+sum by (namespace, image_repository, image_tag) (trivy_image_exposedsecrets{severity=&quot;Critical&quot;})
+sum by (title, status) (trivy_cluster_compliance)
+</code></pre>
+<p>For a Grafana view, the official dashboard ID is <code>17813</code>. That gives time series and alerting; it does not replace the per-finding tabs.</p>
+<h2>What the UI reveals about the operator</h2>
+<p>The tabs are only half the lesson. The report counts expose how the operator works.</p>
+<h3>Reports follow ReplicaSets, not Deployments</h3>
+<p>A Pod template change creates a new ReplicaSet, which creates a new report. That is why the same image can appear more than once, and why old reports can linger after a rollout. Filter by namespace and resource, and use the report TTL as part of your retention policy.</p>
+<h3><code>targetNamespaces</code> does not scope everything</h3>
+<p>The operator was configured with <code>targetNamespaces: trivy-demo</code>, but the RBAC tab still showed 111 cluster-scoped failures. Workload scanning is namespaced; cluster-scoped RBAC assessment is not. Plan for that volume.</p>
+<h3>Client/server scanning cannot read node-local images</h3>
+<p>I built a local test image and imported it into the k3d nodes. The scan job failed:</p>
+<pre><code class="language-text">unable to find the specified image &quot;lab/leaky-app:1.0&quot; in [&quot;docker&quot; &quot;containerd&quot; &quot;podman&quot; &quot;remote&quot;]
+containerd socket not found: /run/containerd/containerd.sock
+</code></pre>
+<p>The operator&#39;s Trivy server pulls images; it does not read the kubelet&#39;s containerd store. A <code>k3d image import</code> makes an image runnable, not pullable by the scanner. Push it to a reachable registry, or change the scan architecture deliberately.</p>
+<h3>The operator reports; it does not prevent</h3>
+<p>Every bad workload in this lab was already running before its report existed. If a resource must never run, use admission policy such as Kyverno or Gatekeeper. The operator is the continuous backstop for drift, legacy workloads, and manual <code>kubectl</code> changes.</p>
+<h3>The UI needs authentication</h3>
+<p>Policy Reporter exposes namespace names, image names, CVEs, and RBAC posture. The lab UI had no authentication because it was local. In production, put OIDC or an authenticated proxy in front of it.</p>
+<h3>What each tab is best at</h3>
+<ul>
+<li><strong>Dashboard</strong> — a health summary, not a work queue.</li>
+<li><strong>Vulnerability</strong> — image ownership and patch planning.</li>
+<li><strong>ConfigAudit</strong> — workload hardening and admission-policy design.</li>
+<li><strong>ExposedSecrets</strong> — incident response and credential rotation.</li>
+<li><strong>RbacAssessment</strong> — privilege review and least-privilege cleanup.</li>
+</ul>
+<p>The fastest useful loop is: start at the Dashboard, pick the source with the highest fail count, filter to one namespace, open one resource, then trace the finding back to its CRD with <code>kubectl</code>.</p>
+<h2>Step 12: The compliance report can be wrong</h2>
 <p>The operator registered four compliance reports:</p>
 <ul>
 <li><code>k8s-cis-1.23</code></li>
@@ -1004,7 +1538,20 @@ kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
 <li><input disabled="" type="checkbox"> Add runtime detection because scanning is point-in-time.</li>
 </ul>
 <h2>Cleanup</h2>
-<p>Remove the demo workload and the operator when the lab is finished:</p>
+<p>Remove the UI and the extra workloads first:</p>
+<pre><code class="language-powershell">helm uninstall policy-reporter -n policy-reporter
+helm uninstall trivy-operator-polr-adapter -n policy-reporter
+kubectl delete namespace policy-reporter
+
+kubectl -n trivy-demo delete deployment payments-api data-exporter leaky-app
+kubectl delete clusterrolebinding support-bot-support-admin
+kubectl delete clusterrole support-admin
+kubectl -n trivy-demo delete rolebinding support-bot-secret-reader
+kubectl -n trivy-demo delete role secret-reader
+kubectl -n trivy-demo delete serviceaccount support-bot
+kubectl -n trivy-demo delete configmap payments-config
+</code></pre>
+<p>Then remove the demo namespace and the operator:</p>
 <pre><code class="language-powershell">kubectl delete namespace trivy-demo
 helm uninstall trivy-operator -n trivy-system
 </code></pre>
@@ -1019,6 +1566,7 @@ kubectl get clustercompliancereports
 <li>CLI scans in CI for fast feedback;</li>
 <li>manifest scans before apply;</li>
 <li>Operator reports for continuous inventory;</li>
+<li>Policy Reporter for triage and a shared view;</li>
 <li>admission policy for enforcement;</li>
 <li>runtime detection for behavior;</li>
 <li>a triage process that turns findings into owned actions.</li>
@@ -1032,6 +1580,10 @@ kubectl get clustercompliancereports
 <li><a href="https://trivy.dev/docs/latest/scanner/secret/">Trivy secret scanning</a></li>
 <li><a href="https://trivy.dev/docs/latest/configuration/reporting/">Trivy reporting formats</a></li>
 <li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator overview</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/metrics/">Trivy Operator metrics</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/tutorials/integrations/policy-reporter/">Policy Reporter integration</a></li>
+<li><a href="https://github.com/fjogeleit/trivy-operator-polr-adapter">Trivy Operator PolicyReport adapter</a></li>
+<li><a href="https://kyverno.github.io/policy-reporter/">Policy Reporter documentation</a></li>
 <li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Kubernetes Pod Security Standards</a></li>
 </ul>
 
@@ -1041,7 +1593,7 @@ kubectl get clustercompliancereports
             <footer class="post-footer">
                 <div class="share-links">
                     <span class="share-label">Share this post:</span>
-                    <a href="https://twitter.com/intent/tweet?text=Trivy%20for%20Kubernetes%20Security%3A%20CVEs%2C%20Misconfigurations%2C%20Secrets%2C%20and%20Continuous%20Reports&url=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                    <a href="https://twitter.com/intent/tweet?text=Trivy%20for%20Kubernetes%20Security%3A%20CLI%2C%20Operator%2C%20and%20Policy%20Reporter%20UI&url=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
                     </a>
                     <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
@@ -1304,16 +1856,16 @@ kubectl get clustercompliancereports
             // Values use JSON.stringify() in the build script, so no quotes needed here
             const langData = {
                 en: {
-                    title: "Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports",
+                    title: "Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI",
                     date: "November 10, 2026",
-                    readingTime: "19 min read",
-                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>",
+                    readingTime: "31 min read",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>",
                 },
                 th: {
-                    title: "Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports",
+                    title: "Trivy for Kubernetes Security: CLI, Operator, and Policy Reporter UI",
                     date: "November 10, 2026",
-                    readingTime: "19 นาที",
-                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>",
+                    readingTime: "31 นาที",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">trivy-operator</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">policy-reporter</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">ui</span>",
                 },
             };
 
