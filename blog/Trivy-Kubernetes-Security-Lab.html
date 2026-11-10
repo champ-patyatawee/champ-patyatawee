@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
+    <meta property="og:title" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports — Champ Patyatawee">
+    <meta property="og:description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Trivy-Kubernetes-Security-Lab/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports">
+    <meta name="twitter:description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Trivy-Kubernetes-Security-Lab/og.jpg">
+    <meta name="twitter:image:alt" content="Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Build a real Trivy lab on a 4-node k3d cluster, scan an EOL nginx image, catch Kubernetes misconfigurations and synthetic secrets, and inspect Trivy Operator reports in Rancher, including a compliance false-negative that changed how I trust the reports." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab">
+    <title>Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=7">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">19 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">trivy</span>
+<span class="tag">kubernetes</span>
+<span class="tag">security</span>
+<span class="tag">k3d</span>
+<span class="tag">rancher</span>
+<span class="tag">sbom</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Trivy is often described as “a vulnerability scanner for containers.” That is true, but incomplete. In a Kubernetes cluster it can inspect an image, a YAML manifest, a file tree, and a live cluster. It can also run continuously as an operator and publish findings as Kubernetes custom resources.</p>
+<p>The important question is not “can it scan?” It is “which layer is this finding coming from, and what decision can I actually make from it?”</p>
+<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, and Trivy Operator</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, and Kubernetes-native reports. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/01-workload-legacy-web.png" alt="Rancher deployment detail showing legacy-web running nginx:1.19"></p>
+<h2>What this lab found</h2>
+<ul>
+<li>The <code>nginx:1.19</code> image is based on Debian 10.9, which is end-of-life. The CLI found <strong>189 HIGH/CRITICAL vulnerabilities</strong>; the full severity breakdown was <strong>42 critical, 147 high, 180 medium, 45 low, and 9 unknown</strong>.</li>
+<li>The <code>legacy-web</code> Deployment manifest had <strong>3 HIGH misconfigurations</strong>: writable root filesystem, default container security context, and a default pod security context that allows root.</li>
+<li>A deliberately unsafe fixture that was <strong>never applied</strong> had <strong>5 HIGH misconfigurations</strong>, including host networking, privileged mode, and a hostPath mount.</li>
+<li>A synthetic credentials file produced <strong>2 exposed-secret findings</strong>: one critical GitHub token pattern and one high Slack token pattern.</li>
+<li>Trivy Operator generated a <code>VulnerabilityReport</code> with <strong>42 critical, 143 high, 175 medium, 27 low, and 36 unknown</strong> findings. The small difference from the CLI is expected: the operator chart shipped Trivy <code>0.76.1</code>, while the CLI was <code>0.76.2</code>, and vulnerability databases change between scans.</li>
+<li>The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
+</ul>
+<h2>What Trivy can do, and what it cannot</h2>
+<p>Trivy is a scanner and report generator. It is not an admission controller, a runtime security monitor, or a vulnerability management program by itself.</p>
+<ul>
+<li><strong>Container CVEs:</strong> Trivy scans OS packages and language dependencies in images, filesystems, repositories, and SBOMs. You still need a patch/SLA process and an owner for every image.</li>
+<li><strong>Kubernetes misconfiguration:</strong> Built-in checks cover workloads and cluster resources, and custom Rego checks extend them. You still need admission policy if the risky YAML must be prevented from running.</li>
+<li><strong>Exposed secrets:</strong> Trivy checks images, file trees, and Kubernetes resources for token and credential patterns. You still need rotation, history cleanup, and a secret manager.</li>
+<li><strong>Supply chain inventory:</strong> Trivy produces CycloneDX SBOMs and Kubernetes KBOMs. You still need a trusted registry, signing, provenance, and a retention policy.</li>
+<li><strong>Continuous reports:</strong> Trivy Operator watches workloads and generates CRDs. You still need alert routing, triage, expiry, and a human decision.</li>
+<li><strong>Compliance mapping:</strong> Trivy maps findings to CIS, NSA, and Pod Security Standards reports. You still need independent control validation; never treat a green summary as an audit certificate.</li>
+</ul>
+<p>The official Trivy documentation explicitly describes Kubernetes scanning as <strong>experimental</strong>, and separates the container image from the Kubernetes resource definition. That distinction matters. An image CVE and a manifest misconfiguration are different problems with different fixes.</p>
+<p>Trivy does <strong>not</strong>:</p>
+<ul>
+<li>block a pod at admission time;</li>
+<li>detect a live process behaving maliciously;</li>
+<li>prove that a workload is compliant just because a control is marked PASS;</li>
+<li>automatically understand your business risk or patch an image;</li>
+<li>replace runtime tools such as Falco, Tetragon, or a managed runtime sensor.</li>
+</ul>
+<p>The practical model is:</p>
+<pre><code class="language-text">Trivy finds and reports.
+CI and admission policies enforce.
+A runtime sensor detects behavior.
+Your process decides and tracks.
+</code></pre>
+<h2>Architecture of the lab</h2>
+<pre class="mermaid">
+flowchart LR
+    Dev["Windows workstation"] --> CLI["Trivy CLI 0.76.2"]
+    CLI --> Image["nginx:1.19 image<br/>CVEs + secrets"]
+    CLI --> YAML["Kubernetes YAML<br/>misconfiguration checks"]
+    CLI --> Live["k3s API<br/>live cluster scan"]
+
+    Operator["Trivy Operator 0.36.1<br/>chart 0.38.1"] --> Server["trivy-server<br/>persistent DB cache"]
+    Operator --> Jobs["scan jobs<br/>vulnerability + config audit"]
+    Jobs --> CRDs["VulnerabilityReport<br/>ConfigAuditReport<br/>ExposedSecretReport"]
+    CRDs --> API["Kubernetes API"]
+    API --> Rancher["Rancher 2.15.3 UI"]
+</pre>
+<p>The lab versions were:</p>
+<ul>
+<li>k3s <code>v1.36.5+k3s1</code></li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Trivy CLI <code>0.76.2</code></li>
+<li>Trivy Operator chart <code>0.38.1</code>, operator app <code>0.36.1</code></li>
+<li>Operator scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Demo image <code>nginx:1.19</code>, based on Debian <code>10.9</code></li>
+</ul>
+<h2>Prerequisites and context lock</h2>
+<p>I used the existing <code>rancher-lab</code> k3d cluster from my previous k3d/Rancher lab. Before touching anything, confirm the context and node inventory:</p>
+<pre><code class="language-powershell">kubectl config current-context
+k3d cluster list
+kubectl get nodes -o wide
+</code></pre>
+<p>The important result was <code>k3d-rancher-lab</code> with four Ready nodes:</p>
+<pre><code class="language-text">NAME                       STATUS   ROLES           AGE   VERSION
+k3d-rancher-lab-agent-0    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-agent-1    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-server-0   Ready    control-plane  24h   v1.36.5+k3s1
+</code></pre>
+<p>Do not run cluster-scoped commands until this is correct. In a machine with Rancher, EKS, GKE, and k3d contexts, “the current context looked right” is not a security control.</p>
+<h2>Step 1: Deploy a deliberately old workload</h2>
+<p>Create an isolated namespace and apply one small Deployment:</p>
+<pre><code class="language-powershell">kubectl create namespace trivy-demo
+kubectl apply -f .\work\trivy-lab\manifests\demo.yaml
+kubectl -n trivy-demo rollout status deploy/legacy-web --timeout=120s
+kubectl -n trivy-demo get deploy,pods -o wide
+</code></pre>
+<p>The manifest is intentionally simple:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  name: trivy-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-web
+  namespace: trivy-demo
+  labels:
+    app: legacy-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-web
+  template:
+    metadata:
+      labels:
+        app: legacy-web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.19
+          ports:
+            - containerPort: 80
+</code></pre>
+<p>The workload is Ready, but “Ready” only means Kubernetes can run it. It says nothing about the age of the base image or the security context.</p>
+<h2>Step 2: Install a pinned Trivy CLI</h2>
+<p>I pinned the CLI instead of using a moving <code>latest</code> download:</p>
+<pre><code class="language-powershell">$version = &quot;0.76.2&quot;
+$dest = &quot;$PWD\work\trivy-lab\bin&quot;
+$zip = &quot;$PWD\work\trivy-lab\trivy_${version}_Windows-64bit.zip&quot;
+
+New-Item -ItemType Directory -Force $dest | Out-Null
+Invoke-WebRequest `
+  &quot;https://github.com/aquasecurity/trivy/releases/download/v${version}/trivy_${version}_Windows-64bit.zip&quot; `
+  -OutFile $zip
+Expand-Archive $zip -DestinationPath $dest -Force
+.\work\trivy-lab\bin\trivy.exe --version
+</code></pre>
+<pre><code class="language-text">Version: 0.76.2
+</code></pre>
+<p>Pin the version in your CI image or runner too. A scanner that changes silently is another uncontrolled dependency in the supply chain.</p>
+<h2>Step 3: Scan the image before it becomes a mystery</h2>
+<p>Run the image scan:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --scanners vuln `
+  --skip-version-check `
+  --timeout 15m
+</code></pre>
+<p>The relevant output was:</p>
+<pre><code class="language-text">nginx:1.19 (debian 10.9)
+Total: 189 (HIGH: 147, CRITICAL: 42)
+</code></pre>
+<p>Trivy also warned that Debian 10.9 is no longer supported by the distribution, so vulnerability detection may be insufficient because security updates are no longer provided. That is not a cosmetic warning. An EOL base image is a lifecycle problem that no amount of scanning can fix.</p>
+<p>The findings included fixable package issues such as <code>CVE-2022-1664</code> in <code>dpkg</code>. The existence of a fixed version is useful triage data: it means rebuilding on a newer image is a concrete action, not a research project.</p>
+<p>A useful image gate is therefore:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --scanners vuln `
+  --severity CRITICAL,HIGH `
+  --exit-code 1 `
+  --skip-version-check
+</code></pre>
+<p><code>--exit-code 1</code> turns findings into a failing CI step. It does not decide which findings are acceptable; that remains an explicit policy choice.</p>
+<h2>Step 4: Scan the manifest before applying it</h2>
+<p>Image scanning cannot see a privileged container, a hostPath mount, or a missing security context. Scan the YAML separately:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe config .\work\trivy-lab\manifests `
+  --severity HIGH,CRITICAL `
+  --skip-version-check
+</code></pre>
+<p>The two local files produced different results:</p>
+<pre><code class="language-text">demo.yaml          kubernetes   3 misconfigurations
+insecure-pod.yaml  kubernetes   5 misconfigurations
+</code></pre>
+<p>The normal <code>demo.yaml</code> findings were all HIGH:</p>
+<ul>
+<li><code>KSV-0014</code>: the container root filesystem is not read-only.</li>
+<li><code>KSV-0118</code>: the container uses the default security context.</li>
+<li><code>KSV-0118</code>: the pod uses a default security context that can allow root privileges.</li>
+</ul>
+<p>I also created a deliberately unsafe fixture, but <strong>did not apply it</strong>:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: deliberately-insecure
+  namespace: trivy-demo
+spec:
+  hostNetwork: true
+  containers:
+    - name: shell
+      image: busybox:latest
+      securityContext:
+        privileged: true
+        allowPrivilegeEscalation: true
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+</code></pre>
+<p>Scanning that fixture returned five HIGH findings, including:</p>
+<ul>
+<li><code>KSV-0009</code>: host network enabled.</li>
+<li><code>KSV-0017</code>: privileged container.</li>
+<li><code>KSV-0121</code>: hostPath volume mounted from <code>/</code>.</li>
+</ul>
+<p>Keeping a bad fixture in a scan target is useful because it proves the check is live. Applying it to the cluster is a different decision and should be deliberate. Trivy reports the risk; it does not stop the pod.</p>
+<h2>Step 5: Detect exposed secrets without committing real ones</h2>
+<p>I created a synthetic credentials file and scanned only for secrets:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe fs .\work\trivy-lab\fixtures `
+  --scanners secret `
+  --severity HIGH,CRITICAL `
+  --skip-version-check
+</code></pre>
+<p>The fixture contained fake token patterns, never real credentials:</p>
+<pre><code class="language-text">GITHUB_TOKEN=&lt;synthetic GitHub token pattern&gt;
+SLACK_TOKEN=&lt;synthetic Slack token pattern&gt;
+</code></pre>
+<p>Trivy found:</p>
+<pre><code class="language-text">fake-secrets.env  text  2
+Total: 2 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 1, CRITICAL: 1)
+</code></pre>
+<p>The GitHub token pattern was CRITICAL and the Slack token pattern was HIGH. The output redacts the matched values, which is useful, but the presence of the file is still the incident. Rotate first, remove history second, and move the value to a secret manager third.</p>
+<p>Do not test this with a real token. A scanner log, CI artifact, or screenshot can leak the value again.</p>
+<h2>Step 6: Scan the live namespace</h2>
+<p>The CLI can also scan the running cluster. Use the explicit context and namespace:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe k8s k3d-rancher-lab `
+  --include-namespaces trivy-demo `
+  --report summary `
+  --skip-version-check `
+  --timeout 15m
+</code></pre>
+<p>The real workload summary was:</p>
+<pre><code class="language-text">Workload Assessment
+Namespace   Resource                Vulnerabilities        Misconfigurations
+trivy-demo  Deployment/legacy-web   C42 H147 M180 L45 U9
+</code></pre>
+<p>That is useful, but it reinforces the earlier lesson: this view is dominated by the image. The manifest-specific findings are clearer with <code>trivy config</code> or with the operator’s <code>ConfigAuditReport</code>. Do not assume one summary contains every layer.</p>
+<h2>Step 7: Generate an SBOM and KBOM, then read the caveat</h2>
+<p>Generate a CycloneDX image SBOM:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --format cyclonedx `
+  --output .\work\trivy-lab\scan-output\nginx-1.19.cdx.json
+</code></pre>
+<p>Generate a Kubernetes KBOM:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe k8s k3d-rancher-lab `
+  --format cyclonedx `
+  --output .\work\trivy-lab\scan-output\cluster-kbom.cdx.json
+</code></pre>
+<p>Two traps matter here.</p>
+<p>First, <code>--format cyclonedx</code> disables vulnerability scanning unless you explicitly add <code>--scanners vuln</code>. If you want vulnerabilities in the generated inventory, say so.</p>
+<p>Second, scanning the KBOM back with Trivy produced this warning:</p>
+<pre><code class="language-text">Detected OS family=&quot;k3s&quot; version=&quot;v1.36.5+k3s1&quot;
+Unsupported os family=&quot;k3s&quot;
+</code></pre>
+<p>The KBOM was still generated, but the follow-up vulnerability result was not a meaningful k3s package audit. A zero result with an “unsupported OS” warning is not a clean bill of health. Vendor distributions need their own package and advisory mapping.</p>
+<h2>Step 8: Add Trivy Operator for continuous reports</h2>
+<p>The CLI is excellent for CI and investigations. The operator is what makes findings visible inside Kubernetes.</p>
+<p>The lab installed chart <code>0.38.1</code>, which deployed operator <code>0.36.1</code> into <code>trivy-system</code> and scoped scans to <code>trivy-demo</code>:</p>
+<pre><code class="language-powershell">helm repo add aqua https://aquasecurity.github.io/helm-charts/
+helm repo update
+
+helm upgrade --install trivy-operator aqua/trivy-operator `
+  --namespace trivy-system `
+  --create-namespace `
+  --version 0.38.1 `
+  -f .\work\trivy-lab\operator-values.yaml `
+  --wait --timeout 10m
+</code></pre>
+<p>The final values I used were:</p>
+<pre><code class="language-yaml">targetNamespaces: trivy-demo
+operator:
+  builtInTrivyServer: true
+  scanJobTimeout: 30m
+  scanJobsConcurrentLimit: 2
+trivy:
+  timeout: 30m
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256M
+    limits:
+      cpu: 1
+      memory: 1Gi
+  server:
+    resources:
+      requests:
+        cpu: 300m
+        memory: 512Mi
+      limits:
+        cpu: 2
+        memory: 2Gi
+</code></pre>
+<p>The first install did not work with the chart defaults. The scan job timed out at five minutes while pulling the Trivy database. Setting a longer timeout helped, but the scanner still spent a long time downloading the optional Java database. On this connection, the 951 MB Java index was the bottleneck.</p>
+<p>I tried <code>trivy.skipJavaDBUpdate: true</code>, which is logical for a non-Java nginx image. It failed with:</p>
+<pre><code class="language-text">The first run cannot skip downloading Java DB
+&#39;--skip-java-db-update&#39; cannot be specified on the first run
+</code></pre>
+<p>That is a real Trivy constraint: a fresh cache cannot skip the database, even if the target image has no Java components. The final design uses the chart’s built-in Trivy server and a persistent 5 GB PVC so the database cache is not thrown away with every scan job. The server’s first start also tripped its liveness probe during the initial download, restarted once, and then became Ready.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/02-trivy-pods.png" alt="Trivy Operator, Trivy server, and demo pods in Rancher"></p>
+<p>The operator watches workload changes and creates reports automatically. It is not a scheduled cron-only scanner; a new pod or workload change can trigger reconciliation. The compliance reports have a separate cron schedule.</p>
+<h2>Step 9: Read the Kubernetes-native reports</h2>
+<p>List the report resources:</p>
+<pre><code class="language-powershell">kubectl get vulnerabilityreports,configauditreports,exposedsecretreports `
+  --all-namespaces
+</code></pre>
+<p>The vulnerability report was tied to the ReplicaSet and container:</p>
+<pre><code class="language-text">NAMESPACE    NAME                                                    REPOSITORY      TAG    SCANNER
+trivy-demo   replicaset-legacy-web-785d7ddfdb-web                    library/nginx   1.19   Trivy
+</code></pre>
+<p>The Rancher list makes the severity split easy to scan:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/03-vulnerability-list.png" alt="VulnerabilityReport list showing 42 critical and 143 high findings"></p>
+<p>The detail view is a Kubernetes custom resource, not a purpose-built CVE UI. Rancher exposes the report as structured YAML, including the artifact digest, OS, scanner version, summary, and vulnerability entries.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/04-vulnerability-detail.png" alt="VulnerabilityReport detail showing the report summary and YAML"></p>
+<p>To inspect the summary without the full JSON:</p>
+<pre><code class="language-powershell">$report = kubectl get vulnerabilityreport `
+  -n trivy-demo `
+  replicaset-legacy-web-785d7ddfdb-web `
+  -o json | ConvertFrom-Json
+
+$report.report.summary | Format-List
+</code></pre>
+<pre><code class="language-text">criticalCount : 42
+highCount     : 143
+mediumCount   : 175
+lowCount      : 27
+unknownCount  : 36
+</code></pre>
+<p>The ConfigAuditReport answers a different question: what is wrong with the workload definition?</p>
+<pre><code class="language-powershell">kubectl get configauditreport -n trivy-demo
+</code></pre>
+<pre><code class="language-text">NAME                                      SCANNER   AGE
+replicaset-legacy-web-785d7ddfdb          Trivy     43m
+</code></pre>
+<p>The Rancher list shows <strong>0 critical, 3 high, 4 medium, and 10 low</strong> findings:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/05-config-audit-list.png" alt="ConfigAuditReport showing three high and four medium findings"></p>
+<p>The failed checks included:</p>
+<ul>
+<li>root filesystem is not read-only;</li>
+<li>container runs as root;</li>
+<li>default security context is used;</li>
+<li>privilege escalation can be enabled;</li>
+<li>seccomp is not set;</li>
+<li>CPU and memory requests/limits are missing;</li>
+<li>capabilities are not dropped.</li>
+</ul>
+<p>This is the layer that should drive your Pod Security Standards or admission policy. An image update will not fix these.</p>
+<p>The operator also generated an ExposedSecretReport for the image. It was clean:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/06-exposed-secret-list.png" alt="ExposedSecretReport with zero secret findings"></p>
+<p>That result does not contradict the earlier synthetic file scan. The operator scanned the <code>nginx:1.19</code> image and its Kubernetes resources, not my local <code>fake-secrets.env</code> fixture. Scan scope matters more than a generic “Trivy found secrets” statement.</p>
+<h2>Step 10: The compliance report can be wrong</h2>
+<p>The operator registered four compliance reports:</p>
+<ul>
+<li><code>k8s-cis-1.23</code></li>
+<li><code>k8s-nsa-1.0</code></li>
+<li><code>k8s-pss-baseline-0.1</code></li>
+<li><code>k8s-pss-restricted-0.1</code></li>
+</ul>
+<p>The initial Rancher view had blank failure/pass columns. The operator’s compliance updater is tied to a cron schedule, so the report definitions existed before their first summary run. I forced a run by temporarily changing the PSS reports to a one-minute schedule:</p>
+<pre><code class="language-powershell">kubectl patch clustercompliancereport k8s-pss-baseline-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;* * * * *&quot;}}&#39;
+
+kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;* * * * *&quot;}}&#39;
+</code></pre>
+<p>After the run, the operator reported:</p>
+<pre><code class="language-text">k8s-pss-baseline-0.1    PASS 11  FAIL 0
+k8s-pss-restricted-0.1  PASS 17  FAIL 0
+</code></pre>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/07-compliance-reports.png" alt="ClusterComplianceReports showing 11 and 17 passing checks"></p>
+<p>That looks excellent until you compare it with the ConfigAuditReport:</p>
+<pre><code class="language-text">ConfigAuditReport: 3 HIGH, 4 MEDIUM, 10 LOW
+PSS Restricted:   17 PASS, 0 FAIL
+</code></pre>
+<p>The same <code>legacy-web</code> workload is running as root, has a writable root filesystem, and does not enforce a seccomp profile. A restricted Pod Security profile should not be a clean pass.</p>
+<p>I am not treating that as “the workload is fine because the dashboard is green.” In the pinned versions used here, the PSS compliance summary did not reflect the workload-level findings that <code>ConfigAuditReport</code> exposed. Possible causes include report scope, check mapping, summary semantics, or an operator/version bug. The exact cause matters less than the operational rule:</p>
+<blockquote>
+<p>A green compliance report is evidence to investigate, not proof of compliance.</p>
+</blockquote>
+<p>Use compliance reports as a control-mapping layer. Cross-check the controls against workload config audits, admission policy, and an independent test. Never put a compliance dashboard on a screen and assume it is a security guarantee.</p>
+<p>Restore the normal schedule after the one-off run:</p>
+<pre><code class="language-powershell">kubectl patch clustercompliancereport k8s-pss-baseline-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;0 */6 * * *&quot;}}&#39;
+
+kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;0 */6 * * *&quot;}}&#39;
+</code></pre>
+<h2>Triage: turn a report into an action</h2>
+<p>A finding is not a decision. A workable triage flow is:</p>
+<ol>
+<li><strong>Fix the image lifecycle first.</strong> Replace EOL base images and rebuild on a maintained parent. Re-scan after the rebuild; do not assume the tag pulled an updated digest.</li>
+<li><strong>Fix workload security context next.</strong> Set <code>runAsNonRoot</code>, <code>allowPrivilegeEscalation: false</code>, drop <code>ALL</code> capabilities, use a read-only root filesystem where the app allows it, and set a seccomp profile.</li>
+<li><strong>Separate fixed from unfixed.</strong> <code>fixedVersion</code> tells you whether a package update is available. Unknown and unfixed findings need ownership and a time-bound exception, not silent suppression.</li>
+<li><strong>Gate CI.</strong> Fail builds on critical or high image findings, and scan manifests before deployment. Keep an explicit allowlist with expiry.</li>
+<li><strong>Enforce at admission.</strong> Use Kyverno or Gatekeeper to require the same controls you scan for. Trivy can tell you a pod is privileged; admission can stop it from running.</li>
+<li><strong>Watch runtime.</strong> Use Falco or a managed sensor for behavior after the container starts. A clean image scan does not detect a compromised process.</li>
+<li><strong>Keep the reports visible.</strong> Route operator findings to your alerting system and give each exception an owner, reason, and expiration date.</li>
+</ol>
+<p>A useful rule for suppressions is:</p>
+<pre><code class="language-text">No suppression without an owner, a justification, and an expiry date.
+</code></pre>
+<p><code>trivyignore</code> is a scanner input, not an approval workflow.</p>
+<h2>CI, admission, and runtime are different controls</h2>
+<p>The easiest mistake is to install a scanner and assume the cluster is now “secure.”</p>
+<ul>
+<li><strong>Build:</strong> A Trivy image scan with <code>--exit-code 1</code> catches known CVEs and exposed secrets in the built artifact. It does not catch a bad Kubernetes manifest.</li>
+<li><strong>Pre-deploy:</strong> <code>trivy config</code> plus review catches privileged pods, hostPath mounts, and weak security contexts. It does not catch a live runtime compromise.</li>
+<li><strong>Admission:</strong> Kyverno or Gatekeeper prevents disallowed configurations from being deployed. It does not remove a CVE already inside an allowed image.</li>
+<li><strong>Runtime:</strong> Falco, Tetragon, or a managed sensor catches suspicious syscalls, shell execution, and network behavior. It does not prove that an unexercised vulnerable package is safe.</li>
+<li><strong>Continuous inventory:</strong> Trivy Operator catches new workload findings as resources change. It does not provide business context or automatic remediation.</li>
+</ul>
+<p>A production program needs all five, with an owner for each signal.</p>
+<h2>Troubleshooting notes from the real lab</h2>
+<p>These are the issues I hit, not theoretical warnings:</p>
+<ul>
+<li><strong>Operator scan timeout at five minutes.</strong> The default <code>operator.scanJobTimeout</code> and <code>trivy.timeout</code> were too short for the first database download. I raised both to <code>30m</code>.</li>
+<li><strong>Java DB download dominates a small image scan.</strong> The first run downloaded a 951 MB Java index even though the image was nginx. A fresh pod cannot skip it on the first run. The built-in Trivy server with a persistent PVC is the cache-friendly design.</li>
+<li><strong>The Trivy server can restart during first DB download.</strong> Its liveness probe failed while the cache was being populated, then it recovered. Check events before assuming the server is broken.</li>
+<li><strong><code>--context</code> is not a Trivy <code>k8s</code> flag.</strong> The context is positional: <code>trivy k8s k3d-rancher-lab ...</code>.</li>
+<li><strong><code>--include-namespaces</code> changes the result set.</strong> If a scope looks empty, verify the flag and the cluster context before concluding there are no findings.</li>
+<li><strong>CycloneDX can disable vulnerability scanning.</strong> Add <code>--scanners vuln</code> if you want vulnerabilities in that output.</li>
+<li><strong>k3s is not a supported OS family for KBOM package matching.</strong> A zero result with an unsupported-OS warning is not a clean audit.</li>
+<li><strong>Compliance status can lag.</strong> The CRDs can exist before the cron-driven summary runs.</li>
+<li><strong>Compliance can disagree with ConfigAudit.</strong> Validate the mapping and do not trust a green count blindly.</li>
+</ul>
+<h2>Production checklist</h2>
+<ul>
+<li><input disabled="" type="checkbox"> Pin the Trivy CLI, operator chart, operator image, and scanner image.</li>
+<li><input disabled="" type="checkbox"> Mirror the Trivy DB and Java DB in restricted or air-gapped environments.</li>
+<li><input disabled="" type="checkbox"> Use a persistent cache for the operator or Trivy server; size it for both databases.</li>
+<li><input disabled="" type="checkbox"> Scope <code>targetNamespaces</code> instead of scanning every namespace by default.</li>
+<li><input disabled="" type="checkbox"> Set report TTLs and storage expectations; CRDs are not free.</li>
+<li><input disabled="" type="checkbox"> Put an admission controller in front of workloads that must meet PSS.</li>
+<li><input disabled="" type="checkbox"> Route critical/high findings to an owner and an alert channel.</li>
+<li><input disabled="" type="checkbox"> Require expiry dates for suppressions and exceptions.</li>
+<li><input disabled="" type="checkbox"> Re-scan after every image rebuild, not just after a source-code change.</li>
+<li><input disabled="" type="checkbox"> Keep Rancher and the operator API private; reports describe exploitable weaknesses.</li>
+<li><input disabled="" type="checkbox"> Validate compliance results independently; do not make a dashboard the control.</li>
+<li><input disabled="" type="checkbox"> Add runtime detection because scanning is point-in-time.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the demo workload and the operator when the lab is finished:</p>
+<pre><code class="language-powershell">kubectl delete namespace trivy-demo
+helm uninstall trivy-operator -n trivy-system
+</code></pre>
+<p>The Helm uninstall removes the operator resources, but CRDs may remain depending on the chart and cluster. Check before deleting them:</p>
+<pre><code class="language-powershell">kubectl get crd | Select-String &#39;aquasecurity&#39;
+kubectl get clustercompliancereports
+</code></pre>
+<p>Do not delete a namespace or CRD just because its name matches something you saw in a tutorial. Confirm the current context and the resources first.</p>
+<h2>What I would keep</h2>
+<p>Trivy earned a place in the workflow, but not as a single “security” checkbox. The useful pattern is:</p>
+<ul>
+<li>CLI scans in CI for fast feedback;</li>
+<li>manifest scans before apply;</li>
+<li>Operator reports for continuous inventory;</li>
+<li>admission policy for enforcement;</li>
+<li>runtime detection for behavior;</li>
+<li>a triage process that turns findings into owned actions.</li>
+</ul>
+<p>The most important result from this lab was not the 42 critical CVEs. It was the contradiction between the Restricted compliance summary and the workload audit. That is what a security report looks like in the real world: useful, incomplete, and sometimes wrong. The engineer still has to verify the layers and make the decision.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://trivy.dev/docs/latest/">Trivy documentation</a></li>
+<li><a href="https://trivy.dev/docs/latest/target/kubernetes/">Trivy Kubernetes scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/scanner/vulnerability/">Trivy vulnerability scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/scanner/secret/">Trivy secret scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/configuration/reporting/">Trivy reporting formats</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator overview</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Kubernetes Pod Security Standards</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Trivy is often described as “a vulnerability scanner for containers.” That is true, but incomplete. In a Kubernetes cluster it can inspect an image, a YAML manifest, a file tree, and a live cluster. It can also run continuously as an operator and publish findings as Kubernetes custom resources.</p>
+<p>The important question is not “can it scan?” It is “which layer is this finding coming from, and what decision can I actually make from it?”</p>
+<p>I built this lab on my Windows machine to answer that question with real output: <strong>a 4-node k3d cluster (1 server + 3 agents), Rancher, an intentionally old <code>nginx:1.19</code> deployment, the Trivy CLI, and Trivy Operator</strong>. The lab produced useful CVEs, configuration findings, a synthetic secret detection, and Kubernetes-native reports. It also produced a compliance result that contradicted the workload audit, which is exactly the kind of failure a security article should not hide.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/01-workload-legacy-web.png" alt="Rancher deployment detail showing legacy-web running nginx:1.19"></p>
+<h2>What this lab found</h2>
+<ul>
+<li>The <code>nginx:1.19</code> image is based on Debian 10.9, which is end-of-life. The CLI found <strong>189 HIGH/CRITICAL vulnerabilities</strong>; the full severity breakdown was <strong>42 critical, 147 high, 180 medium, 45 low, and 9 unknown</strong>.</li>
+<li>The <code>legacy-web</code> Deployment manifest had <strong>3 HIGH misconfigurations</strong>: writable root filesystem, default container security context, and a default pod security context that allows root.</li>
+<li>A deliberately unsafe fixture that was <strong>never applied</strong> had <strong>5 HIGH misconfigurations</strong>, including host networking, privileged mode, and a hostPath mount.</li>
+<li>A synthetic credentials file produced <strong>2 exposed-secret findings</strong>: one critical GitHub token pattern and one high Slack token pattern.</li>
+<li>Trivy Operator generated a <code>VulnerabilityReport</code> with <strong>42 critical, 143 high, 175 medium, 27 low, and 36 unknown</strong> findings. The small difference from the CLI is expected: the operator chart shipped Trivy <code>0.76.1</code>, while the CLI was <code>0.76.2</code>, and vulnerability databases change between scans.</li>
+<li>The PSS Restricted compliance report claimed <strong>17 PASS / 0 FAIL</strong> even though the same workload had 3 high and 4 medium configuration findings. That is a real false-negative risk, not a reason to celebrate a green dashboard.</li>
+</ul>
+<h2>What Trivy can do, and what it cannot</h2>
+<p>Trivy is a scanner and report generator. It is not an admission controller, a runtime security monitor, or a vulnerability management program by itself.</p>
+<ul>
+<li><strong>Container CVEs:</strong> Trivy scans OS packages and language dependencies in images, filesystems, repositories, and SBOMs. You still need a patch/SLA process and an owner for every image.</li>
+<li><strong>Kubernetes misconfiguration:</strong> Built-in checks cover workloads and cluster resources, and custom Rego checks extend them. You still need admission policy if the risky YAML must be prevented from running.</li>
+<li><strong>Exposed secrets:</strong> Trivy checks images, file trees, and Kubernetes resources for token and credential patterns. You still need rotation, history cleanup, and a secret manager.</li>
+<li><strong>Supply chain inventory:</strong> Trivy produces CycloneDX SBOMs and Kubernetes KBOMs. You still need a trusted registry, signing, provenance, and a retention policy.</li>
+<li><strong>Continuous reports:</strong> Trivy Operator watches workloads and generates CRDs. You still need alert routing, triage, expiry, and a human decision.</li>
+<li><strong>Compliance mapping:</strong> Trivy maps findings to CIS, NSA, and Pod Security Standards reports. You still need independent control validation; never treat a green summary as an audit certificate.</li>
+</ul>
+<p>The official Trivy documentation explicitly describes Kubernetes scanning as <strong>experimental</strong>, and separates the container image from the Kubernetes resource definition. That distinction matters. An image CVE and a manifest misconfiguration are different problems with different fixes.</p>
+<p>Trivy does <strong>not</strong>:</p>
+<ul>
+<li>block a pod at admission time;</li>
+<li>detect a live process behaving maliciously;</li>
+<li>prove that a workload is compliant just because a control is marked PASS;</li>
+<li>automatically understand your business risk or patch an image;</li>
+<li>replace runtime tools such as Falco, Tetragon, or a managed runtime sensor.</li>
+</ul>
+<p>The practical model is:</p>
+<pre><code class="language-text">Trivy finds and reports.
+CI and admission policies enforce.
+A runtime sensor detects behavior.
+Your process decides and tracks.
+</code></pre>
+<h2>Architecture of the lab</h2>
+<pre class="mermaid">
+flowchart LR
+    Dev["Windows workstation"] --> CLI["Trivy CLI 0.76.2"]
+    CLI --> Image["nginx:1.19 image<br/>CVEs + secrets"]
+    CLI --> YAML["Kubernetes YAML<br/>misconfiguration checks"]
+    CLI --> Live["k3s API<br/>live cluster scan"]
+
+    Operator["Trivy Operator 0.36.1<br/>chart 0.38.1"] --> Server["trivy-server<br/>persistent DB cache"]
+    Operator --> Jobs["scan jobs<br/>vulnerability + config audit"]
+    Jobs --> CRDs["VulnerabilityReport<br/>ConfigAuditReport<br/>ExposedSecretReport"]
+    CRDs --> API["Kubernetes API"]
+    API --> Rancher["Rancher 2.15.3 UI"]
+</pre>
+<p>The lab versions were:</p>
+<ul>
+<li>k3s <code>v1.36.5+k3s1</code></li>
+<li>Rancher <code>2.15.3</code></li>
+<li>Trivy CLI <code>0.76.2</code></li>
+<li>Trivy Operator chart <code>0.38.1</code>, operator app <code>0.36.1</code></li>
+<li>Operator scanner image <code>aquasec/trivy:0.76.1</code></li>
+<li>Demo image <code>nginx:1.19</code>, based on Debian <code>10.9</code></li>
+</ul>
+<h2>Prerequisites and context lock</h2>
+<p>I used the existing <code>rancher-lab</code> k3d cluster from my previous k3d/Rancher lab. Before touching anything, confirm the context and node inventory:</p>
+<pre><code class="language-powershell">kubectl config current-context
+k3d cluster list
+kubectl get nodes -o wide
+</code></pre>
+<p>The important result was <code>k3d-rancher-lab</code> with four Ready nodes:</p>
+<pre><code class="language-text">NAME                       STATUS   ROLES           AGE   VERSION
+k3d-rancher-lab-agent-0    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-agent-1    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-agent-2    Ready    &lt;none&gt;          24h   v1.36.5+k3s1
+k3d-rancher-lab-server-0   Ready    control-plane  24h   v1.36.5+k3s1
+</code></pre>
+<p>Do not run cluster-scoped commands until this is correct. In a machine with Rancher, EKS, GKE, and k3d contexts, “the current context looked right” is not a security control.</p>
+<h2>Step 1: Deploy a deliberately old workload</h2>
+<p>Create an isolated namespace and apply one small Deployment:</p>
+<pre><code class="language-powershell">kubectl create namespace trivy-demo
+kubectl apply -f .\work\trivy-lab\manifests\demo.yaml
+kubectl -n trivy-demo rollout status deploy/legacy-web --timeout=120s
+kubectl -n trivy-demo get deploy,pods -o wide
+</code></pre>
+<p>The manifest is intentionally simple:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Namespace
+metadata:
+  name: trivy-demo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-web
+  namespace: trivy-demo
+  labels:
+    app: legacy-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-web
+  template:
+    metadata:
+      labels:
+        app: legacy-web
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.19
+          ports:
+            - containerPort: 80
+</code></pre>
+<p>The workload is Ready, but “Ready” only means Kubernetes can run it. It says nothing about the age of the base image or the security context.</p>
+<h2>Step 2: Install a pinned Trivy CLI</h2>
+<p>I pinned the CLI instead of using a moving <code>latest</code> download:</p>
+<pre><code class="language-powershell">$version = &quot;0.76.2&quot;
+$dest = &quot;$PWD\work\trivy-lab\bin&quot;
+$zip = &quot;$PWD\work\trivy-lab\trivy_${version}_Windows-64bit.zip&quot;
+
+New-Item -ItemType Directory -Force $dest | Out-Null
+Invoke-WebRequest `
+  &quot;https://github.com/aquasecurity/trivy/releases/download/v${version}/trivy_${version}_Windows-64bit.zip&quot; `
+  -OutFile $zip
+Expand-Archive $zip -DestinationPath $dest -Force
+.\work\trivy-lab\bin\trivy.exe --version
+</code></pre>
+<pre><code class="language-text">Version: 0.76.2
+</code></pre>
+<p>Pin the version in your CI image or runner too. A scanner that changes silently is another uncontrolled dependency in the supply chain.</p>
+<h2>Step 3: Scan the image before it becomes a mystery</h2>
+<p>Run the image scan:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --scanners vuln `
+  --skip-version-check `
+  --timeout 15m
+</code></pre>
+<p>The relevant output was:</p>
+<pre><code class="language-text">nginx:1.19 (debian 10.9)
+Total: 189 (HIGH: 147, CRITICAL: 42)
+</code></pre>
+<p>Trivy also warned that Debian 10.9 is no longer supported by the distribution, so vulnerability detection may be insufficient because security updates are no longer provided. That is not a cosmetic warning. An EOL base image is a lifecycle problem that no amount of scanning can fix.</p>
+<p>The findings included fixable package issues such as <code>CVE-2022-1664</code> in <code>dpkg</code>. The existence of a fixed version is useful triage data: it means rebuilding on a newer image is a concrete action, not a research project.</p>
+<p>A useful image gate is therefore:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --scanners vuln `
+  --severity CRITICAL,HIGH `
+  --exit-code 1 `
+  --skip-version-check
+</code></pre>
+<p><code>--exit-code 1</code> turns findings into a failing CI step. It does not decide which findings are acceptable; that remains an explicit policy choice.</p>
+<h2>Step 4: Scan the manifest before applying it</h2>
+<p>Image scanning cannot see a privileged container, a hostPath mount, or a missing security context. Scan the YAML separately:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe config .\work\trivy-lab\manifests `
+  --severity HIGH,CRITICAL `
+  --skip-version-check
+</code></pre>
+<p>The two local files produced different results:</p>
+<pre><code class="language-text">demo.yaml          kubernetes   3 misconfigurations
+insecure-pod.yaml  kubernetes   5 misconfigurations
+</code></pre>
+<p>The normal <code>demo.yaml</code> findings were all HIGH:</p>
+<ul>
+<li><code>KSV-0014</code>: the container root filesystem is not read-only.</li>
+<li><code>KSV-0118</code>: the container uses the default security context.</li>
+<li><code>KSV-0118</code>: the pod uses a default security context that can allow root privileges.</li>
+</ul>
+<p>I also created a deliberately unsafe fixture, but <strong>did not apply it</strong>:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Pod
+metadata:
+  name: deliberately-insecure
+  namespace: trivy-demo
+spec:
+  hostNetwork: true
+  containers:
+    - name: shell
+      image: busybox:latest
+      securityContext:
+        privileged: true
+        allowPrivilegeEscalation: true
+      volumeMounts:
+        - name: host-root
+          mountPath: /host
+  volumes:
+    - name: host-root
+      hostPath:
+        path: /
+</code></pre>
+<p>Scanning that fixture returned five HIGH findings, including:</p>
+<ul>
+<li><code>KSV-0009</code>: host network enabled.</li>
+<li><code>KSV-0017</code>: privileged container.</li>
+<li><code>KSV-0121</code>: hostPath volume mounted from <code>/</code>.</li>
+</ul>
+<p>Keeping a bad fixture in a scan target is useful because it proves the check is live. Applying it to the cluster is a different decision and should be deliberate. Trivy reports the risk; it does not stop the pod.</p>
+<h2>Step 5: Detect exposed secrets without committing real ones</h2>
+<p>I created a synthetic credentials file and scanned only for secrets:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe fs .\work\trivy-lab\fixtures `
+  --scanners secret `
+  --severity HIGH,CRITICAL `
+  --skip-version-check
+</code></pre>
+<p>The fixture contained fake token patterns, never real credentials:</p>
+<pre><code class="language-text">GITHUB_TOKEN=&lt;synthetic GitHub token pattern&gt;
+SLACK_TOKEN=&lt;synthetic Slack token pattern&gt;
+</code></pre>
+<p>Trivy found:</p>
+<pre><code class="language-text">fake-secrets.env  text  2
+Total: 2 (UNKNOWN: 0, LOW: 0, MEDIUM: 0, HIGH: 1, CRITICAL: 1)
+</code></pre>
+<p>The GitHub token pattern was CRITICAL and the Slack token pattern was HIGH. The output redacts the matched values, which is useful, but the presence of the file is still the incident. Rotate first, remove history second, and move the value to a secret manager third.</p>
+<p>Do not test this with a real token. A scanner log, CI artifact, or screenshot can leak the value again.</p>
+<h2>Step 6: Scan the live namespace</h2>
+<p>The CLI can also scan the running cluster. Use the explicit context and namespace:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe k8s k3d-rancher-lab `
+  --include-namespaces trivy-demo `
+  --report summary `
+  --skip-version-check `
+  --timeout 15m
+</code></pre>
+<p>The real workload summary was:</p>
+<pre><code class="language-text">Workload Assessment
+Namespace   Resource                Vulnerabilities        Misconfigurations
+trivy-demo  Deployment/legacy-web   C42 H147 M180 L45 U9
+</code></pre>
+<p>That is useful, but it reinforces the earlier lesson: this view is dominated by the image. The manifest-specific findings are clearer with <code>trivy config</code> or with the operator’s <code>ConfigAuditReport</code>. Do not assume one summary contains every layer.</p>
+<h2>Step 7: Generate an SBOM and KBOM, then read the caveat</h2>
+<p>Generate a CycloneDX image SBOM:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe image nginx:1.19 `
+  --format cyclonedx `
+  --output .\work\trivy-lab\scan-output\nginx-1.19.cdx.json
+</code></pre>
+<p>Generate a Kubernetes KBOM:</p>
+<pre><code class="language-powershell">.\work\trivy-lab\bin\trivy.exe k8s k3d-rancher-lab `
+  --format cyclonedx `
+  --output .\work\trivy-lab\scan-output\cluster-kbom.cdx.json
+</code></pre>
+<p>Two traps matter here.</p>
+<p>First, <code>--format cyclonedx</code> disables vulnerability scanning unless you explicitly add <code>--scanners vuln</code>. If you want vulnerabilities in the generated inventory, say so.</p>
+<p>Second, scanning the KBOM back with Trivy produced this warning:</p>
+<pre><code class="language-text">Detected OS family=&quot;k3s&quot; version=&quot;v1.36.5+k3s1&quot;
+Unsupported os family=&quot;k3s&quot;
+</code></pre>
+<p>The KBOM was still generated, but the follow-up vulnerability result was not a meaningful k3s package audit. A zero result with an “unsupported OS” warning is not a clean bill of health. Vendor distributions need their own package and advisory mapping.</p>
+<h2>Step 8: Add Trivy Operator for continuous reports</h2>
+<p>The CLI is excellent for CI and investigations. The operator is what makes findings visible inside Kubernetes.</p>
+<p>The lab installed chart <code>0.38.1</code>, which deployed operator <code>0.36.1</code> into <code>trivy-system</code> and scoped scans to <code>trivy-demo</code>:</p>
+<pre><code class="language-powershell">helm repo add aqua https://aquasecurity.github.io/helm-charts/
+helm repo update
+
+helm upgrade --install trivy-operator aqua/trivy-operator `
+  --namespace trivy-system `
+  --create-namespace `
+  --version 0.38.1 `
+  -f .\work\trivy-lab\operator-values.yaml `
+  --wait --timeout 10m
+</code></pre>
+<p>The final values I used were:</p>
+<pre><code class="language-yaml">targetNamespaces: trivy-demo
+operator:
+  builtInTrivyServer: true
+  scanJobTimeout: 30m
+  scanJobsConcurrentLimit: 2
+trivy:
+  timeout: 30m
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256M
+    limits:
+      cpu: 1
+      memory: 1Gi
+  server:
+    resources:
+      requests:
+        cpu: 300m
+        memory: 512Mi
+      limits:
+        cpu: 2
+        memory: 2Gi
+</code></pre>
+<p>The first install did not work with the chart defaults. The scan job timed out at five minutes while pulling the Trivy database. Setting a longer timeout helped, but the scanner still spent a long time downloading the optional Java database. On this connection, the 951 MB Java index was the bottleneck.</p>
+<p>I tried <code>trivy.skipJavaDBUpdate: true</code>, which is logical for a non-Java nginx image. It failed with:</p>
+<pre><code class="language-text">The first run cannot skip downloading Java DB
+&#39;--skip-java-db-update&#39; cannot be specified on the first run
+</code></pre>
+<p>That is a real Trivy constraint: a fresh cache cannot skip the database, even if the target image has no Java components. The final design uses the chart’s built-in Trivy server and a persistent 5 GB PVC so the database cache is not thrown away with every scan job. The server’s first start also tripped its liveness probe during the initial download, restarted once, and then became Ready.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/02-trivy-pods.png" alt="Trivy Operator, Trivy server, and demo pods in Rancher"></p>
+<p>The operator watches workload changes and creates reports automatically. It is not a scheduled cron-only scanner; a new pod or workload change can trigger reconciliation. The compliance reports have a separate cron schedule.</p>
+<h2>Step 9: Read the Kubernetes-native reports</h2>
+<p>List the report resources:</p>
+<pre><code class="language-powershell">kubectl get vulnerabilityreports,configauditreports,exposedsecretreports `
+  --all-namespaces
+</code></pre>
+<p>The vulnerability report was tied to the ReplicaSet and container:</p>
+<pre><code class="language-text">NAMESPACE    NAME                                                    REPOSITORY      TAG    SCANNER
+trivy-demo   replicaset-legacy-web-785d7ddfdb-web                    library/nginx   1.19   Trivy
+</code></pre>
+<p>The Rancher list makes the severity split easy to scan:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/03-vulnerability-list.png" alt="VulnerabilityReport list showing 42 critical and 143 high findings"></p>
+<p>The detail view is a Kubernetes custom resource, not a purpose-built CVE UI. Rancher exposes the report as structured YAML, including the artifact digest, OS, scanner version, summary, and vulnerability entries.</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/04-vulnerability-detail.png" alt="VulnerabilityReport detail showing the report summary and YAML"></p>
+<p>To inspect the summary without the full JSON:</p>
+<pre><code class="language-powershell">$report = kubectl get vulnerabilityreport `
+  -n trivy-demo `
+  replicaset-legacy-web-785d7ddfdb-web `
+  -o json | ConvertFrom-Json
+
+$report.report.summary | Format-List
+</code></pre>
+<pre><code class="language-text">criticalCount : 42
+highCount     : 143
+mediumCount   : 175
+lowCount      : 27
+unknownCount  : 36
+</code></pre>
+<p>The ConfigAuditReport answers a different question: what is wrong with the workload definition?</p>
+<pre><code class="language-powershell">kubectl get configauditreport -n trivy-demo
+</code></pre>
+<pre><code class="language-text">NAME                                      SCANNER   AGE
+replicaset-legacy-web-785d7ddfdb          Trivy     43m
+</code></pre>
+<p>The Rancher list shows <strong>0 critical, 3 high, 4 medium, and 10 low</strong> findings:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/05-config-audit-list.png" alt="ConfigAuditReport showing three high and four medium findings"></p>
+<p>The failed checks included:</p>
+<ul>
+<li>root filesystem is not read-only;</li>
+<li>container runs as root;</li>
+<li>default security context is used;</li>
+<li>privilege escalation can be enabled;</li>
+<li>seccomp is not set;</li>
+<li>CPU and memory requests/limits are missing;</li>
+<li>capabilities are not dropped.</li>
+</ul>
+<p>This is the layer that should drive your Pod Security Standards or admission policy. An image update will not fix these.</p>
+<p>The operator also generated an ExposedSecretReport for the image. It was clean:</p>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/06-exposed-secret-list.png" alt="ExposedSecretReport with zero secret findings"></p>
+<p>That result does not contradict the earlier synthetic file scan. The operator scanned the <code>nginx:1.19</code> image and its Kubernetes resources, not my local <code>fake-secrets.env</code> fixture. Scan scope matters more than a generic “Trivy found secrets” statement.</p>
+<h2>Step 10: The compliance report can be wrong</h2>
+<p>The operator registered four compliance reports:</p>
+<ul>
+<li><code>k8s-cis-1.23</code></li>
+<li><code>k8s-nsa-1.0</code></li>
+<li><code>k8s-pss-baseline-0.1</code></li>
+<li><code>k8s-pss-restricted-0.1</code></li>
+</ul>
+<p>The initial Rancher view had blank failure/pass columns. The operator’s compliance updater is tied to a cron schedule, so the report definitions existed before their first summary run. I forced a run by temporarily changing the PSS reports to a one-minute schedule:</p>
+<pre><code class="language-powershell">kubectl patch clustercompliancereport k8s-pss-baseline-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;* * * * *&quot;}}&#39;
+
+kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;* * * * *&quot;}}&#39;
+</code></pre>
+<p>After the run, the operator reported:</p>
+<pre><code class="language-text">k8s-pss-baseline-0.1    PASS 11  FAIL 0
+k8s-pss-restricted-0.1  PASS 17  FAIL 0
+</code></pre>
+<p><img src="../image/blog/Trivy-Kubernetes-Security-Lab/07-compliance-reports.png" alt="ClusterComplianceReports showing 11 and 17 passing checks"></p>
+<p>That looks excellent until you compare it with the ConfigAuditReport:</p>
+<pre><code class="language-text">ConfigAuditReport: 3 HIGH, 4 MEDIUM, 10 LOW
+PSS Restricted:   17 PASS, 0 FAIL
+</code></pre>
+<p>The same <code>legacy-web</code> workload is running as root, has a writable root filesystem, and does not enforce a seccomp profile. A restricted Pod Security profile should not be a clean pass.</p>
+<p>I am not treating that as “the workload is fine because the dashboard is green.” In the pinned versions used here, the PSS compliance summary did not reflect the workload-level findings that <code>ConfigAuditReport</code> exposed. Possible causes include report scope, check mapping, summary semantics, or an operator/version bug. The exact cause matters less than the operational rule:</p>
+<blockquote>
+<p>A green compliance report is evidence to investigate, not proof of compliance.</p>
+</blockquote>
+<p>Use compliance reports as a control-mapping layer. Cross-check the controls against workload config audits, admission policy, and an independent test. Never put a compliance dashboard on a screen and assume it is a security guarantee.</p>
+<p>Restore the normal schedule after the one-off run:</p>
+<pre><code class="language-powershell">kubectl patch clustercompliancereport k8s-pss-baseline-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;0 */6 * * *&quot;}}&#39;
+
+kubectl patch clustercompliancereport k8s-pss-restricted-0.1 `
+  --type merge -p &#39;{&quot;spec&quot;:{&quot;cron&quot;:&quot;0 */6 * * *&quot;}}&#39;
+</code></pre>
+<h2>Triage: turn a report into an action</h2>
+<p>A finding is not a decision. A workable triage flow is:</p>
+<ol>
+<li><strong>Fix the image lifecycle first.</strong> Replace EOL base images and rebuild on a maintained parent. Re-scan after the rebuild; do not assume the tag pulled an updated digest.</li>
+<li><strong>Fix workload security context next.</strong> Set <code>runAsNonRoot</code>, <code>allowPrivilegeEscalation: false</code>, drop <code>ALL</code> capabilities, use a read-only root filesystem where the app allows it, and set a seccomp profile.</li>
+<li><strong>Separate fixed from unfixed.</strong> <code>fixedVersion</code> tells you whether a package update is available. Unknown and unfixed findings need ownership and a time-bound exception, not silent suppression.</li>
+<li><strong>Gate CI.</strong> Fail builds on critical or high image findings, and scan manifests before deployment. Keep an explicit allowlist with expiry.</li>
+<li><strong>Enforce at admission.</strong> Use Kyverno or Gatekeeper to require the same controls you scan for. Trivy can tell you a pod is privileged; admission can stop it from running.</li>
+<li><strong>Watch runtime.</strong> Use Falco or a managed sensor for behavior after the container starts. A clean image scan does not detect a compromised process.</li>
+<li><strong>Keep the reports visible.</strong> Route operator findings to your alerting system and give each exception an owner, reason, and expiration date.</li>
+</ol>
+<p>A useful rule for suppressions is:</p>
+<pre><code class="language-text">No suppression without an owner, a justification, and an expiry date.
+</code></pre>
+<p><code>trivyignore</code> is a scanner input, not an approval workflow.</p>
+<h2>CI, admission, and runtime are different controls</h2>
+<p>The easiest mistake is to install a scanner and assume the cluster is now “secure.”</p>
+<ul>
+<li><strong>Build:</strong> A Trivy image scan with <code>--exit-code 1</code> catches known CVEs and exposed secrets in the built artifact. It does not catch a bad Kubernetes manifest.</li>
+<li><strong>Pre-deploy:</strong> <code>trivy config</code> plus review catches privileged pods, hostPath mounts, and weak security contexts. It does not catch a live runtime compromise.</li>
+<li><strong>Admission:</strong> Kyverno or Gatekeeper prevents disallowed configurations from being deployed. It does not remove a CVE already inside an allowed image.</li>
+<li><strong>Runtime:</strong> Falco, Tetragon, or a managed sensor catches suspicious syscalls, shell execution, and network behavior. It does not prove that an unexercised vulnerable package is safe.</li>
+<li><strong>Continuous inventory:</strong> Trivy Operator catches new workload findings as resources change. It does not provide business context or automatic remediation.</li>
+</ul>
+<p>A production program needs all five, with an owner for each signal.</p>
+<h2>Troubleshooting notes from the real lab</h2>
+<p>These are the issues I hit, not theoretical warnings:</p>
+<ul>
+<li><strong>Operator scan timeout at five minutes.</strong> The default <code>operator.scanJobTimeout</code> and <code>trivy.timeout</code> were too short for the first database download. I raised both to <code>30m</code>.</li>
+<li><strong>Java DB download dominates a small image scan.</strong> The first run downloaded a 951 MB Java index even though the image was nginx. A fresh pod cannot skip it on the first run. The built-in Trivy server with a persistent PVC is the cache-friendly design.</li>
+<li><strong>The Trivy server can restart during first DB download.</strong> Its liveness probe failed while the cache was being populated, then it recovered. Check events before assuming the server is broken.</li>
+<li><strong><code>--context</code> is not a Trivy <code>k8s</code> flag.</strong> The context is positional: <code>trivy k8s k3d-rancher-lab ...</code>.</li>
+<li><strong><code>--include-namespaces</code> changes the result set.</strong> If a scope looks empty, verify the flag and the cluster context before concluding there are no findings.</li>
+<li><strong>CycloneDX can disable vulnerability scanning.</strong> Add <code>--scanners vuln</code> if you want vulnerabilities in that output.</li>
+<li><strong>k3s is not a supported OS family for KBOM package matching.</strong> A zero result with an unsupported-OS warning is not a clean audit.</li>
+<li><strong>Compliance status can lag.</strong> The CRDs can exist before the cron-driven summary runs.</li>
+<li><strong>Compliance can disagree with ConfigAudit.</strong> Validate the mapping and do not trust a green count blindly.</li>
+</ul>
+<h2>Production checklist</h2>
+<ul>
+<li><input disabled="" type="checkbox"> Pin the Trivy CLI, operator chart, operator image, and scanner image.</li>
+<li><input disabled="" type="checkbox"> Mirror the Trivy DB and Java DB in restricted or air-gapped environments.</li>
+<li><input disabled="" type="checkbox"> Use a persistent cache for the operator or Trivy server; size it for both databases.</li>
+<li><input disabled="" type="checkbox"> Scope <code>targetNamespaces</code> instead of scanning every namespace by default.</li>
+<li><input disabled="" type="checkbox"> Set report TTLs and storage expectations; CRDs are not free.</li>
+<li><input disabled="" type="checkbox"> Put an admission controller in front of workloads that must meet PSS.</li>
+<li><input disabled="" type="checkbox"> Route critical/high findings to an owner and an alert channel.</li>
+<li><input disabled="" type="checkbox"> Require expiry dates for suppressions and exceptions.</li>
+<li><input disabled="" type="checkbox"> Re-scan after every image rebuild, not just after a source-code change.</li>
+<li><input disabled="" type="checkbox"> Keep Rancher and the operator API private; reports describe exploitable weaknesses.</li>
+<li><input disabled="" type="checkbox"> Validate compliance results independently; do not make a dashboard the control.</li>
+<li><input disabled="" type="checkbox"> Add runtime detection because scanning is point-in-time.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the demo workload and the operator when the lab is finished:</p>
+<pre><code class="language-powershell">kubectl delete namespace trivy-demo
+helm uninstall trivy-operator -n trivy-system
+</code></pre>
+<p>The Helm uninstall removes the operator resources, but CRDs may remain depending on the chart and cluster. Check before deleting them:</p>
+<pre><code class="language-powershell">kubectl get crd | Select-String &#39;aquasecurity&#39;
+kubectl get clustercompliancereports
+</code></pre>
+<p>Do not delete a namespace or CRD just because its name matches something you saw in a tutorial. Confirm the current context and the resources first.</p>
+<h2>What I would keep</h2>
+<p>Trivy earned a place in the workflow, but not as a single “security” checkbox. The useful pattern is:</p>
+<ul>
+<li>CLI scans in CI for fast feedback;</li>
+<li>manifest scans before apply;</li>
+<li>Operator reports for continuous inventory;</li>
+<li>admission policy for enforcement;</li>
+<li>runtime detection for behavior;</li>
+<li>a triage process that turns findings into owned actions.</li>
+</ul>
+<p>The most important result from this lab was not the 42 critical CVEs. It was the contradiction between the Restricted compliance summary and the workload audit. That is what a security report looks like in the real world: useful, incomplete, and sometimes wrong. The engineer still has to verify the layers and make the decision.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://trivy.dev/docs/latest/">Trivy documentation</a></li>
+<li><a href="https://trivy.dev/docs/latest/target/kubernetes/">Trivy Kubernetes scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/scanner/vulnerability/">Trivy vulnerability scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/scanner/secret/">Trivy secret scanning</a></li>
+<li><a href="https://trivy.dev/docs/latest/configuration/reporting/">Trivy reporting formats</a></li>
+<li><a href="https://aquasecurity.github.io/trivy-operator/latest/">Trivy Operator overview</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Kubernetes Pod Security Standards</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Trivy%20for%20Kubernetes%20Security%3A%20CVEs%2C%20Misconfigurations%2C%20Secrets%2C%20and%20Continuous%20Reports&url=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Trivy-Kubernetes-Security-Lab" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports",
+                    date: "November 10, 2026",
+                    readingTime: "19 min read",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>",
+                },
+                th: {
+                    title: "Trivy for Kubernetes Security: CVEs, Misconfigurations, Secrets, and Continuous Reports",
+                    date: "November 10, 2026",
+                    readingTime: "19 นาที",
+                    tags: "<span class=\"tag\">trivy</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">sbom</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
