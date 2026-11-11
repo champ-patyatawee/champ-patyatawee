@@ -5,6 +5,9 @@ helm:
   version: 6.17.0
   releaseName: fleet-podinfo
   values:
+    image:
+      repository: stefanprodan/podinfo
+      tag: 6.17.0
     replicaCount: 2
     ui:
       message: Managed by Rancher Fleet
