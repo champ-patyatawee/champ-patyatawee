@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Longhorn needs open-iscsi on every node, so a container-based k3d cluster cannot host it. Here is a real four-node k3s lab on Hyper-V, with a PVC that survives pod rescheduling and a replica rebuilt from a surviving copy.">
+    <meta property="og:title" content="Longhorn on Windows: A Four-Node k3s Lab on Hyper-V — Champ Patyatawee">
+    <meta property="og:description" content="Longhorn needs open-iscsi on every node, so a container-based k3d cluster cannot host it. Here is a real four-node k3s lab on Hyper-V, with a PVC that survives pod rescheduling and a replica rebuilt from a surviving copy.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Longhorn on Windows: A Four-Node k3s Lab on Hyper-V">
+    <meta name="twitter:description" content="Longhorn needs open-iscsi on every node, so a container-based k3d cluster cannot host it. Here is a real four-node k3s lab on Hyper-V, with a PVC that survives pod rescheduling and a replica rebuilt from a surviving copy.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/og.jpg">
+    <meta name="twitter:image:alt" content="Longhorn on Windows: A Four-Node k3s Lab on Hyper-V">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Longhorn needs open-iscsi on every node, so a container-based k3d cluster cannot host it. Here is a real four-node k3s lab on Hyper-V, with a PVC that survives pod rescheduling and a replica rebuilt from a surviving copy." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V">
+    <title>Longhorn on Windows: A Four-Node k3s Lab on Hyper-V — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Longhorn on Windows: A Four-Node k3s Lab on Hyper-V</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 11, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">13 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">kubernetes</span>
+<span class="tag">longhorn</span>
+<span class="tag">k3s</span>
+<span class="tag">hyper-v</span>
+<span class="tag">storage</span>
+<span class="tag">windows</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>The rest of this series runs on k3d: k3s inside Docker containers, four &quot;nodes&quot; that are really four containers on one machine. It is fast, disposable, and enough for Rancher, Vault, Trivy, and Fleet.</p>
+<p>Longhorn is the first workload that does not fit. Longhorn is not an ordinary application that happens to store data. It turns each node into a piece of an iSCSI storage fabric: a target is exported from the node that owns the replica, the node that mounts the volume attaches to that target as an iSCSI initiator, and the kernel presents a block device to kubelet.</p>
+<p>That requires <code>iscsiadm</code> and a running <code>iscsid</code> on the host, and it requires the host to see the block device the kernel creates. A k3d node container has none of that.</p>
+<h2>Why k3d cannot run Longhorn</h2>
+<p>I checked every node in the existing lab before writing anything:</p>
+<pre><code class="language-bash">docker exec k3d-rancher-lab-agent-0 sh -c &#39;
+  for b in iscsiadm iscsid apk apt-get dnf; do
+    printf &quot;%s: &quot; &quot;$b&quot;; (command -v $b || echo MISSING)
+  done
+  cat /etc/os-release
+  mount | grep &quot; /dev &quot;&#39;
+</code></pre>
+<pre><code class="language-text">iscsiadm: MISSING
+iscsid: MISSING
+apk: MISSING
+apt-get: MISSING
+dnf: MISSING
+PRETTY_NAME=&quot;K3s v1.36.5+k3s1&quot;
+tmpfs on /dev type tmpfs (rw,nosuid,size=65536k,mode=755)
+</code></pre>
+<p>Three separate problems, and only the first one is easy to see:</p>
+<ul>
+<li>The k3s node image is a minimal rootfs with busybox. There is no package manager, so <code>apt-get install open-iscsi</code> is not available.</li>
+<li>There is no <code>udev</code> inside the node, so the <code>/dev/disk/by-path/ip-...-lun-0</code> symlink that Longhorn resolves never appears.</li>
+<li><code>/dev</code> is a 64 MiB tmpfs, not devtmpfs, so a LUN that the kernel discovers after an iSCSI login does not show up as a device node at all.</li>
+</ul>
+<p>The Longhorn installation requirement is explicit about the first point: <code>open-iscsi</code> must be installed and <code>iscsid</code> must be running on <strong>all</strong> nodes, because Longhorn relies on <code>iscsiadm</code> on the host to provide persistent volumes. The k3d maintainers reached the same conclusion in <a href="https://github.com/k3d-io/k3d/discussions/478">k3d discussion #478</a>: the k3d image is bare bones and you cannot install open-iscsi into it.</p>
+<p>I also tested the &quot;just inject the binary&quot; shortcut. Extracting Alpine&#39;s <code>open-iscsi 2.1.9</code> with its musl libraries and running it inside the k3s image does work:</p>
+<pre><code class="language-text">iscsiadm version 2.1.9
+iscsid version 2.1.9
+</code></pre>
+<p>But a working binary does not fix the missing udev or the missing devtmpfs. Even if the initiator logs in, Longhorn still has no block device to attach. That is where the k3d route ends.</p>
+<p>So the lab moves to real virtual machines. Not because VMs are trendy, but because Longhorn needs a kernel, udev, and a device filesystem that behave like a Linux host.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hypervisor</td>
+<td>Hyper-V on Windows 10 Pro</td>
+</tr>
+<tr>
+<td>Guest OS</td>
+<td>Ubuntu 24.04.5 LTS cloud image</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Longhorn chart <code>1.13.0</code> / app <code>v1.13.0</code></td>
+</tr>
+<tr>
+<td>Cluster shape</td>
+<td>1 server + 3 agents, 2 vCPU / 4 GiB / 25 GiB each</td>
+</tr>
+</tbody></table>
+<p>The VMs sit on a private internal switch, <code>10.10.10.0/24</code>, with the Windows host as <code>10.10.10.1</code> and a Hyper-V NAT for outbound traffic. Bridging the Wi-Fi adapter would have been simpler on paper and flakier in practice.</p>
+<p>The addresses are fixed: server <code>10.10.10.11</code>, agents <code>10.10.10.12</code>-<code>10.10.10.14</code>.</p>
+<h2>Step 1: create the switch and the NAT</h2>
+<p>Run this in an elevated PowerShell. It creates an internal switch, gives the host an address on it, and adds NAT so the guests can reach the internet.</p>
+<pre><code class="language-powershell">New-VMSwitch -Name k3s-lab -SwitchType Internal
+New-NetIPAddress -InterfaceAlias &quot;vEthernet (k3s-lab)&quot; -IPAddress 10.10.10.1 -PrefixLength 24
+New-NetNat -Name k3s-lab-nat -InternalIPInterfaceAddressPrefix 10.10.10.0/24
+</code></pre>
+<p><code>Get-NetNat</code> and <code>Get-VMSwitch</code> are the two commands worth checking afterwards; an existing NAT with an overlapping prefix is the usual reason the guests boot without connectivity.</p>
+<h2>Step 2: turn the cloud image into a VHDX</h2>
+<p>Hyper-V cannot boot the qcow2 image that Ubuntu publishes, and Windows has no <code>qemu-img</code>. Docker does, so the conversion happens in a throwaway container and never touches the host.</p>
+<pre><code class="language-bash">docker run --rm -v D:\k3s-lab:/lab alpine:3.20 sh -c &#39;
+  apk add --no-cache qemu-img &gt;/dev/null
+  qemu-img convert -f qcow2 -O vhdx \
+    /lab/images/noble-server-cloudimg-amd64.img \
+    /lab/images/noble-base.vhdx&#39;
+</code></pre>
+<p>The base disk is only 3.5 GiB. Each VM gets a copy, resized to 25 GiB with Hyper-V&#39;s own tooling before first boot:</p>
+<pre><code class="language-powershell">Copy-Item D:\k3s-lab\images\noble-base.vhdx D:\k3s-lab\vms\k3s-server\k3s-server.vhdx
+Resize-VHD -Path D:\k3s-lab\vms\k3s-server\k3s-server.vhdx -SizeBytes 25GB
+</code></pre>
+<p>On boot, cloud-init runs <code>growpart</code> and the root filesystem expands into the new space.</p>
+<h2>Step 3: build a cloud-init seed disk</h2>
+<p>The cloud image has no default password. Configuration arrives through a second disk labelled <code>CIDATA</code>, which cloud-init reads as the NoCloud datasource. The cleanest way to produce that disk on Windows is to format a small FAT image with <code>mtools</code> and convert it to VHDX, again inside a container:</p>
+<pre><code class="language-bash">dd if=/dev/zero of=seed.img bs=1M count=12 status=none
+mkfs.vfat -n CIDATA seed.img
+mcopy -i seed.img user-data ::user-data
+mcopy -i seed.img meta-data ::meta-data
+mcopy -i seed.img network-config ::network-config
+qemu-img convert -f raw -O vhdx seed.img seed.vhdx
+</code></pre>
+<p><code>user-data</code> carries the SSH key, the hostname, and the packages we want. The important part for a k3s node is the network configuration, because the VM has no DHCP server to talk to:</p>
+<pre><code class="language-yaml">version: 2
+ethernets:
+  eth0:
+    match:
+      name: &quot;*&quot;
+    set-name: eth0
+    dhcp4: false
+    addresses: [10.10.10.11/24]
+    routes:
+      - to: default
+        via: 10.10.10.1
+    nameservers:
+      addresses: [1.1.1.1, 8.8.8.8]
+</code></pre>
+<p>Two details are easy to get wrong. First, <code>match: {name: &quot;en*&quot;}</code> fails on this image, because Hyper-V gives the guest a plain <code>eth0</code>. Matching everything and forcing the name is more reliable. Second, put the same netplan document in <code>user-data</code> as a fallback, then remove <code>/etc/netplan/50-cloud-init.yaml</code> and run <code>netplan apply</code>, so the final state does not depend on the datasource having parsed <code>network-config</code> the way you expected.</p>
+<h2>Step 4: create the VMs</h2>
+<pre><code class="language-powershell">New-VM -Name k3s-server -Generation 2 -MemoryStartupBytes 4GB `
+  -VHDPath D:\k3s-lab\vms\k3s-server\k3s-server.vhdx `
+  -Path D:\k3s-lab\vms\k3s-server -SwitchName k3s-lab
+
+Set-VMProcessor -VMName k3s-server -Count 2
+Set-VMMemory -VMName k3s-server -DynamicMemoryEnabled $false
+Set-VMFirmware -VMName k3s-server -EnableSecureBoot Off
+Add-VMHardDiskDrive -VMName k3s-server -ControllerType SCSI -Path D:\k3s-lab\seed\k3s-server.vhdx
+Start-VM -Name k3s-server
+</code></pre>
+<p>Generation 2 needs Secure Boot off, because the Ubuntu cloud image is not signed for the Microsoft UEFI template. Repeat for the three agents with their own disks, seed images, and addresses.</p>
+<h2>Step 5: install k3s, and fix the DNS trap</h2>
+<p>This is where the first attempt failed, and the failure is worth keeping.</p>
+<p>cloud-init brought the network up correctly, SSH worked, and the IP was right - but the package step died:</p>
+<pre><code class="language-text">E: Failed to fetch http://archive.ubuntu.com/ubuntu/... Temporary failure resolving &#39;archive.ubuntu.com&#39;
+</code></pre>
+<p>The VM resolved names, but <code>getent hosts archive.ubuntu.com</code> returned only IPv6 addresses, and the NAT is IPv4-only. <code>apt</code> tried AAAA first and gave up. Two fixes make this deterministic:</p>
+<pre><code class="language-bash"># prefer IPv4 for name resolution and for apt
+echo &#39;precedence ::ffff:0:0/96  100&#39; | sudo tee -a /etc/gai.conf
+
+sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=8 update
+sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=8 install -y \
+  open-iscsi nfs-common curl jq
+sudo systemctl enable --now iscsid
+sudo modprobe iscsi_tcp
+</code></pre>
+<p>Then install the server:</p>
+<pre><code class="language-bash">curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
+sudo INSTALL_K3S_VERSION=v1.36.5+k3s1 \
+  INSTALL_K3S_EXEC=&quot;server --write-kubeconfig-mode=644 \
+    --tls-san=10.10.10.11 --node-ip=10.10.10.11 --flannel-iface=eth0&quot; \
+  sh /tmp/k3s-install.sh
+</code></pre>
+<p>and each agent, using the token from the server:</p>
+<pre><code class="language-bash">TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
+
+sudo K3S_URL=https://10.10.10.11:6443 K3S_TOKEN=&quot;$TOKEN&quot; \
+  INSTALL_K3S_VERSION=v1.36.5+k3s1 \
+  INSTALL_K3S_EXEC=&quot;agent --node-ip=10.10.10.12 --flannel-iface=eth0&quot; \
+  sh /tmp/k3s-install.sh
+</code></pre>
+<p>The second DNS trap appears after the cluster is up. CoreDNS forwards to whatever is in <code>/etc/resolv.conf</code>, and on Ubuntu that is the <code>systemd-resolved</code> stub at <code>127.0.0.53</code>. Pods cannot reach that address, so every image pull in the cluster fails with <code>lookup registry-1.docker.io: Try again</code> even though <code>curl</code> on the node works fine. Disable the stub resolver on all four nodes:</p>
+<pre><code class="language-bash">sudo systemctl disable --now systemd-resolved
+sudo rm -f /etc/resolv.conf
+printf &#39;nameserver 1.1.1.1\nnameserver 8.8.8.8\n&#39; | sudo tee /etc/resolv.conf
+</code></pre>
+<p>Then restart CoreDNS, and the cluster can resolve registries:</p>
+<pre><code class="language-bash">kubectl -n kube-system rollout restart deploy/coredns
+</code></pre>
+<p>The result is the cluster Longhorn expects:</p>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION        INTERNAL-IP
+k3s-agent-0   Ready    &lt;none&gt;          85s   v1.36.5+k3s1   10.10.10.12
+k3s-agent-1   Ready    &lt;none&gt;          72s   v1.36.5+k3s1   10.10.10.13
+k3s-agent-2   Ready    &lt;none&gt;          59s   v1.36.5+k3s1   10.10.10.14
+k3s-server    Ready    control-plane   18m   v1.36.5+k3s1   10.10.10.11
+</code></pre>
+<p>Copy the kubeconfig to Windows and rewrite the endpoint, because the file k3s writes points at <code>127.0.0.1</code>:</p>
+<pre><code class="language-powershell">ssh ubuntu@10.10.10.11 &#39;sudo cat /etc/rancher/k3s/k3s.yaml&#39; &gt; C:\Users\C\.kube\k3s-lab.yaml
+$c = Get-Content C:\Users\C\.kube\k3s-lab.yaml -Raw
+$c -replace &#39;127\.0\.0\.1&#39;,&#39;10.10.10.11&#39; -replace &#39;default&#39;,&#39;k3s-lab&#39; |
+  Set-Content C:\Users\C\.kube\k3s-lab.yaml
+</code></pre>
+<h2>Step 6: install Longhorn</h2>
+<pre><code class="language-bash">helm repo add longhorn https://charts.longhorn.io
+helm repo update
+
+helm install longhorn longhorn/longhorn \
+  --namespace longhorn-system --create-namespace \
+  --version 1.13.0 \
+  --set defaultSettings.defaultReplicaCount=3
+</code></pre>
+<p>Every Longhorn node reports Ready and schedulable, and each one auto-creates a disk at <code>/var/lib/longhorn/</code>:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system get nodes.longhorn.io
+</code></pre>
+<pre><code class="language-text">NAME          READY   ALLOWSCHEDULING   SCHEDULABLE   AGE
+k3s-agent-0   True    true              True          3m44s
+k3s-agent-1   True    true              True          3m41s
+k3s-agent-2   True    true              True          2m30s
+k3s-server    True    true              True          3m41s
+</code></pre>
+<p>The dashboard below is the real UI from this cluster, reached with a port-forward:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system port-forward svc/longhorn-frontend 8090:80
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/01-dashboard.png" alt="Longhorn dashboard showing one healthy volume across four nodes"></p>
+<p>The nodes page matters more than the dashboard for this article. Each node contributes roughly 16 GiB of schedulable space, and the replica column is the thing to watch during the failure tests.</p>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/02-nodes.png" alt="Longhorn nodes with one replica on each of three nodes"></p>
+<h2>Step 7: a volume with three replicas</h2>
+<p>The workload is deliberately boring: a single pod that appends a line every five seconds to a file on the PVC. A 2 GiB claim with the <code>longhorn</code> storage class is enough to show what happens when the pod moves and when a replica disappears.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: records
+  namespace: longhorn-demo
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: record-writer
+  namespace: longhorn-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: record-writer}
+  template:
+    metadata:
+      labels: {app: record-writer}
+    spec:
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command: [&quot;/bin/sh&quot;,&quot;-c&quot;]
+          args:
+            - while true; do
+                echo &quot;$(date -u +%Y-%m-%dT%H:%M:%SZ) seq=$(cat /data/seq 2&gt;/dev/null || echo 0)&quot; &gt;&gt; /data/records.log;
+                n=$(cat /data/seq 2&gt;/dev/null || echo 0);
+                echo $((n+1)) &gt; /data/seq;
+                sleep 5;
+              done
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: records}
+</code></pre>
+<p>Once bound, Longhorn immediately places three replicas on three different nodes:</p>
+<pre><code class="language-text">NAME        STATE      ROBUSTNESS   SCHEDULED   SIZE
+pvc-...     attached   healthy                  2147483648
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/04-volume-replicas.png" alt="Volume detail with replicas on k3s-server, k3s-agent-0 and k3s-agent-1"></p>
+<h2>Step 8: prove the data survives a pod move</h2>
+<p>A replicated volume is only interesting if a reschedule is invisible to the application. Delete the pod and force it somewhere else:</p>
+<pre><code class="language-bash">kubectl -n longhorn-demo delete pod -l app=record-writer
+kubectl -n longhorn-demo get pod -o wide
+</code></pre>
+<p>The replacement landed on <code>k3s-server</code>, while the volume had been attached to <code>k3s-agent-1</code>. Longhorn detached the engine from the old node, attached it to the new one, and the container found the same filesystem:</p>
+<pre><code class="language-text">NAME                             READY   STATUS    NODE
+record-writer-7c58c7465c-7gxdc   1/1     Running   k3s-server
+</code></pre>
+<pre><code class="language-text">434 /data/records.log
+2026-11-11T09:53:39Z seq=0
+2026-11-11T09:53:44Z seq=1
+2026-11-11T10:30:57Z seq=433
+</code></pre>
+<p>The sequence does not restart at zero. The file that began on one node continues on another, with an 80-second gap while the volume detached and reattached.</p>
+<h2>Step 9: break a replica and watch it rebuild</h2>
+<p>To make the rebuild observable, first write 600 MiB of random data into the volume. With a nearly empty filesystem the rebuild finishes in a second and there is nothing to see in the UI.</p>
+<pre><code class="language-bash">kubectl -n longhorn-demo exec deploy/record-writer -- \
+  dd if=/dev/urandom of=/data/blob.bin bs=1M count=600
+</code></pre>
+<p>Then delete one replica. Longhorn recreates it and syncs from the surviving copies:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system delete replicas.longhorn.io \
+  pvc-f605ff63-4ce1-4c4c-8fe6-d613d1484a15-r-095957c8
+</code></pre>
+<p>The volume drops to <code>Degraded</code> while the new replica catches up:</p>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/05-replica-rebuilding.png" alt="Volume degraded while a replacement replica rebuilds"></p>
+<p>The yellow card is the new replica, on a different node, with a live progress bar. When it finishes, the volume returns to three healthy replicas and the writer never noticed:</p>
+<pre><code class="language-text">NAME        STATE      ROBUSTNESS
+pvc-...     attached   healthy
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/06-healthy-after-rebuild.png" alt="Healthy volume after the replica rebuild"></p>
+<pre><code class="language-text">NAME                    NODE          STATE
+pvc-...-r-20211b83      k3s-server    running
+pvc-...-r-22135a8d      k3s-agent-0   running
+pvc-...-r-be9bf363      k3s-agent-1   running
+</code></pre>
+<h2>The image-pull problem worth knowing about</h2>
+<p>One failure deserves its own note because it will happen to anyone on a slow or unstable link. After the DNS fix, some Longhorn images still would not pull. kubelet backs off up to five minutes between attempts, so a flaky download keeps the pod in <code>ImagePullBackOff</code> long after the registry is reachable again.</p>
+<p>The reliable workaround is to stop pulling from the registry four times and distribute one copy instead. On a node that has the image:</p>
+<pre><code class="language-bash">sudo k3s ctr images export /tmp/im.tar \
+  docker.io/longhornio/longhorn-instance-manager:v1.13.0
+</code></pre>
+<p>Copy the tarball to the other nodes over the internal switch, then:</p>
+<pre><code class="language-bash">sudo k3s ctr images import /tmp/im.tar
+kubectl -n longhorn-system delete pod --field-selector=status.phase!=Running
+</code></pre>
+<p>This is a lab convenience, not a production pattern. In a real cluster you would use a registry mirror, a pull-through cache, or pre-baked node images.</p>
+<h2>What this lab does and does not prove</h2>
+<p>It proves the parts that are hard to fake: three replicas on three different nodes, a pod rescheduled to a different host with its data intact, and a deleted replica rebuilt from the surviving copies while the application kept writing.</p>
+<p>It does not make this production storage. The gaps are concrete:</p>
+<ul>
+<li>One physical host. If it dies, all four VMs die; Longhorn&#39;s replication is protecting against node loss, not against hypervisor loss.</li>
+<li>25 GiB per node with about 16 GiB schedulable. Longhorn reserves space and refuses to over-schedule, so capacity planning still matters.</li>
+<li>No backup target. Snapshots are local to the cluster; without an S3 or NFS target there is no copy that survives the cluster.</li>
+<li>NAT and a private switch on the hypervisor. There is no high availability for the network path.</li>
+<li>The VMs are single-disk. Longhorn is using a filesystem disk, not a dedicated block device, which is fine for a lab and not how you would size a production node.</li>
+</ul>
+<p>For production, the checklist is different: at least three separate physical hosts, dedicated disks per node, a tested backup target, alerting on volume robustness, and a documented procedure for draining a node that hosts replicas.</p>
+<h2>Cleanup</h2>
+<p>Remove the workload, then Longhorn, then the VMs and the network:</p>
+<pre><code class="language-bash">kubectl delete namespace longhorn-demo
+helm uninstall longhorn -n longhorn-system
+kubectl delete namespace longhorn-system
+</code></pre>
+<pre><code class="language-powershell">Get-VM k3s-* | Stop-VM -TurnOff
+Get-VM k3s-* | Remove-VM
+Remove-Item D:\k3s-lab -Recurse
+
+Remove-NetNat -Name k3s-lab-nat
+Remove-VMSwitch -Name k3s-lab
+</code></pre>
+<h2>Takeaways</h2>
+<ul>
+<li>Longhorn is host-level storage. The initiator, udev, and device nodes must exist on the node, not inside a container.</li>
+<li>k3d is an excellent lab for control-plane work and the wrong tool for storage plugins that need real kernel and device visibility.</li>
+<li>Ubuntu&#39;s <code>systemd-resolved</code> stub breaks CoreDNS in a k3s cluster unless you replace <code>/etc/resolv.conf</code>, and it fails in a way that looks like a registry outage.</li>
+<li>Replication is only credible when you delete something. A replica rebuild with a visible progress bar and an application that keeps writing is better evidence than a green status icon.</li>
+</ul>
+<h2>References</h2>
+<ul>
+<li><a href="https://longhorn.io/docs/latest/deploy/install/">Longhorn installation requirements</a></li>
+<li><a href="https://longhorn.io/docs/1.13.0/">Longhorn 1.13 documentation</a></li>
+<li><a href="https://github.com/k3d-io/k3d/discussions/478">k3d discussion #478: Using Longhorn in k3d</a></li>
+<li><a href="https://github.com/k3s-io/k3s/discussions/9987">k3s discussion #9987: iscsiadm / open-iscsi setup</a></li>
+<li><a href="https://cloud-images.ubuntu.com/noble/current/">Ubuntu cloud images</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>The rest of this series runs on k3d: k3s inside Docker containers, four &quot;nodes&quot; that are really four containers on one machine. It is fast, disposable, and enough for Rancher, Vault, Trivy, and Fleet.</p>
+<p>Longhorn is the first workload that does not fit. Longhorn is not an ordinary application that happens to store data. It turns each node into a piece of an iSCSI storage fabric: a target is exported from the node that owns the replica, the node that mounts the volume attaches to that target as an iSCSI initiator, and the kernel presents a block device to kubelet.</p>
+<p>That requires <code>iscsiadm</code> and a running <code>iscsid</code> on the host, and it requires the host to see the block device the kernel creates. A k3d node container has none of that.</p>
+<h2>Why k3d cannot run Longhorn</h2>
+<p>I checked every node in the existing lab before writing anything:</p>
+<pre><code class="language-bash">docker exec k3d-rancher-lab-agent-0 sh -c &#39;
+  for b in iscsiadm iscsid apk apt-get dnf; do
+    printf &quot;%s: &quot; &quot;$b&quot;; (command -v $b || echo MISSING)
+  done
+  cat /etc/os-release
+  mount | grep &quot; /dev &quot;&#39;
+</code></pre>
+<pre><code class="language-text">iscsiadm: MISSING
+iscsid: MISSING
+apk: MISSING
+apt-get: MISSING
+dnf: MISSING
+PRETTY_NAME=&quot;K3s v1.36.5+k3s1&quot;
+tmpfs on /dev type tmpfs (rw,nosuid,size=65536k,mode=755)
+</code></pre>
+<p>Three separate problems, and only the first one is easy to see:</p>
+<ul>
+<li>The k3s node image is a minimal rootfs with busybox. There is no package manager, so <code>apt-get install open-iscsi</code> is not available.</li>
+<li>There is no <code>udev</code> inside the node, so the <code>/dev/disk/by-path/ip-...-lun-0</code> symlink that Longhorn resolves never appears.</li>
+<li><code>/dev</code> is a 64 MiB tmpfs, not devtmpfs, so a LUN that the kernel discovers after an iSCSI login does not show up as a device node at all.</li>
+</ul>
+<p>The Longhorn installation requirement is explicit about the first point: <code>open-iscsi</code> must be installed and <code>iscsid</code> must be running on <strong>all</strong> nodes, because Longhorn relies on <code>iscsiadm</code> on the host to provide persistent volumes. The k3d maintainers reached the same conclusion in <a href="https://github.com/k3d-io/k3d/discussions/478">k3d discussion #478</a>: the k3d image is bare bones and you cannot install open-iscsi into it.</p>
+<p>I also tested the &quot;just inject the binary&quot; shortcut. Extracting Alpine&#39;s <code>open-iscsi 2.1.9</code> with its musl libraries and running it inside the k3s image does work:</p>
+<pre><code class="language-text">iscsiadm version 2.1.9
+iscsid version 2.1.9
+</code></pre>
+<p>But a working binary does not fix the missing udev or the missing devtmpfs. Even if the initiator logs in, Longhorn still has no block device to attach. That is where the k3d route ends.</p>
+<p>So the lab moves to real virtual machines. Not because VMs are trendy, but because Longhorn needs a kernel, udev, and a device filesystem that behave like a Linux host.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Hypervisor</td>
+<td>Hyper-V on Windows 10 Pro</td>
+</tr>
+<tr>
+<td>Guest OS</td>
+<td>Ubuntu 24.04.5 LTS cloud image</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Longhorn chart <code>1.13.0</code> / app <code>v1.13.0</code></td>
+</tr>
+<tr>
+<td>Cluster shape</td>
+<td>1 server + 3 agents, 2 vCPU / 4 GiB / 25 GiB each</td>
+</tr>
+</tbody></table>
+<p>The VMs sit on a private internal switch, <code>10.10.10.0/24</code>, with the Windows host as <code>10.10.10.1</code> and a Hyper-V NAT for outbound traffic. Bridging the Wi-Fi adapter would have been simpler on paper and flakier in practice.</p>
+<p>The addresses are fixed: server <code>10.10.10.11</code>, agents <code>10.10.10.12</code>-<code>10.10.10.14</code>.</p>
+<h2>Step 1: create the switch and the NAT</h2>
+<p>Run this in an elevated PowerShell. It creates an internal switch, gives the host an address on it, and adds NAT so the guests can reach the internet.</p>
+<pre><code class="language-powershell">New-VMSwitch -Name k3s-lab -SwitchType Internal
+New-NetIPAddress -InterfaceAlias &quot;vEthernet (k3s-lab)&quot; -IPAddress 10.10.10.1 -PrefixLength 24
+New-NetNat -Name k3s-lab-nat -InternalIPInterfaceAddressPrefix 10.10.10.0/24
+</code></pre>
+<p><code>Get-NetNat</code> and <code>Get-VMSwitch</code> are the two commands worth checking afterwards; an existing NAT with an overlapping prefix is the usual reason the guests boot without connectivity.</p>
+<h2>Step 2: turn the cloud image into a VHDX</h2>
+<p>Hyper-V cannot boot the qcow2 image that Ubuntu publishes, and Windows has no <code>qemu-img</code>. Docker does, so the conversion happens in a throwaway container and never touches the host.</p>
+<pre><code class="language-bash">docker run --rm -v D:\k3s-lab:/lab alpine:3.20 sh -c &#39;
+  apk add --no-cache qemu-img &gt;/dev/null
+  qemu-img convert -f qcow2 -O vhdx \
+    /lab/images/noble-server-cloudimg-amd64.img \
+    /lab/images/noble-base.vhdx&#39;
+</code></pre>
+<p>The base disk is only 3.5 GiB. Each VM gets a copy, resized to 25 GiB with Hyper-V&#39;s own tooling before first boot:</p>
+<pre><code class="language-powershell">Copy-Item D:\k3s-lab\images\noble-base.vhdx D:\k3s-lab\vms\k3s-server\k3s-server.vhdx
+Resize-VHD -Path D:\k3s-lab\vms\k3s-server\k3s-server.vhdx -SizeBytes 25GB
+</code></pre>
+<p>On boot, cloud-init runs <code>growpart</code> and the root filesystem expands into the new space.</p>
+<h2>Step 3: build a cloud-init seed disk</h2>
+<p>The cloud image has no default password. Configuration arrives through a second disk labelled <code>CIDATA</code>, which cloud-init reads as the NoCloud datasource. The cleanest way to produce that disk on Windows is to format a small FAT image with <code>mtools</code> and convert it to VHDX, again inside a container:</p>
+<pre><code class="language-bash">dd if=/dev/zero of=seed.img bs=1M count=12 status=none
+mkfs.vfat -n CIDATA seed.img
+mcopy -i seed.img user-data ::user-data
+mcopy -i seed.img meta-data ::meta-data
+mcopy -i seed.img network-config ::network-config
+qemu-img convert -f raw -O vhdx seed.img seed.vhdx
+</code></pre>
+<p><code>user-data</code> carries the SSH key, the hostname, and the packages we want. The important part for a k3s node is the network configuration, because the VM has no DHCP server to talk to:</p>
+<pre><code class="language-yaml">version: 2
+ethernets:
+  eth0:
+    match:
+      name: &quot;*&quot;
+    set-name: eth0
+    dhcp4: false
+    addresses: [10.10.10.11/24]
+    routes:
+      - to: default
+        via: 10.10.10.1
+    nameservers:
+      addresses: [1.1.1.1, 8.8.8.8]
+</code></pre>
+<p>Two details are easy to get wrong. First, <code>match: {name: &quot;en*&quot;}</code> fails on this image, because Hyper-V gives the guest a plain <code>eth0</code>. Matching everything and forcing the name is more reliable. Second, put the same netplan document in <code>user-data</code> as a fallback, then remove <code>/etc/netplan/50-cloud-init.yaml</code> and run <code>netplan apply</code>, so the final state does not depend on the datasource having parsed <code>network-config</code> the way you expected.</p>
+<h2>Step 4: create the VMs</h2>
+<pre><code class="language-powershell">New-VM -Name k3s-server -Generation 2 -MemoryStartupBytes 4GB `
+  -VHDPath D:\k3s-lab\vms\k3s-server\k3s-server.vhdx `
+  -Path D:\k3s-lab\vms\k3s-server -SwitchName k3s-lab
+
+Set-VMProcessor -VMName k3s-server -Count 2
+Set-VMMemory -VMName k3s-server -DynamicMemoryEnabled $false
+Set-VMFirmware -VMName k3s-server -EnableSecureBoot Off
+Add-VMHardDiskDrive -VMName k3s-server -ControllerType SCSI -Path D:\k3s-lab\seed\k3s-server.vhdx
+Start-VM -Name k3s-server
+</code></pre>
+<p>Generation 2 needs Secure Boot off, because the Ubuntu cloud image is not signed for the Microsoft UEFI template. Repeat for the three agents with their own disks, seed images, and addresses.</p>
+<h2>Step 5: install k3s, and fix the DNS trap</h2>
+<p>This is where the first attempt failed, and the failure is worth keeping.</p>
+<p>cloud-init brought the network up correctly, SSH worked, and the IP was right - but the package step died:</p>
+<pre><code class="language-text">E: Failed to fetch http://archive.ubuntu.com/ubuntu/... Temporary failure resolving &#39;archive.ubuntu.com&#39;
+</code></pre>
+<p>The VM resolved names, but <code>getent hosts archive.ubuntu.com</code> returned only IPv6 addresses, and the NAT is IPv4-only. <code>apt</code> tried AAAA first and gave up. Two fixes make this deterministic:</p>
+<pre><code class="language-bash"># prefer IPv4 for name resolution and for apt
+echo &#39;precedence ::ffff:0:0/96  100&#39; | sudo tee -a /etc/gai.conf
+
+sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=8 update
+sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=8 install -y \
+  open-iscsi nfs-common curl jq
+sudo systemctl enable --now iscsid
+sudo modprobe iscsi_tcp
+</code></pre>
+<p>Then install the server:</p>
+<pre><code class="language-bash">curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
+sudo INSTALL_K3S_VERSION=v1.36.5+k3s1 \
+  INSTALL_K3S_EXEC=&quot;server --write-kubeconfig-mode=644 \
+    --tls-san=10.10.10.11 --node-ip=10.10.10.11 --flannel-iface=eth0&quot; \
+  sh /tmp/k3s-install.sh
+</code></pre>
+<p>and each agent, using the token from the server:</p>
+<pre><code class="language-bash">TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
+
+sudo K3S_URL=https://10.10.10.11:6443 K3S_TOKEN=&quot;$TOKEN&quot; \
+  INSTALL_K3S_VERSION=v1.36.5+k3s1 \
+  INSTALL_K3S_EXEC=&quot;agent --node-ip=10.10.10.12 --flannel-iface=eth0&quot; \
+  sh /tmp/k3s-install.sh
+</code></pre>
+<p>The second DNS trap appears after the cluster is up. CoreDNS forwards to whatever is in <code>/etc/resolv.conf</code>, and on Ubuntu that is the <code>systemd-resolved</code> stub at <code>127.0.0.53</code>. Pods cannot reach that address, so every image pull in the cluster fails with <code>lookup registry-1.docker.io: Try again</code> even though <code>curl</code> on the node works fine. Disable the stub resolver on all four nodes:</p>
+<pre><code class="language-bash">sudo systemctl disable --now systemd-resolved
+sudo rm -f /etc/resolv.conf
+printf &#39;nameserver 1.1.1.1\nnameserver 8.8.8.8\n&#39; | sudo tee /etc/resolv.conf
+</code></pre>
+<p>Then restart CoreDNS, and the cluster can resolve registries:</p>
+<pre><code class="language-bash">kubectl -n kube-system rollout restart deploy/coredns
+</code></pre>
+<p>The result is the cluster Longhorn expects:</p>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION        INTERNAL-IP
+k3s-agent-0   Ready    &lt;none&gt;          85s   v1.36.5+k3s1   10.10.10.12
+k3s-agent-1   Ready    &lt;none&gt;          72s   v1.36.5+k3s1   10.10.10.13
+k3s-agent-2   Ready    &lt;none&gt;          59s   v1.36.5+k3s1   10.10.10.14
+k3s-server    Ready    control-plane   18m   v1.36.5+k3s1   10.10.10.11
+</code></pre>
+<p>Copy the kubeconfig to Windows and rewrite the endpoint, because the file k3s writes points at <code>127.0.0.1</code>:</p>
+<pre><code class="language-powershell">ssh ubuntu@10.10.10.11 &#39;sudo cat /etc/rancher/k3s/k3s.yaml&#39; &gt; C:\Users\C\.kube\k3s-lab.yaml
+$c = Get-Content C:\Users\C\.kube\k3s-lab.yaml -Raw
+$c -replace &#39;127\.0\.0\.1&#39;,&#39;10.10.10.11&#39; -replace &#39;default&#39;,&#39;k3s-lab&#39; |
+  Set-Content C:\Users\C\.kube\k3s-lab.yaml
+</code></pre>
+<h2>Step 6: install Longhorn</h2>
+<pre><code class="language-bash">helm repo add longhorn https://charts.longhorn.io
+helm repo update
+
+helm install longhorn longhorn/longhorn \
+  --namespace longhorn-system --create-namespace \
+  --version 1.13.0 \
+  --set defaultSettings.defaultReplicaCount=3
+</code></pre>
+<p>Every Longhorn node reports Ready and schedulable, and each one auto-creates a disk at <code>/var/lib/longhorn/</code>:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system get nodes.longhorn.io
+</code></pre>
+<pre><code class="language-text">NAME          READY   ALLOWSCHEDULING   SCHEDULABLE   AGE
+k3s-agent-0   True    true              True          3m44s
+k3s-agent-1   True    true              True          3m41s
+k3s-agent-2   True    true              True          2m30s
+k3s-server    True    true              True          3m41s
+</code></pre>
+<p>The dashboard below is the real UI from this cluster, reached with a port-forward:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system port-forward svc/longhorn-frontend 8090:80
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/01-dashboard.png" alt="Longhorn dashboard showing one healthy volume across four nodes"></p>
+<p>The nodes page matters more than the dashboard for this article. Each node contributes roughly 16 GiB of schedulable space, and the replica column is the thing to watch during the failure tests.</p>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/02-nodes.png" alt="Longhorn nodes with one replica on each of three nodes"></p>
+<h2>Step 7: a volume with three replicas</h2>
+<p>The workload is deliberately boring: a single pod that appends a line every five seconds to a file on the PVC. A 2 GiB claim with the <code>longhorn</code> storage class is enough to show what happens when the pod moves and when a replica disappears.</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: records
+  namespace: longhorn-demo
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: record-writer
+  namespace: longhorn-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: record-writer}
+  template:
+    metadata:
+      labels: {app: record-writer}
+    spec:
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command: [&quot;/bin/sh&quot;,&quot;-c&quot;]
+          args:
+            - while true; do
+                echo &quot;$(date -u +%Y-%m-%dT%H:%M:%SZ) seq=$(cat /data/seq 2&gt;/dev/null || echo 0)&quot; &gt;&gt; /data/records.log;
+                n=$(cat /data/seq 2&gt;/dev/null || echo 0);
+                echo $((n+1)) &gt; /data/seq;
+                sleep 5;
+              done
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: records}
+</code></pre>
+<p>Once bound, Longhorn immediately places three replicas on three different nodes:</p>
+<pre><code class="language-text">NAME        STATE      ROBUSTNESS   SCHEDULED   SIZE
+pvc-...     attached   healthy                  2147483648
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/04-volume-replicas.png" alt="Volume detail with replicas on k3s-server, k3s-agent-0 and k3s-agent-1"></p>
+<h2>Step 8: prove the data survives a pod move</h2>
+<p>A replicated volume is only interesting if a reschedule is invisible to the application. Delete the pod and force it somewhere else:</p>
+<pre><code class="language-bash">kubectl -n longhorn-demo delete pod -l app=record-writer
+kubectl -n longhorn-demo get pod -o wide
+</code></pre>
+<p>The replacement landed on <code>k3s-server</code>, while the volume had been attached to <code>k3s-agent-1</code>. Longhorn detached the engine from the old node, attached it to the new one, and the container found the same filesystem:</p>
+<pre><code class="language-text">NAME                             READY   STATUS    NODE
+record-writer-7c58c7465c-7gxdc   1/1     Running   k3s-server
+</code></pre>
+<pre><code class="language-text">434 /data/records.log
+2026-11-11T09:53:39Z seq=0
+2026-11-11T09:53:44Z seq=1
+2026-11-11T10:30:57Z seq=433
+</code></pre>
+<p>The sequence does not restart at zero. The file that began on one node continues on another, with an 80-second gap while the volume detached and reattached.</p>
+<h2>Step 9: break a replica and watch it rebuild</h2>
+<p>To make the rebuild observable, first write 600 MiB of random data into the volume. With a nearly empty filesystem the rebuild finishes in a second and there is nothing to see in the UI.</p>
+<pre><code class="language-bash">kubectl -n longhorn-demo exec deploy/record-writer -- \
+  dd if=/dev/urandom of=/data/blob.bin bs=1M count=600
+</code></pre>
+<p>Then delete one replica. Longhorn recreates it and syncs from the surviving copies:</p>
+<pre><code class="language-bash">kubectl -n longhorn-system delete replicas.longhorn.io \
+  pvc-f605ff63-4ce1-4c4c-8fe6-d613d1484a15-r-095957c8
+</code></pre>
+<p>The volume drops to <code>Degraded</code> while the new replica catches up:</p>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/05-replica-rebuilding.png" alt="Volume degraded while a replacement replica rebuilds"></p>
+<p>The yellow card is the new replica, on a different node, with a live progress bar. When it finishes, the volume returns to three healthy replicas and the writer never noticed:</p>
+<pre><code class="language-text">NAME        STATE      ROBUSTNESS
+pvc-...     attached   healthy
+</code></pre>
+<p><img src="../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/06-healthy-after-rebuild.png" alt="Healthy volume after the replica rebuild"></p>
+<pre><code class="language-text">NAME                    NODE          STATE
+pvc-...-r-20211b83      k3s-server    running
+pvc-...-r-22135a8d      k3s-agent-0   running
+pvc-...-r-be9bf363      k3s-agent-1   running
+</code></pre>
+<h2>The image-pull problem worth knowing about</h2>
+<p>One failure deserves its own note because it will happen to anyone on a slow or unstable link. After the DNS fix, some Longhorn images still would not pull. kubelet backs off up to five minutes between attempts, so a flaky download keeps the pod in <code>ImagePullBackOff</code> long after the registry is reachable again.</p>
+<p>The reliable workaround is to stop pulling from the registry four times and distribute one copy instead. On a node that has the image:</p>
+<pre><code class="language-bash">sudo k3s ctr images export /tmp/im.tar \
+  docker.io/longhornio/longhorn-instance-manager:v1.13.0
+</code></pre>
+<p>Copy the tarball to the other nodes over the internal switch, then:</p>
+<pre><code class="language-bash">sudo k3s ctr images import /tmp/im.tar
+kubectl -n longhorn-system delete pod --field-selector=status.phase!=Running
+</code></pre>
+<p>This is a lab convenience, not a production pattern. In a real cluster you would use a registry mirror, a pull-through cache, or pre-baked node images.</p>
+<h2>What this lab does and does not prove</h2>
+<p>It proves the parts that are hard to fake: three replicas on three different nodes, a pod rescheduled to a different host with its data intact, and a deleted replica rebuilt from the surviving copies while the application kept writing.</p>
+<p>It does not make this production storage. The gaps are concrete:</p>
+<ul>
+<li>One physical host. If it dies, all four VMs die; Longhorn&#39;s replication is protecting against node loss, not against hypervisor loss.</li>
+<li>25 GiB per node with about 16 GiB schedulable. Longhorn reserves space and refuses to over-schedule, so capacity planning still matters.</li>
+<li>No backup target. Snapshots are local to the cluster; without an S3 or NFS target there is no copy that survives the cluster.</li>
+<li>NAT and a private switch on the hypervisor. There is no high availability for the network path.</li>
+<li>The VMs are single-disk. Longhorn is using a filesystem disk, not a dedicated block device, which is fine for a lab and not how you would size a production node.</li>
+</ul>
+<p>For production, the checklist is different: at least three separate physical hosts, dedicated disks per node, a tested backup target, alerting on volume robustness, and a documented procedure for draining a node that hosts replicas.</p>
+<h2>Cleanup</h2>
+<p>Remove the workload, then Longhorn, then the VMs and the network:</p>
+<pre><code class="language-bash">kubectl delete namespace longhorn-demo
+helm uninstall longhorn -n longhorn-system
+kubectl delete namespace longhorn-system
+</code></pre>
+<pre><code class="language-powershell">Get-VM k3s-* | Stop-VM -TurnOff
+Get-VM k3s-* | Remove-VM
+Remove-Item D:\k3s-lab -Recurse
+
+Remove-NetNat -Name k3s-lab-nat
+Remove-VMSwitch -Name k3s-lab
+</code></pre>
+<h2>Takeaways</h2>
+<ul>
+<li>Longhorn is host-level storage. The initiator, udev, and device nodes must exist on the node, not inside a container.</li>
+<li>k3d is an excellent lab for control-plane work and the wrong tool for storage plugins that need real kernel and device visibility.</li>
+<li>Ubuntu&#39;s <code>systemd-resolved</code> stub breaks CoreDNS in a k3s cluster unless you replace <code>/etc/resolv.conf</code>, and it fails in a way that looks like a registry outage.</li>
+<li>Replication is only credible when you delete something. A replica rebuild with a visible progress bar and an application that keeps writing is better evidence than a green status icon.</li>
+</ul>
+<h2>References</h2>
+<ul>
+<li><a href="https://longhorn.io/docs/latest/deploy/install/">Longhorn installation requirements</a></li>
+<li><a href="https://longhorn.io/docs/1.13.0/">Longhorn 1.13 documentation</a></li>
+<li><a href="https://github.com/k3d-io/k3d/discussions/478">k3d discussion #478: Using Longhorn in k3d</a></li>
+<li><a href="https://github.com/k3s-io/k3s/discussions/9987">k3s discussion #9987: iscsiadm / open-iscsi setup</a></li>
+<li><a href="https://cloud-images.ubuntu.com/noble/current/">Ubuntu cloud images</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Longhorn%20on%20Windows%3A%20A%20Four-Node%20k3s%20Lab%20on%20Hyper-V&url=https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Longhorn on Windows: A Four-Node k3s Lab on Hyper-V",
+                    date: "November 11, 2026",
+                    readingTime: "13 min read",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">longhorn</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">hyper-v</span>\n<span class=\"tag\">storage</span>\n<span class=\"tag\">windows</span>",
+                },
+                th: {
+                    title: "Longhorn on Windows: A Four-Node k3s Lab on Hyper-V",
+                    date: "November 11, 2026",
+                    readingTime: "13 นาที",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">longhorn</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">hyper-v</span>\n<span class=\"tag\">storage</span>\n<span class=\"tag\">windows</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
