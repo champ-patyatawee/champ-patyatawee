@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
-    <meta property="og:title" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts — Champ Patyatawee">
-    <meta property="og:description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta name="description" content="Rancher already installs Fleet. Use it to drive raw YAML, a Kustomize overlay, and a Helm chart from one GitRepo, then prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta property="og:title" content="Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction — Champ Patyatawee">
+    <meta property="og:description" content="Rancher already installs Fleet. Use it to drive raw YAML, a Kustomize overlay, and a Helm chart from one GitRepo, then prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
     <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Rancher-Fleet-GitOps-on-k3d/og.jpg">
@@ -13,18 +13,18 @@
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/jpeg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts">
-    <meta name="twitter:description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
+    <meta name="twitter:title" content="Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction">
+    <meta name="twitter:description" content="Rancher already installs Fleet. Use it to drive raw YAML, a Kustomize overlay, and a Helm chart from one GitRepo, then prove drift correction by manually scaling a Deployment and watching Fleet put it back.">
     <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Rancher-Fleet-GitOps-on-k3d/og.jpg">
-    <meta name="twitter:image:alt" content="Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts">
+    <meta name="twitter:image:alt" content="Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction">
     <!-- Thai alternate meta -->
-    <meta name="description" content="Rancher already installs Fleet. Use it to turn a k3d lab into a real GitOps target: create a GitRepo, watch BundleDeployments appear, change replicas through Git, and prove drift correction by manually scaling a Deployment and watching Fleet put it back." lang="th">
+    <meta name="description" content="Rancher already installs Fleet. Use it to drive raw YAML, a Kustomize overlay, and a Helm chart from one GitRepo, then prove drift correction by manually scaling a Deployment and watching Fleet put it back." lang="th">
     <meta property="og:locale:alternate" content="th_TH">
     <link rel="canonical" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
     <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
     <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
     <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d">
-    <title>Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts — Champ Patyatawee</title>
+    <title>Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
     <link rel="stylesheet" href="style.css?v=8">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -111,10 +111,10 @@
             <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
             
             <header class="post-header">
-                <h1 class="post-title" id="post-title">Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts</h1>
+                <h1 class="post-title" id="post-title">Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction</h1>
                 <div class="post-meta">
-                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 10, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">12 min read</span></span>
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 11, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">17 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">fleet</span>
@@ -123,6 +123,8 @@
 <span class="tag">kubernetes</span>
 <span class="tag">k3d</span>
 <span class="tag">traefik</span>
+<span class="tag">kustomize</span>
+<span class="tag">helm</span>
                 </div>
 
                 <!-- Language tabs -->
@@ -137,7 +139,7 @@
                 <div class="post-content en-content">
                     <p>Rancher 2.15 installs Fleet by default. Most people never notice. It sits in <code>cattle-fleet-system</code>, waits for a <code>GitRepo</code>, and does nothing until you give it a repository to reconcile.</p>
 <p>That is a useful starting point for a GitOps lab. There is no extra controller to install and no second management plane to run. The question is whether Fleet&#39;s reconciliation model is actually understandable when you watch it work: what is a Bundle, why does a cluster get its own namespace, and what happens when someone changes a Deployment by hand?</p>
-<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, one small application, and two deliberate changes — one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
+<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, and three bundle shapes — raw YAML, a Kustomize overlay, and a Helm chart. Then I made two deliberate changes: one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
 <h2>What Fleet actually manages</h2>
 <p>Fleet has four objects worth understanding before touching YAML:</p>
 <ul>
@@ -146,7 +148,7 @@
 <li><strong>BundleDeployment</strong> — the per-cluster assignment of a Bundle, created in a generated namespace such as <code>cluster-fleet-local-local-1a3d67d0a899</code>.</li>
 <li><strong>Cluster / ClusterGroup</strong> — the targets. A <code>GitRepo</code> can target one cluster by name, a label selector, or a group.</li>
 </ul>
-<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
+<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. A Bundle can be raw YAML, a Kustomize render, or a Helm chart, which is why one GitRepo can manage all three shapes. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
 <p>The local Rancher cluster is registered as <code>fleet-local/local</code>. That is the only target in this POC.</p>
 <h2>Scope: one cluster, not a multi-cluster claim</h2>
 <p>This lab proves:</p>
@@ -165,6 +167,7 @@
 <li>Fleet chart <code>110.0.3+up0.16.3</code>, Fleet <code>0.16.3</code></li>
 <li>Traefik chart <code>42.3.1</code>, app <code>v3.7.17</code></li>
 <li>Demo image <code>traefik/whoami:v1.11.0</code></li>
+<li>Helm chart <code>podinfo 6.17.0</code></li>
 </ul>
 <p>Fleet was already installed by Rancher. I did not install a second copy.</p>
 <h2>Prerequisites and context lock</h2>
@@ -388,6 +391,184 @@ fleet-demo   2/2     2            2           8m5s
   --patch &#39;{&quot;spec&quot;:{&quot;correctDrift&quot;:{&quot;enabled&quot;:true}}}&#39;
 </code></pre>
 <p>That is a real operational trap. If you expect Fleet to undo manual changes, make <code>correctDrift</code> an explicit part of the GitRepo spec and verify it with a deliberate scale test. Do not assume “GitOps” means “drift is always reverted.”</p>
+<h2>Step 8: Add a Kustomize overlay</h2>
+<p>The raw YAML path proves Fleet can apply manifests. It does not prove Fleet can render a Kustomize overlay. For that I added a second bundle root:</p>
+<pre><code class="language-text">examples/fleet-lab-kustomize/
+├── base/
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── kustomization.yaml
+├── overlays/dev/kustomization.yaml
+└── fleet.yaml
+</code></pre>
+<p>The base is the same whoami application under a different name and namespace. The <code>dev</code> overlay changes the replica count and adds a <code>variant: dev</code> label:</p>
+<pre><code class="language-yaml">apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+labels:
+  - pairs:
+      variant: dev
+patches:
+  - target:
+      kind: Deployment
+      name: fleet-kustomize
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+</code></pre>
+<p>Fleet does not need a separate Kustomize install. The bundle-level <code>fleet.yaml</code> points at the overlay:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-kustomize
+kustomize:
+  dir: overlays/dev
+</code></pre>
+<p>Add the path to the existing GitRepo:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;paths&quot;:[&quot;examples/fleet-lab&quot;,&quot;examples/fleet-lab-kustomize&quot;]}}&#39;
+</code></pre>
+<p>Before trusting Fleet, render the overlay locally and inspect the output:</p>
+<pre><code class="language-bash">kubectl kustomize examples/fleet-lab-kustomize/overlays/dev | grep -E &#39;replicas:|variant:&#39;
+</code></pre>
+<pre><code class="language-text">replicas: 3
+variant: dev
+</code></pre>
+<p>Fleet produced the same result in the cluster:</p>
+<pre><code class="language-text">NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-kustomize   3/3     3            3           61s
+</code></pre>
+<p>The Deployment also carried the overlay label:</p>
+<pre><code class="language-text">NAME              READY   ...   LABELS
+fleet-kustomize   3/3     ...   app=fleet-kustomize,...,variant=dev
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/10-kustomize-app.png" alt="The Kustomize-rendered fleet-kustomize application served through Traefik"></p>
+<p>Kustomize is a rendering step, not a separate controller. If the overlay changes, the bundle content changes, and Fleet reconciles a new revision exactly as it did for the raw YAML.</p>
+<h2>Step 9: Add a Helm chart</h2>
+<p>The third bundle is a Helm chart from an upstream repository. The <code>fleet.yaml</code> carries the chart, version, release name, and values:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-podinfo
+helm:
+  chart: podinfo
+  repo: https://stefanprodan.github.io/podinfo
+  version: 6.17.0
+  releaseName: fleet-podinfo
+  values:
+    image:
+      repository: stefanprodan/podinfo
+      tag: 6.17.0
+    replicaCount: 2
+    ui:
+      message: Managed by Rancher Fleet
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: fleet-podinfo.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix
+</code></pre>
+<p>Add the third path:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;paths&quot;:[&quot;examples/fleet-lab&quot;,&quot;examples/fleet-lab-kustomize&quot;,&quot;examples/fleet-lab-helm&quot;]}}&#39;
+</code></pre>
+<p>Fleet created a Helm release in the target cluster:</p>
+<pre><code class="language-bash">helm list -n fleet-podinfo
+</code></pre>
+<pre><code class="language-text">NAME           NAMESPACE      REVISION   STATUS     CHART           APP VERSION
+fleet-podinfo  fleet-podinfo  2          deployed   podinfo-6.17.0  6.17.0
+</code></pre>
+<p>The workload followed the chart values:</p>
+<pre><code class="language-text">NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-podinfo   2/2     2            2           12m
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/11-podinfo-ui.png" alt="Podinfo served through Traefik with the message Managed by Rancher Fleet"></p>
+<p>This is the point where the Helm values override matters. The chart defaults to <code>ghcr.io/stefanprodan/podinfo</code>, but the k3d nodes failed to resolve <code>ghcr.io</code> during the first rollout:</p>
+<pre><code class="language-text">Failed to pull image &quot;ghcr.io/stefanprodan/podinfo:6.17.0&quot;:
+dial tcp: lookup ghcr.io: Try again
+</code></pre>
+<p>The same podinfo image is published on Docker Hub, so I overrode <code>image.repository</code> to <code>stefanprodan/podinfo</code>. The chart version and application version stayed at <code>6.17.0</code>; only the registry changed. That is a normal Fleet/Helm values override, not a fork of the chart.</p>
+<p>If you want the GHCR default, fix cluster DNS or mirror the image into a registry the nodes can reach. Do not assume a chart install failed because the release is <code>deployed</code>; Kubernetes can still be stuck in <code>ImagePullBackOff</code> underneath it.</p>
+<h2>Step 10: One GitRepo, three bundles</h2>
+<p>The GitRepo now points at three paths. Fleet creates one Bundle per path and one BundleDeployment per target cluster for each Bundle:</p>
+<pre><code class="language-bash">kubectl -n fleet-local get bundles
+</code></pre>
+<pre><code class="language-text">NAME                                      BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-agent-local                         1/1
+fleet-demo-examples-fleet-lab             1/1
+fleet-demo-examples-fleet-lab-helm        1/1
+fleet-demo-examples-fleet-lab-kustomize   1/1
+</code></pre>
+<p>Rancher rolls those up into a single App Bundle view. The important numbers are 3/3 bundles and 13/13 resources:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/12-three-bundles.png" alt="Fleet App Bundle showing 3/3 bundles ready and 13/13 resources ready across raw YAML, Kustomize, and Helm"></p>
+<p>The Resources tab lists the objects from all three bundle roots, including their namespaces:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/13-three-bundles-resources.png" alt="Fleet Resources tab showing resources from fleet-demo, fleet-kustomize, and fleet-podinfo"></p>
+<p>That is the practical answer to &quot;can Fleet manage Helm and Kustomize?&quot; It can, but each deployment style is a separate bundle root. Trying to put <code>helm:</code> and <code>kustomize:</code> in the same <code>fleet.yaml</code> is the wrong model.</p>
+<p>The three bundles in this POC are independent, so Fleet reconciles them in parallel. If one bundle provides a CRD or controller that another bundle needs, add <code>dependsOn</code> to the consumer&#39;s <code>fleet.yaml</code> rather than assuming apply order.</p>
+<h2>How declarative is this really?</h2>
+<p>Most of the application lifecycle is declarative, but &quot;everything&quot; is too strong.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Declarative?</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Workloads, Services, Ingress</td>
+<td>Yes</td>
+<td>Stored in Git and reconciled by Fleet</td>
+</tr>
+<tr>
+<td>Kustomize overlays</td>
+<td>Yes</td>
+<td>Rendered by Fleet from the bundle root</td>
+</tr>
+<tr>
+<td>Helm chart, version, values</td>
+<td>Yes</td>
+<td>Declared in <code>fleet.yaml</code></td>
+</tr>
+<tr>
+<td>Target clusters and overrides</td>
+<td>Yes</td>
+<td>Cluster labels, groups, and <code>targetCustomizations</code></td>
+</tr>
+<tr>
+<td>Drift policy</td>
+<td>Yes</td>
+<td><code>correctDrift.enabled</code> is part of the GitRepo spec</td>
+</tr>
+<tr>
+<td>Git credentials</td>
+<td>Partly</td>
+<td>The Secret must exist before Fleet can clone a private repo</td>
+</tr>
+<tr>
+<td>Fleet installation</td>
+<td>No</td>
+<td>Installed by Rancher or a bootstrap process</td>
+</tr>
+<tr>
+<td>Cluster registration</td>
+<td>Partly</td>
+<td>A registration token/agent bootstrap starts the relationship</td>
+</tr>
+<tr>
+<td>Image build and push</td>
+<td>No</td>
+<td>CI builds and publishes the artifact outside Fleet</td>
+</tr>
+<tr>
+<td>DNS, CA, cloud infrastructure</td>
+<td>Outside Fleet</td>
+<td>Use cert-manager, ExternalDNS, Terraform, or Crossplane</td>
+</tr>
+</tbody></table>
+<p>The honest model is: Fleet declares the desired Kubernetes state, but something still has to bootstrap Fleet, the repository credentials, and the clusters it manages.</p>
 <h2>How this maps to production</h2>
 <p>The single-cluster flow above is the same model used for many clusters, with a few additions:</p>
 <ul>
@@ -412,19 +593,20 @@ fleet-demo   2/2     2            2           8m5s
 <h2>Cleanup</h2>
 <p>Deleting the GitRepo tells Fleet to clean up the resources it owns:</p>
 <pre><code class="language-bash">kubectl -n fleet-local delete gitrepo fleet-demo
-kubectl get ns fleet-demo
+kubectl get ns fleet-demo fleet-kustomize fleet-podinfo
 </code></pre>
-<p>If the namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
-<pre><code class="language-bash">kubectl delete namespace fleet-demo
+<p>If a namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
+<pre><code class="language-bash">kubectl delete namespace fleet-demo fleet-kustomize fleet-podinfo
 </code></pre>
 <p>Do not uninstall <code>fleet</code>, <code>fleet-crd</code>, or <code>fleet-agent-local</code> just to clean up one application. Rancher owns those components and other features depend on them.</p>
 <h2>What I would keep</h2>
 <p>Fleet is a good fit when Rancher is already the control plane. The useful pattern is not “put YAML in Git”; it is:</p>
 <ul>
-<li>one reviewable source path per application;</li>
+<li>one reviewable bundle root per application or chart;</li>
 <li>a target defined by cluster identity or labels;</li>
 <li>a BundleDeployment status that tells you which cluster failed;</li>
 <li>drift policy that matches who owns the resource;</li>
+<li>Kustomize for overlays and Helm for upstream charts, without mixing them in one <code>fleet.yaml</code>;</li>
 <li>a workflow that treats the Git commit as the audit record.</li>
 </ul>
 <p>The most valuable result from this lab was not the green 5/5. It was seeing the <code>Modified</code> state and learning that Fleet will report drift long before it necessarily reverts it. That distinction is the difference between a dashboard and an operational control.</p>
@@ -433,6 +615,8 @@ kubectl get ns fleet-demo
 <li><a href="https://fleet.rancher.io/">Rancher Fleet documentation</a></li>
 <li><a href="https://fleet.rancher.io/ref-gitrepo">Fleet GitRepo reference</a></li>
 <li><a href="https://fleet.rancher.io/ref-gitrepo#correctdrift">Fleet drift correction</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#helm">Fleet Helm support</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#kustomize">Fleet Kustomize support</a></li>
 <li><a href="https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/continuous-delivery">Rancher Continuous Delivery</a></li>
 <li><a href="https://fleet.rancher.io/ref-bundledeployment">Fleet bundledeployments</a></li>
 <li><a href="https://doc.traefik.io/traefik/providers/kubernetes-ingress/">Traefik Kubernetes Ingress</a></li>
@@ -446,7 +630,7 @@ kubectl get ns fleet-demo
                 <div class="post-content th-content">
                     <p>Rancher 2.15 installs Fleet by default. Most people never notice. It sits in <code>cattle-fleet-system</code>, waits for a <code>GitRepo</code>, and does nothing until you give it a repository to reconcile.</p>
 <p>That is a useful starting point for a GitOps lab. There is no extra controller to install and no second management plane to run. The question is whether Fleet&#39;s reconciliation model is actually understandable when you watch it work: what is a Bundle, why does a cluster get its own namespace, and what happens when someone changes a Deployment by hand?</p>
-<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, one small application, and two deliberate changes — one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
+<p>I built this POC on the existing 4-node k3d lab: one Rancher local cluster, one Git repository, and three bundle shapes — raw YAML, a Kustomize overlay, and a Helm chart. Then I made two deliberate changes: one through Git and one through <code>kubectl</code>. The second one is where the interesting behavior lives.</p>
 <h2>What Fleet actually manages</h2>
 <p>Fleet has four objects worth understanding before touching YAML:</p>
 <ul>
@@ -455,7 +639,7 @@ kubectl get ns fleet-demo
 <li><strong>BundleDeployment</strong> — the per-cluster assignment of a Bundle, created in a generated namespace such as <code>cluster-fleet-local-local-1a3d67d0a899</code>.</li>
 <li><strong>Cluster / ClusterGroup</strong> — the targets. A <code>GitRepo</code> can target one cluster by name, a label selector, or a group.</li>
 </ul>
-<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
+<p>The reconciliation chain is: Git commit → <code>GitRepo</code> → <code>Bundle</code> → <code>BundleDeployment</code> → resources in the target cluster. A Bundle can be raw YAML, a Kustomize render, or a Helm chart, which is why one GitRepo can manage all three shapes. Fleet uses Helm to install the BundleDeployment content, which is why Rancher can show a Helm release behind a Git-managed application.</p>
 <p>The local Rancher cluster is registered as <code>fleet-local/local</code>. That is the only target in this POC.</p>
 <h2>Scope: one cluster, not a multi-cluster claim</h2>
 <p>This lab proves:</p>
@@ -474,6 +658,7 @@ kubectl get ns fleet-demo
 <li>Fleet chart <code>110.0.3+up0.16.3</code>, Fleet <code>0.16.3</code></li>
 <li>Traefik chart <code>42.3.1</code>, app <code>v3.7.17</code></li>
 <li>Demo image <code>traefik/whoami:v1.11.0</code></li>
+<li>Helm chart <code>podinfo 6.17.0</code></li>
 </ul>
 <p>Fleet was already installed by Rancher. I did not install a second copy.</p>
 <h2>Prerequisites and context lock</h2>
@@ -697,6 +882,184 @@ fleet-demo   2/2     2            2           8m5s
   --patch &#39;{&quot;spec&quot;:{&quot;correctDrift&quot;:{&quot;enabled&quot;:true}}}&#39;
 </code></pre>
 <p>That is a real operational trap. If you expect Fleet to undo manual changes, make <code>correctDrift</code> an explicit part of the GitRepo spec and verify it with a deliberate scale test. Do not assume “GitOps” means “drift is always reverted.”</p>
+<h2>Step 8: Add a Kustomize overlay</h2>
+<p>The raw YAML path proves Fleet can apply manifests. It does not prove Fleet can render a Kustomize overlay. For that I added a second bundle root:</p>
+<pre><code class="language-text">examples/fleet-lab-kustomize/
+├── base/
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── kustomization.yaml
+├── overlays/dev/kustomization.yaml
+└── fleet.yaml
+</code></pre>
+<p>The base is the same whoami application under a different name and namespace. The <code>dev</code> overlay changes the replica count and adds a <code>variant: dev</code> label:</p>
+<pre><code class="language-yaml">apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+labels:
+  - pairs:
+      variant: dev
+patches:
+  - target:
+      kind: Deployment
+      name: fleet-kustomize
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 3
+</code></pre>
+<p>Fleet does not need a separate Kustomize install. The bundle-level <code>fleet.yaml</code> points at the overlay:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-kustomize
+kustomize:
+  dir: overlays/dev
+</code></pre>
+<p>Add the path to the existing GitRepo:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;paths&quot;:[&quot;examples/fleet-lab&quot;,&quot;examples/fleet-lab-kustomize&quot;]}}&#39;
+</code></pre>
+<p>Before trusting Fleet, render the overlay locally and inspect the output:</p>
+<pre><code class="language-bash">kubectl kustomize examples/fleet-lab-kustomize/overlays/dev | grep -E &#39;replicas:|variant:&#39;
+</code></pre>
+<pre><code class="language-text">replicas: 3
+variant: dev
+</code></pre>
+<p>Fleet produced the same result in the cluster:</p>
+<pre><code class="language-text">NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-kustomize   3/3     3            3           61s
+</code></pre>
+<p>The Deployment also carried the overlay label:</p>
+<pre><code class="language-text">NAME              READY   ...   LABELS
+fleet-kustomize   3/3     ...   app=fleet-kustomize,...,variant=dev
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/10-kustomize-app.png" alt="The Kustomize-rendered fleet-kustomize application served through Traefik"></p>
+<p>Kustomize is a rendering step, not a separate controller. If the overlay changes, the bundle content changes, and Fleet reconciles a new revision exactly as it did for the raw YAML.</p>
+<h2>Step 9: Add a Helm chart</h2>
+<p>The third bundle is a Helm chart from an upstream repository. The <code>fleet.yaml</code> carries the chart, version, release name, and values:</p>
+<pre><code class="language-yaml">defaultNamespace: fleet-podinfo
+helm:
+  chart: podinfo
+  repo: https://stefanprodan.github.io/podinfo
+  version: 6.17.0
+  releaseName: fleet-podinfo
+  values:
+    image:
+      repository: stefanprodan/podinfo
+      tag: 6.17.0
+    replicaCount: 2
+    ui:
+      message: Managed by Rancher Fleet
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: fleet-podinfo.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix
+</code></pre>
+<p>Add the third path:</p>
+<pre><code class="language-bash">kubectl -n fleet-local patch gitrepo fleet-demo --type merge \
+  --patch &#39;{&quot;spec&quot;:{&quot;paths&quot;:[&quot;examples/fleet-lab&quot;,&quot;examples/fleet-lab-kustomize&quot;,&quot;examples/fleet-lab-helm&quot;]}}&#39;
+</code></pre>
+<p>Fleet created a Helm release in the target cluster:</p>
+<pre><code class="language-bash">helm list -n fleet-podinfo
+</code></pre>
+<pre><code class="language-text">NAME           NAMESPACE      REVISION   STATUS     CHART           APP VERSION
+fleet-podinfo  fleet-podinfo  2          deployed   podinfo-6.17.0  6.17.0
+</code></pre>
+<p>The workload followed the chart values:</p>
+<pre><code class="language-text">NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+fleet-podinfo   2/2     2            2           12m
+</code></pre>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/11-podinfo-ui.png" alt="Podinfo served through Traefik with the message Managed by Rancher Fleet"></p>
+<p>This is the point where the Helm values override matters. The chart defaults to <code>ghcr.io/stefanprodan/podinfo</code>, but the k3d nodes failed to resolve <code>ghcr.io</code> during the first rollout:</p>
+<pre><code class="language-text">Failed to pull image &quot;ghcr.io/stefanprodan/podinfo:6.17.0&quot;:
+dial tcp: lookup ghcr.io: Try again
+</code></pre>
+<p>The same podinfo image is published on Docker Hub, so I overrode <code>image.repository</code> to <code>stefanprodan/podinfo</code>. The chart version and application version stayed at <code>6.17.0</code>; only the registry changed. That is a normal Fleet/Helm values override, not a fork of the chart.</p>
+<p>If you want the GHCR default, fix cluster DNS or mirror the image into a registry the nodes can reach. Do not assume a chart install failed because the release is <code>deployed</code>; Kubernetes can still be stuck in <code>ImagePullBackOff</code> underneath it.</p>
+<h2>Step 10: One GitRepo, three bundles</h2>
+<p>The GitRepo now points at three paths. Fleet creates one Bundle per path and one BundleDeployment per target cluster for each Bundle:</p>
+<pre><code class="language-bash">kubectl -n fleet-local get bundles
+</code></pre>
+<pre><code class="language-text">NAME                                      BUNDLEDEPLOYMENTS-READY   STATUS
+fleet-agent-local                         1/1
+fleet-demo-examples-fleet-lab             1/1
+fleet-demo-examples-fleet-lab-helm        1/1
+fleet-demo-examples-fleet-lab-kustomize   1/1
+</code></pre>
+<p>Rancher rolls those up into a single App Bundle view. The important numbers are 3/3 bundles and 13/13 resources:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/12-three-bundles.png" alt="Fleet App Bundle showing 3/3 bundles ready and 13/13 resources ready across raw YAML, Kustomize, and Helm"></p>
+<p>The Resources tab lists the objects from all three bundle roots, including their namespaces:</p>
+<p><img src="../image/blog/Rancher-Fleet-GitOps-on-k3d/13-three-bundles-resources.png" alt="Fleet Resources tab showing resources from fleet-demo, fleet-kustomize, and fleet-podinfo"></p>
+<p>That is the practical answer to &quot;can Fleet manage Helm and Kustomize?&quot; It can, but each deployment style is a separate bundle root. Trying to put <code>helm:</code> and <code>kustomize:</code> in the same <code>fleet.yaml</code> is the wrong model.</p>
+<p>The three bundles in this POC are independent, so Fleet reconciles them in parallel. If one bundle provides a CRD or controller that another bundle needs, add <code>dependsOn</code> to the consumer&#39;s <code>fleet.yaml</code> rather than assuming apply order.</p>
+<h2>How declarative is this really?</h2>
+<p>Most of the application lifecycle is declarative, but &quot;everything&quot; is too strong.</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Declarative?</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Workloads, Services, Ingress</td>
+<td>Yes</td>
+<td>Stored in Git and reconciled by Fleet</td>
+</tr>
+<tr>
+<td>Kustomize overlays</td>
+<td>Yes</td>
+<td>Rendered by Fleet from the bundle root</td>
+</tr>
+<tr>
+<td>Helm chart, version, values</td>
+<td>Yes</td>
+<td>Declared in <code>fleet.yaml</code></td>
+</tr>
+<tr>
+<td>Target clusters and overrides</td>
+<td>Yes</td>
+<td>Cluster labels, groups, and <code>targetCustomizations</code></td>
+</tr>
+<tr>
+<td>Drift policy</td>
+<td>Yes</td>
+<td><code>correctDrift.enabled</code> is part of the GitRepo spec</td>
+</tr>
+<tr>
+<td>Git credentials</td>
+<td>Partly</td>
+<td>The Secret must exist before Fleet can clone a private repo</td>
+</tr>
+<tr>
+<td>Fleet installation</td>
+<td>No</td>
+<td>Installed by Rancher or a bootstrap process</td>
+</tr>
+<tr>
+<td>Cluster registration</td>
+<td>Partly</td>
+<td>A registration token/agent bootstrap starts the relationship</td>
+</tr>
+<tr>
+<td>Image build and push</td>
+<td>No</td>
+<td>CI builds and publishes the artifact outside Fleet</td>
+</tr>
+<tr>
+<td>DNS, CA, cloud infrastructure</td>
+<td>Outside Fleet</td>
+<td>Use cert-manager, ExternalDNS, Terraform, or Crossplane</td>
+</tr>
+</tbody></table>
+<p>The honest model is: Fleet declares the desired Kubernetes state, but something still has to bootstrap Fleet, the repository credentials, and the clusters it manages.</p>
 <h2>How this maps to production</h2>
 <p>The single-cluster flow above is the same model used for many clusters, with a few additions:</p>
 <ul>
@@ -721,19 +1084,20 @@ fleet-demo   2/2     2            2           8m5s
 <h2>Cleanup</h2>
 <p>Deleting the GitRepo tells Fleet to clean up the resources it owns:</p>
 <pre><code class="language-bash">kubectl -n fleet-local delete gitrepo fleet-demo
-kubectl get ns fleet-demo
+kubectl get ns fleet-demo fleet-kustomize fleet-podinfo
 </code></pre>
-<p>If the namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
-<pre><code class="language-bash">kubectl delete namespace fleet-demo
+<p>If a namespace remains because it was created outside Fleet&#39;s ownership, remove it deliberately:</p>
+<pre><code class="language-bash">kubectl delete namespace fleet-demo fleet-kustomize fleet-podinfo
 </code></pre>
 <p>Do not uninstall <code>fleet</code>, <code>fleet-crd</code>, or <code>fleet-agent-local</code> just to clean up one application. Rancher owns those components and other features depend on them.</p>
 <h2>What I would keep</h2>
 <p>Fleet is a good fit when Rancher is already the control plane. The useful pattern is not “put YAML in Git”; it is:</p>
 <ul>
-<li>one reviewable source path per application;</li>
+<li>one reviewable bundle root per application or chart;</li>
 <li>a target defined by cluster identity or labels;</li>
 <li>a BundleDeployment status that tells you which cluster failed;</li>
 <li>drift policy that matches who owns the resource;</li>
+<li>Kustomize for overlays and Helm for upstream charts, without mixing them in one <code>fleet.yaml</code>;</li>
 <li>a workflow that treats the Git commit as the audit record.</li>
 </ul>
 <p>The most valuable result from this lab was not the green 5/5. It was seeing the <code>Modified</code> state and learning that Fleet will report drift long before it necessarily reverts it. That distinction is the difference between a dashboard and an operational control.</p>
@@ -742,6 +1106,8 @@ kubectl get ns fleet-demo
 <li><a href="https://fleet.rancher.io/">Rancher Fleet documentation</a></li>
 <li><a href="https://fleet.rancher.io/ref-gitrepo">Fleet GitRepo reference</a></li>
 <li><a href="https://fleet.rancher.io/ref-gitrepo#correctdrift">Fleet drift correction</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#helm">Fleet Helm support</a></li>
+<li><a href="https://fleet.rancher.io/ref-gitrepo#kustomize">Fleet Kustomize support</a></li>
 <li><a href="https://ranchermanager.docs.rancher.com/how-to-guides/advanced-user-guides/continuous-delivery">Rancher Continuous Delivery</a></li>
 <li><a href="https://fleet.rancher.io/ref-bundledeployment">Fleet bundledeployments</a></li>
 <li><a href="https://doc.traefik.io/traefik/providers/kubernetes-ingress/">Traefik Kubernetes Ingress</a></li>
@@ -753,7 +1119,7 @@ kubectl get ns fleet-demo
             <footer class="post-footer">
                 <div class="share-links">
                     <span class="share-label">Share this post:</span>
-                    <a href="https://twitter.com/intent/tweet?text=Rancher%20Fleet%20in%20a%20Single-Cluster%20Lab%3A%20GitOps%20and%20Drift%20Correction%20That%20Actually%20Reverts&url=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                    <a href="https://twitter.com/intent/tweet?text=Rancher%20Fleet%20in%20a%20Single-Cluster%20Lab%3A%20YAML%2C%20Kustomize%2C%20Helm%2C%20and%20Drift%20Correction&url=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
                     </a>
                     <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Rancher-Fleet-GitOps-on-k3d" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
@@ -1016,16 +1382,16 @@ kubectl get ns fleet-demo
             // Values use JSON.stringify() in the build script, so no quotes needed here
             const langData = {
                 en: {
-                    title: "Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts",
-                    date: "November 10, 2026",
-                    readingTime: "12 min read",
-                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>",
+                    title: "Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction",
+                    date: "November 11, 2026",
+                    readingTime: "17 min read",
+                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>\n<span class=\"tag\">kustomize</span>\n<span class=\"tag\">helm</span>",
                 },
                 th: {
-                    title: "Rancher Fleet in a Single-Cluster Lab: GitOps and Drift Correction That Actually Reverts",
-                    date: "November 10, 2026",
-                    readingTime: "12 นาที",
-                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>",
+                    title: "Rancher Fleet in a Single-Cluster Lab: YAML, Kustomize, Helm, and Drift Correction",
+                    date: "November 11, 2026",
+                    readingTime: "17 นาที",
+                    tags: "<span class=\"tag\">fleet</span>\n<span class=\"tag\">rancher</span>\n<span class=\"tag\">gitops</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3d</span>\n<span class=\"tag\">traefik</span>\n<span class=\"tag\">kustomize</span>\n<span class=\"tag\">helm</span>",
                 },
             };
 
