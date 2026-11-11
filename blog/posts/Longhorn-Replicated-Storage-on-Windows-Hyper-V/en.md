@@ -1,77 +1,59 @@
 ---
-title: "Longhorn on Windows: A Four-Node k3s Lab on Hyper-V"
+title: "Deploy k3s on Windows with Hyper-V and Longhorn"
 date: 2026-11-11
-tags: [kubernetes, longhorn, k3s, hyper-v, storage, windows]
-excerpt: "Longhorn needs open-iscsi on every node, so a container-based k3d cluster cannot host it. Here is a real four-node k3s lab on Hyper-V, with a PVC that survives pod rescheduling and a replica rebuilt from a surviving copy."
+tags: [kubernetes, k3s, longhorn, hyper-v, storage, windows]
+excerpt: "A complete guide to running a real four-node k3s cluster on a Windows PC with Hyper-V, then adding Longhorn replicated block storage and proving it with a pod move and a replica rebuild."
 image: Longhorn-Replicated-Storage-on-Windows-Hyper-V/og.jpg
 lang: en
 ---
 
-The rest of this series runs on k3d: k3s inside Docker containers, four "nodes" that are really four containers on one machine. It is fast, disposable, and enough for Rancher, Vault, Trivy, and Fleet.
+Running Kubernetes on a Windows workstation usually means accepting that the cluster is a toy. This guide does the opposite: four real Ubuntu virtual machines under Hyper-V, a k3s cluster with one server and three agents, and Longhorn providing replicated block storage across all of them.
 
-Longhorn is the first workload that does not fit. Longhorn is not an ordinary application that happens to store data. It turns each node into a piece of an iSCSI storage fabric: a target is exported from the node that owns the replica, the node that mounts the volume attaches to that target as an iSCSI initiator, and the kernel presents a block device to kubelet.
+The end state is a cluster where a PersistentVolumeClaim becomes three copies of a volume on three different nodes, a pod can move to another node with its data intact, and a deleted replica rebuilds itself while the application keeps writing.
 
-That requires `iscsiadm` and a running `iscsid` on the host, and it requires the host to see the block device the kernel creates. A k3d node container has none of that.
-
-## Why k3d cannot run Longhorn
-
-I checked every node in the existing lab before writing anything:
-
-```bash
-docker exec k3d-rancher-lab-agent-0 sh -c '
-  for b in iscsiadm iscsid apk apt-get dnf; do
-    printf "%s: " "$b"; (command -v $b || echo MISSING)
-  done
-  cat /etc/os-release
-  mount | grep " /dev "'
-```
-
-```text
-iscsiadm: MISSING
-iscsid: MISSING
-apk: MISSING
-apt-get: MISSING
-dnf: MISSING
-PRETTY_NAME="K3s v1.36.5+k3s1"
-tmpfs on /dev type tmpfs (rw,nosuid,size=65536k,mode=755)
-```
-
-Three separate problems, and only the first one is easy to see:
-
-- The k3s node image is a minimal rootfs with busybox. There is no package manager, so `apt-get install open-iscsi` is not available.
-- There is no `udev` inside the node, so the `/dev/disk/by-path/ip-...-lun-0` symlink that Longhorn resolves never appears.
-- `/dev` is a 64 MiB tmpfs, not devtmpfs, so a LUN that the kernel discovers after an iSCSI login does not show up as a device node at all.
-
-The Longhorn installation requirement is explicit about the first point: `open-iscsi` must be installed and `iscsid` must be running on **all** nodes, because Longhorn relies on `iscsiadm` on the host to provide persistent volumes. The k3d maintainers reached the same conclusion in [k3d discussion #478](https://github.com/k3d-io/k3d/discussions/478): the k3d image is bare bones and you cannot install open-iscsi into it.
-
-I also tested the "just inject the binary" shortcut. Extracting Alpine's `open-iscsi 2.1.9` with its musl libraries and running it inside the k3s image does work:
-
-```text
-iscsiadm version 2.1.9
-iscsid version 2.1.9
-```
-
-But a working binary does not fix the missing udev or the missing devtmpfs. Even if the initiator logs in, Longhorn still has no block device to attach. That is where the k3d route ends.
-
-So the lab moves to real virtual machines. Not because VMs are trendy, but because Longhorn needs a kernel, udev, and a device filesystem that behave like a Linux host.
+Everything below ran on one Windows 10 Pro machine with 12 logical cores, 64 GiB of RAM, and a second disk for VM storage. The commands are the ones that were actually executed, including the failures.
 
 ## What gets built
 
 | Component | Version |
 |---|---|
-| Hypervisor | Hyper-V on Windows 10 Pro |
+| Hypervisor | Hyper-V (built into Windows Pro) |
 | Guest OS | Ubuntu 24.04.5 LTS cloud image |
 | Kubernetes | k3s `v1.36.5+k3s1` |
 | Storage | Longhorn chart `1.13.0` / app `v1.13.0` |
 | Cluster shape | 1 server + 3 agents, 2 vCPU / 4 GiB / 25 GiB each |
+| Network | Hyper-V internal switch `10.10.10.0/24` + NAT |
 
-The VMs sit on a private internal switch, `10.10.10.0/24`, with the Windows host as `10.10.10.1` and a Hyper-V NAT for outbound traffic. Bridging the Wi-Fi adapter would have been simpler on paper and flakier in practice.
+The addresses are fixed: server `10.10.10.11`, agents `10.10.10.12` through `10.10.10.14`, and the Windows host is `10.10.10.1`.
 
-The addresses are fixed: server `10.10.10.11`, agents `10.10.10.12`-`10.10.10.14`.
+## Why virtual machines instead of containers
 
-## Step 1: create the switch and the NAT
+Longhorn is not an ordinary application that happens to store data. It turns each node into part of an iSCSI storage fabric. The node that owns a replica exports an iSCSI target, the node that mounts the volume attaches to it as an initiator, and the kernel on that node presents a block device to kubelet.
 
-Run this in an elevated PowerShell. It creates an internal switch, gives the host an address on it, and adds NAT so the guests can reach the internet.
+That path needs three things on every node: `iscsiadm` with a running `iscsid`, a `udev` daemon that creates `/dev/disk/by-path/...` entries when a LUN appears, and a real devtmpfs where new device nodes show up. A container built from a minimal image has none of them, and you cannot install a package into an image that ships without a package manager.
+
+Virtual machines avoid the whole class of problem. Each guest is a normal Ubuntu system with its own kernel view, udev, and device filesystem, so open-iscsi behaves exactly as it does on bare metal.
+
+The cost is honest: four VMs at 4 GiB each means roughly 16 GiB of RAM while the lab runs, plus about 25 GiB of disk per node.
+
+## Prerequisites
+
+- Windows 10/11 Pro, Enterprise, or Education, with the Hyper-V feature enabled.
+- An elevated PowerShell for the switch, NAT, and VM commands.
+- Docker Desktop, used only to convert the cloud image and build the seed disks. It is not part of the cluster.
+- About 120 GiB free on a data disk, and the Ubuntu cloud image (~600 MiB downloaded).
+- An SSH key in `C:\Users\<you>\.ssh\`.
+
+Check that Hyper-V is present before starting:
+
+```powershell
+Get-Service vmms
+Get-Command New-VM, New-VHD, New-VMSwitch
+```
+
+## Step 1: create the private network
+
+An internal switch gives the VMs a network that does not depend on the Wi-Fi adapter, and NAT lets them reach the internet for packages and container images.
 
 ```powershell
 New-VMSwitch -Name k3s-lab -SwitchType Internal
@@ -79,11 +61,11 @@ New-NetIPAddress -InterfaceAlias "vEthernet (k3s-lab)" -IPAddress 10.10.10.1 -Pr
 New-NetNat -Name k3s-lab-nat -InternalIPInterfaceAddressPrefix 10.10.10.0/24
 ```
 
-`Get-NetNat` and `Get-VMSwitch` are the two commands worth checking afterwards; an existing NAT with an overlapping prefix is the usual reason the guests boot without connectivity.
+Bridging the host's Wi-Fi adapter would remove the NAT step, but wireless bridging under Hyper-V is unreliable. A private switch with NAT is the boring option that keeps working after a reboot.
 
-## Step 2: turn the cloud image into a VHDX
+## Step 2: convert the Ubuntu cloud image to VHDX
 
-Hyper-V cannot boot the qcow2 image that Ubuntu publishes, and Windows has no `qemu-img`. Docker does, so the conversion happens in a throwaway container and never touches the host.
+Ubuntu publishes the cloud image as qcow2, which Hyper-V cannot boot, and Windows has no `qemu-img`. Rather than installing conversion tools on the host, run the conversion in a disposable container:
 
 ```bash
 docker run --rm -v D:\k3s-lab:/lab alpine:3.20 sh -c '
@@ -93,18 +75,18 @@ docker run --rm -v D:\k3s-lab:/lab alpine:3.20 sh -c '
     /lab/images/noble-base.vhdx'
 ```
 
-The base disk is only 3.5 GiB. Each VM gets a copy, resized to 25 GiB with Hyper-V's own tooling before first boot:
+The result is a 3.5 GiB virtual disk. Each VM gets its own copy, resized to 25 GiB before the first boot:
 
 ```powershell
 Copy-Item D:\k3s-lab\images\noble-base.vhdx D:\k3s-lab\vms\k3s-server\k3s-server.vhdx
 Resize-VHD -Path D:\k3s-lab\vms\k3s-server\k3s-server.vhdx -SizeBytes 25GB
 ```
 
-On boot, cloud-init runs `growpart` and the root filesystem expands into the new space.
+cloud-init runs `growpart` on first boot, so the root filesystem expands into the new space automatically.
 
-## Step 3: build a cloud-init seed disk
+## Step 3: build the cloud-init seed disk
 
-The cloud image has no default password. Configuration arrives through a second disk labelled `CIDATA`, which cloud-init reads as the NoCloud datasource. The cleanest way to produce that disk on Windows is to format a small FAT image with `mtools` and convert it to VHDX, again inside a container:
+The cloud image has no default password. Configuration is delivered on a second disk labelled `CIDATA`, which cloud-init reads as the NoCloud datasource. On Windows the simplest way to produce that disk is to format a small FAT image with `mtools`, copy three files into it, and convert it to VHDX:
 
 ```bash
 dd if=/dev/zero of=seed.img bs=1M count=12 status=none
@@ -115,7 +97,7 @@ mcopy -i seed.img network-config ::network-config
 qemu-img convert -f raw -O vhdx seed.img seed.vhdx
 ```
 
-`user-data` carries the SSH key, the hostname, and the packages we want. The important part for a k3s node is the network configuration, because the VM has no DHCP server to talk to:
+`network-config` is the part that matters, because there is no DHCP server on the internal switch:
 
 ```yaml
 version: 2
@@ -133,9 +115,41 @@ ethernets:
       addresses: [1.1.1.1, 8.8.8.8]
 ```
 
-Two details are easy to get wrong. First, `match: {name: "en*"}` fails on this image, because Hyper-V gives the guest a plain `eth0`. Matching everything and forcing the name is more reliable. Second, put the same netplan document in `user-data` as a fallback, then remove `/etc/netplan/50-cloud-init.yaml` and run `netplan apply`, so the final state does not depend on the datasource having parsed `network-config` the way you expected.
+Two details matter. First, `match: {name: "en*"}` does not match on this image, because Hyper-V presents a plain `eth0`; matching everything and forcing the name is reliable. Second, keep a copy of the same netplan document in `user-data`, remove `/etc/netplan/50-cloud-init.yaml` in `runcmd`, and run `netplan apply`, so the final state does not depend on how the datasource parsed the network file.
 
-## Step 4: create the VMs
+A minimal `user-data` that does the same thing and adds the SSH key:
+
+```yaml
+#cloud-config
+hostname: k3s-server
+ssh_pwauth: false
+users:
+  - name: ubuntu
+    groups: [adm, sudo]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:ALL"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAA... you@workstation
+write_files:
+  - path: /etc/netplan/50-k3s-lab.yaml
+    permissions: '0600'
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            match: {name: "*"}
+            set-name: eth0
+            dhcp4: false
+            addresses: [10.10.10.11/24]
+            routes: [{to: default, via: 10.10.10.1}]
+            nameservers: {addresses: [1.1.1.1, 8.8.8.8]}
+runcmd:
+  - rm -f /etc/netplan/50-cloud-init.yaml
+  - netplan apply
+```
+
+## Step 4: create the four VMs
 
 ```powershell
 New-VM -Name k3s-server -Generation 2 -MemoryStartupBytes 4GB `
@@ -149,22 +163,25 @@ Add-VMHardDiskDrive -VMName k3s-server -ControllerType SCSI -Path D:\k3s-lab\see
 Start-VM -Name k3s-server
 ```
 
-Generation 2 needs Secure Boot off, because the Ubuntu cloud image is not signed for the Microsoft UEFI template. Repeat for the three agents with their own disks, seed images, and addresses.
+Generation 2 requires Secure Boot to be off, because the Ubuntu cloud image is not signed for the default Microsoft UEFI template. Repeat the block for `k3s-agent-0`, `k3s-agent-1`, and `k3s-agent-2`, changing the disk paths, seed disks, and addresses.
 
-## Step 5: install k3s, and fix the DNS trap
+Wait for SSH on each one:
 
-This is where the first attempt failed, and the failure is worth keeping.
+```powershell
+ssh ubuntu@10.10.10.11 hostname
+```
 
-cloud-init brought the network up correctly, SSH worked, and the IP was right - but the package step died:
+## Step 5: install k3s and fix the two DNS traps
+
+The first attempt failed at the package step, and the failure is worth understanding:
 
 ```text
 E: Failed to fetch http://archive.ubuntu.com/ubuntu/... Temporary failure resolving 'archive.ubuntu.com'
 ```
 
-The VM resolved names, but `getent hosts archive.ubuntu.com` returned only IPv6 addresses, and the NAT is IPv4-only. `apt` tried AAAA first and gave up. Two fixes make this deterministic:
+The VM could resolve names, but `getent hosts archive.ubuntu.com` returned only IPv6 addresses and the NAT is IPv4-only. `apt` tried AAAA first and gave up. Force IPv4 for name resolution and for apt:
 
 ```bash
-# prefer IPv4 for name resolution and for apt
 echo 'precedence ::ffff:0:0/96  100' | sudo tee -a /etc/gai.conf
 
 sudo apt-get -o Acquire::ForceIPv4=true -o Acquire::Retries=8 update
@@ -174,7 +191,9 @@ sudo systemctl enable --now iscsid
 sudo modprobe iscsi_tcp
 ```
 
-Then install the server:
+`open-iscsi` and the running `iscsid` are what Longhorn will check for later. Do this on all four nodes before installing Kubernetes.
+
+Install the server:
 
 ```bash
 curl -sfL https://get.k3s.io -o /tmp/k3s-install.sh
@@ -184,7 +203,7 @@ sudo INSTALL_K3S_VERSION=v1.36.5+k3s1 \
   sh /tmp/k3s-install.sh
 ```
 
-and each agent, using the token from the server:
+Then each agent, using the token from the server:
 
 ```bash
 TOKEN=$(sudo cat /var/lib/rancher/k3s/server/node-token)
@@ -195,7 +214,7 @@ sudo K3S_URL=https://10.10.10.11:6443 K3S_TOKEN="$TOKEN" \
   sh /tmp/k3s-install.sh
 ```
 
-The second DNS trap appears after the cluster is up. CoreDNS forwards to whatever is in `/etc/resolv.conf`, and on Ubuntu that is the `systemd-resolved` stub at `127.0.0.53`. Pods cannot reach that address, so every image pull in the cluster fails with `lookup registry-1.docker.io: Try again` even though `curl` on the node works fine. Disable the stub resolver on all four nodes:
+The second trap appears once the cluster is up. CoreDNS forwards to whatever is in `/etc/resolv.conf`, and on Ubuntu that is the `systemd-resolved` stub at `127.0.0.53`. Pods cannot reach that address, so every image pull fails with `lookup registry-1.docker.io: Try again` while `curl` on the node works perfectly:
 
 ```bash
 sudo systemctl disable --now systemd-resolved
@@ -203,13 +222,13 @@ sudo rm -f /etc/resolv.conf
 printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' | sudo tee /etc/resolv.conf
 ```
 
-Then restart CoreDNS, and the cluster can resolve registries:
+Run that on all four nodes, then restart CoreDNS:
 
 ```bash
 kubectl -n kube-system rollout restart deploy/coredns
 ```
 
-The result is the cluster Longhorn expects:
+The cluster should now report four Ready nodes:
 
 ```text
 NAME          STATUS   ROLES           AGE   VERSION        INTERNAL-IP
@@ -219,16 +238,22 @@ k3s-agent-2   Ready    <none>          59s   v1.36.5+k3s1   10.10.10.14
 k3s-server    Ready    control-plane   18m   v1.36.5+k3s1   10.10.10.11
 ```
 
-Copy the kubeconfig to Windows and rewrite the endpoint, because the file k3s writes points at `127.0.0.1`:
+## Step 6: point kubectl at the cluster from Windows
+
+The kubeconfig that k3s writes on the server points at `127.0.0.1`. Copy it out and rewrite the endpoint and context name:
 
 ```powershell
 ssh ubuntu@10.10.10.11 'sudo cat /etc/rancher/k3s/k3s.yaml' > C:\Users\C\.kube\k3s-lab.yaml
 $c = Get-Content C:\Users\C\.kube\k3s-lab.yaml -Raw
 $c -replace '127\.0\.0\.1','10.10.10.11' -replace 'default','k3s-lab' |
   Set-Content C:\Users\C\.kube\k3s-lab.yaml
+
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes
 ```
 
-## Step 6: install Longhorn
+The `--tls-san=10.10.10.11` flag from the server install is what lets the certificate validate against that address.
+
+## Step 7: install Longhorn
 
 ```bash
 helm repo add longhorn https://charts.longhorn.io
@@ -240,7 +265,7 @@ helm install longhorn longhorn/longhorn \
   --set defaultSettings.defaultReplicaCount=3
 ```
 
-Every Longhorn node reports Ready and schedulable, and each one auto-creates a disk at `/var/lib/longhorn/`:
+Longhorn registers each node as storage and creates a default disk at `/var/lib/longhorn/`:
 
 ```bash
 kubectl -n longhorn-system get nodes.longhorn.io
@@ -254,7 +279,7 @@ k3s-agent-2   True    true              True          2m30s
 k3s-server    True    true              True          3m41s
 ```
 
-The dashboard below is the real UI from this cluster, reached with a port-forward:
+Open the UI through a port-forward:
 
 ```bash
 kubectl -n longhorn-system port-forward svc/longhorn-frontend 8090:80
@@ -262,15 +287,20 @@ kubectl -n longhorn-system port-forward svc/longhorn-frontend 8090:80
 
 ![Longhorn dashboard showing one healthy volume across four nodes](../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/01-dashboard.png)
 
-The nodes page matters more than the dashboard for this article. Each node contributes roughly 16 GiB of schedulable space, and the replica column is the thing to watch during the failure tests.
+The nodes page is the one to keep open during the failure tests. Each node contributes roughly 16 GiB of schedulable space, and the replica column shows where the copies live.
 
 ![Longhorn nodes with one replica on each of three nodes](../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/02-nodes.png)
 
-## Step 7: a volume with three replicas
+## Step 8: create a volume and a writer
 
-The workload is deliberately boring: a single pod that appends a line every five seconds to a file on the PVC. A 2 GiB claim with the `longhorn` storage class is enough to show what happens when the pod moves and when a replica disappears.
+The workload is deliberately boring: one pod that appends a line every five seconds to a file on a Longhorn claim.
 
 ```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: longhorn-demo
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -314,7 +344,7 @@ spec:
           persistentVolumeClaim: {claimName: records}
 ```
 
-Once bound, Longhorn immediately places three replicas on three different nodes:
+Once bound, Longhorn places three replicas on three different nodes:
 
 ```text
 NAME        STATE      ROBUSTNESS   SCHEDULED   SIZE
@@ -323,7 +353,7 @@ pvc-...     attached   healthy                  2147483648
 
 ![Volume detail with replicas on k3s-server, k3s-agent-0 and k3s-agent-1](../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/04-volume-replicas.png)
 
-## Step 8: prove the data survives a pod move
+## Step 9: prove the data survives a pod move
 
 A replicated volume is only interesting if a reschedule is invisible to the application. Delete the pod and force it somewhere else:
 
@@ -346,11 +376,11 @@ record-writer-7c58c7465c-7gxdc   1/1     Running   k3s-server
 2026-11-11T10:30:57Z seq=433
 ```
 
-The sequence does not restart at zero. The file that began on one node continues on another, with an 80-second gap while the volume detached and reattached.
+The counter does not restart at zero. The file that began on one node continues on another, with an 80-second gap while the volume detached and reattached.
 
-## Step 9: break a replica and watch it rebuild
+## Step 10: break a replica and watch it rebuild
 
-To make the rebuild observable, first write 600 MiB of random data into the volume. With a nearly empty filesystem the rebuild finishes in a second and there is nothing to see in the UI.
+Write some real data first. With a nearly empty filesystem the rebuild finishes in a second and there is nothing to observe:
 
 ```bash
 kubectl -n longhorn-demo exec deploy/record-writer -- \
@@ -368,7 +398,7 @@ The volume drops to `Degraded` while the new replica catches up:
 
 ![Volume degraded while a replacement replica rebuilds](../image/blog/Longhorn-Replicated-Storage-on-Windows-Hyper-V/05-replica-rebuilding.png)
 
-The yellow card is the new replica, on a different node, with a live progress bar. When it finishes, the volume returns to three healthy replicas and the writer never noticed:
+The yellow card is the replacement, scheduled on a different node, with a live progress bar. When it finishes, the volume returns to three healthy replicas and the writer never noticed:
 
 ```text
 NAME        STATE      ROBUSTNESS
@@ -384,43 +414,45 @@ pvc-...-r-22135a8d      k3s-agent-0   running
 pvc-...-r-be9bf363      k3s-agent-1   running
 ```
 
-## The image-pull problem worth knowing about
+## Troubleshooting the failures you will hit
 
-One failure deserves its own note because it will happen to anyone on a slow or unstable link. After the DNS fix, some Longhorn images still would not pull. kubelet backs off up to five minutes between attempts, so a flaky download keeps the pod in `ImagePullBackOff` long after the registry is reachable again.
-
-The reliable workaround is to stop pulling from the registry four times and distribute one copy instead. On a node that has the image:
+**Pods stuck in `ImagePullBackOff`.** kubelet backs off up to five minutes, so a single flaky download keeps the pod failing long after the registry recovers. Check whether the node itself can pull:
 
 ```bash
-sudo k3s ctr images export /tmp/im.tar \
-  docker.io/longhornio/longhorn-instance-manager:v1.13.0
+sudo crictl pull docker.io/longhornio/longhorn-manager:v1.13.0
 ```
 
-Copy the tarball to the other nodes over the internal switch, then:
+If the node succeeds but the pod does not, delete the pod to reset the backoff. If the link is unstable, export the image once from a node that has it and import it on the others:
 
 ```bash
+sudo k3s ctr images export /tmp/im.tar docker.io/longhornio/longhorn-instance-manager:v1.13.0
 sudo k3s ctr images import /tmp/im.tar
-kubectl -n longhorn-system delete pod --field-selector=status.phase!=Running
 ```
 
-This is a lab convenience, not a production pattern. In a real cluster you would use a registry mirror, a pull-through cache, or pre-baked node images.
+This is a lab workaround. Production clusters use a registry mirror or a pull-through cache.
+
+**Agent logs say `not authorized`.** The token in `/etc/systemd/system/k3s-agent.service.env` does not match the server's `node-token`. Rewrite the file with the current token, then `systemctl daemon-reload` and restart the agent.
+
+**The VM boots but has no address.** The netplan matcher did not select the interface. Check the actual name with `ip -br link`, and either match it explicitly or use `match: {name: "*"}` with `set-name`.
+
+**Longhorn pods crash with an iSCSI error.** `iscsid` is not running or `iscsiadm` is missing on that node. `systemctl status iscsid` and `iscsiadm --version` answer it immediately.
 
 ## What this lab does and does not prove
 
 It proves the parts that are hard to fake: three replicas on three different nodes, a pod rescheduled to a different host with its data intact, and a deleted replica rebuilt from the surviving copies while the application kept writing.
 
-It does not make this production storage. The gaps are concrete:
+It does not make this production storage:
 
-- One physical host. If it dies, all four VMs die; Longhorn's replication is protecting against node loss, not against hypervisor loss.
-- 25 GiB per node with about 16 GiB schedulable. Longhorn reserves space and refuses to over-schedule, so capacity planning still matters.
+- One physical host. If it dies, all four VMs die; replication protects against node loss, not hypervisor loss.
+- 25 GiB per node with about 16 GiB schedulable. Longhorn reserves space and refuses to over-schedule.
 - No backup target. Snapshots are local to the cluster; without an S3 or NFS target there is no copy that survives the cluster.
-- NAT and a private switch on the hypervisor. There is no high availability for the network path.
-- The VMs are single-disk. Longhorn is using a filesystem disk, not a dedicated block device, which is fine for a lab and not how you would size a production node.
+- A single-disk filesystem per node, not a dedicated block device per disk.
 
-For production, the checklist is different: at least three separate physical hosts, dedicated disks per node, a tested backup target, alerting on volume robustness, and a documented procedure for draining a node that hosts replicas.
+For production you would run at least three separate physical hosts, give each node a dedicated disk, configure and test a backup target, alert on volume robustness, and document how to drain a node that hosts replicas.
 
 ## Cleanup
 
-Remove the workload, then Longhorn, then the VMs and the network:
+Remove the workload and Longhorn first, then the VMs and the virtual network:
 
 ```bash
 kubectl delete namespace longhorn-demo
@@ -439,15 +471,15 @@ Remove-VMSwitch -Name k3s-lab
 
 ## Takeaways
 
-- Longhorn is host-level storage. The initiator, udev, and device nodes must exist on the node, not inside a container.
-- k3d is an excellent lab for control-plane work and the wrong tool for storage plugins that need real kernel and device visibility.
-- Ubuntu's `systemd-resolved` stub breaks CoreDNS in a k3s cluster unless you replace `/etc/resolv.conf`, and it fails in a way that looks like a registry outage.
+- Longhorn is host-level storage: the initiator, udev, and device nodes must exist on the node, so the node has to behave like a Linux host.
+- A private Hyper-V switch with NAT is more dependable than bridging a Wi-Fi adapter, and it keeps the lab addresses stable across reboots.
+- Ubuntu's `systemd-resolved` stub breaks CoreDNS in a k3s cluster unless you replace `/etc/resolv.conf`, and the symptom looks like a registry outage.
 - Replication is only credible when you delete something. A replica rebuild with a visible progress bar and an application that keeps writing is better evidence than a green status icon.
 
 ## References
 
 - [Longhorn installation requirements](https://longhorn.io/docs/latest/deploy/install/)
 - [Longhorn 1.13 documentation](https://longhorn.io/docs/1.13.0/)
-- [k3d discussion #478: Using Longhorn in k3d](https://github.com/k3d-io/k3d/discussions/478)
-- [k3s discussion #9987: iscsiadm / open-iscsi setup](https://github.com/k3s-io/k3s/discussions/9987)
+- [k3s installation options](https://docs.k3s.io/installation/configuration)
+- [Hyper-V virtual switch documentation](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/manage/create-vswitch)
 - [Ubuntu cloud images](https://cloud-images.ubuntu.com/noble/current/)
