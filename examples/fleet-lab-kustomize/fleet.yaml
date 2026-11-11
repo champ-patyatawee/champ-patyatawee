@@ -1,0 +1,3 @@
+defaultNamespace: fleet-kustomize
+kustomize:
+  dir: overlays/dev

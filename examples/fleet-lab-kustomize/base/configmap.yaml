@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fleet-kustomize-config
+  namespace: fleet-kustomize
+data:
+  APP_ENV: kustomize-dev
+  MANAGED_BY: rancher-fleet

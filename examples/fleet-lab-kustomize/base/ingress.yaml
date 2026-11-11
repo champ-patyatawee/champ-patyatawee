@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fleet-kustomize
+  namespace: fleet-kustomize
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: fleet-kustomize.127.0.0.1.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: fleet-kustomize
+                port:
+                  number: 80

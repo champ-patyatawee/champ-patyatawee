@@ -1,0 +1,18 @@
+defaultNamespace: fleet-podinfo
+helm:
+  chart: podinfo
+  repo: https://stefanprodan.github.io/podinfo
+  version: 6.17.0
+  releaseName: fleet-podinfo
+  values:
+    replicaCount: 2
+    ui:
+      message: Managed by Rancher Fleet
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: fleet-podinfo.127.0.0.1.nip.io
+          paths:
+            - path: /
+              pathType: Prefix
