@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Wire Argo CD to Keycloak with OIDC and PKCE, map Keycloak groups to Argo CD RBAC, and prove that a developer can deploy without being able to touch cluster settings.">
+    <meta property="og:title" content="Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC — Champ Patyatawee">
+    <meta property="og:description" content="Wire Argo CD to Keycloak with OIDC and PKCE, map Keycloak groups to Argo CD RBAC, and prove that a developer can deploy without being able to touch cluster settings.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/ArgoCD-Keycloak-SSO/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC">
+    <meta name="twitter:description" content="Wire Argo CD to Keycloak with OIDC and PKCE, map Keycloak groups to Argo CD RBAC, and prove that a developer can deploy without being able to touch cluster settings.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/ArgoCD-Keycloak-SSO/og.jpg">
+    <meta name="twitter:image:alt" content="Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Wire Argo CD to Keycloak with OIDC and PKCE, map Keycloak groups to Argo CD RBAC, and prove that a developer can deploy without being able to touch cluster settings." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO">
+    <title>Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 11, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">15 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">argocd</span>
+<span class="tag">keycloak</span>
+<span class="tag">sso</span>
+<span class="tag">oidc</span>
+<span class="tag">kubernetes</span>
+<span class="tag">k3s</span>
+<span class="tag">traefik</span>
+<span class="tag">rbac</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Single sign-on is the easy half. The half that decides whether SSO is safe is what happens after the identity provider says yes: which Argo CD permissions the token actually buys. This lab wires Argo CD to Keycloak, maps a Keycloak group to an Argo CD role, and then proves the difference between an admin and a developer in the running UI.</p>
+<p>Everything below ran on a four-node k3s cluster (one server, three agents) running as Hyper-V VMs on a Windows machine. Argo CD and Keycloak both live in that cluster, behind the Traefik ingress that ships with k3s.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>4 nodes, <code>10.10.10.11</code>–<code>10.10.10.14</code></td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>quay.io/keycloak/keycloak:26.8.2</code></td>
+<td>namespace <code>keycloak</code></td>
+</tr>
+<tr>
+<td>Keycloak database</td>
+<td><code>postgres:16-alpine</code></td>
+<td>Longhorn PVC, 2 GiB</td>
+</tr>
+<tr>
+<td>Argo CD</td>
+<td>chart <code>10.17.2</code>, app <code>v3.6.1</code></td>
+<td>namespace <code>argocd</code></td>
+</tr>
+<tr>
+<td>Ingress</td>
+<td>Traefik (k3s built-in)</td>
+<td><code>keycloak.10.10.10.11.nip.io</code>, <code>argocd.10.10.10.11.nip.io</code></td>
+</tr>
+<tr>
+<td>Identity</td>
+<td>realm <code>lab</code>, client <code>argocd</code>, groups <code>platform-admins</code> and <code>developers</code></td>
+<td>Keycloak</td>
+</tr>
+</tbody></table>
+<p>nip.io is used purely so the hostnames resolve to the lab node without editing a hosts file. <code>keycloak.10.10.10.11.nip.io</code> resolves to <code>10.10.10.11</code> from inside the cluster and from the Windows browser, which matters: Argo CD has to fetch the OIDC discovery document from the same issuer URL the browser is sent to.</p>
+<h2>Authentication is not authorization</h2>
+<p>Three separate things are happening, and mixing them up is how SSO deployments end up with everyone as an admin.</p>
+<ol>
+<li>Keycloak authenticates the human and issues an ID token.</li>
+<li>The token carries a <code>groups</code> claim, because the client has a group membership mapper.</li>
+<li>Argo CD reads that claim and maps group names to RBAC roles. Nothing else grants access, because the default policy is deny.</li>
+</ol>
+<p>If step 3 is missing you get &quot;login works, but everyone sees everything&quot; — Keycloak was configured correctly and Argo CD was left wide open. Most of the configuration below exists to make step 3 explicit.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/01-argocd-login.png" alt="Argo CD login page with the Keycloak button"></p>
+<h2>Prerequisites</h2>
+<ul>
+<li>A k3s cluster you can reach from Windows. This lab uses <code>C:\Users\C\.kube\k3s-lab.yaml</code>.</li>
+<li><code>kubectl</code> and Helm 4 on the Windows host.</li>
+<li>A default StorageClass that actually provisions. Longhorn is used here; see the first trap below.</li>
+<li>One spare IP that both pods and the browser can reach. The node address is used, not <code>127.0.0.1</code>, because <code>127.0.0.1</code> inside a pod is the pod.</li>
+</ul>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes
+</code></pre>
+<pre><code>NAME          STATUS   ROLES           AGE   VERSION
+k3s-agent-0   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-agent-1   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-agent-2   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-server    Ready    control-plane   6h    v1.36.5+k3s1
+</code></pre>
+<h2>Trap 1: two default StorageClasses</h2>
+<p>Before deploying anything, look at the storage classes. This cluster had both <code>local-path</code> and <code>longhorn</code> marked as default, which is legal but ambiguous, and the PVC in this lab would have raced between provisioners.</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get sc -o jsonpath=&quot;{range .items[*]}{.metadata.name}{&#39;  &#39;}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{&#39;\n&#39;}{end}&quot;
+</code></pre>
+<pre><code>local-path  true
+longhorn  true
+longhorn-static
+</code></pre>
+<p>Pick one. Longhorn is the only class that gives a replicated volume, so <code>local-path</code> stops being the default:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml patch sc local-path `
+  -p &#39;{&quot;metadata&quot;:{&quot;annotations&quot;:{&quot;storageclass.kubernetes.io/is-default-class&quot;:&quot;false&quot;}}}&#39; --type merge
+</code></pre>
+<p>Leaving both in place is a slow-burning problem: it works until a PVC lands on the class you did not intend, and then a node reboot takes the data with it.</p>
+<h2>Step 1: PostgreSQL for Keycloak</h2>
+<p>Keycloak 26 no longer supports the embedded H2 database for anything you want to keep. A single Postgres instance with a Longhorn volume is enough for a lab, and it is the piece that later becomes an operator-managed HA cluster in production.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-db
+  namespace: keycloak
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: keycloak-db}
+  template:
+    metadata:
+      labels: {app: keycloak-db}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          envFrom:
+            - secretRef: {name: keycloak-db}
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: keycloak-db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-db
+  namespace: keycloak
+spec:
+  storageClassName: longhorn
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+</code></pre>
+<p>The <code>PGDATA</code> indirection is not cosmetic. See trap 2.</p>
+<h2>Trap 2: Longhorn volumes are not empty</h2>
+<p>The first Postgres start failed with a message that looks like a corrupted volume:</p>
+<pre><code>initdb: error: directory &quot;/var/lib/postgresql/data&quot; exists but is not empty
+initdb: detail: It contains a lost+found directory, perhaps due to it being a mount point.
+</code></pre>
+<p>Longhorn formats its volume with an ext4 filesystem, and ext4 always creates <code>lost+found</code> at the root. Postgres refuses to initialise into a non-empty directory. Mounting the claim one level up and pointing <code>PGDATA</code> at a subdirectory solves it without touching the volume:</p>
+<pre><code class="language-yaml">env:
+  - name: PGDATA
+    value: /var/lib/postgresql/data/pgdata
+volumeMounts:
+  - name: data
+    mountPath: /var/lib/postgresql
+</code></pre>
+<p>After that the pod is <code>1/1</code> and the PVC is <code>Bound</code>.</p>
+<h2>Step 2: Keycloak</h2>
+<p>Keycloak 26 also renamed the bootstrap variables. <code>KEYCLOAK_ADMIN</code> and <code>KEYCLOAK_ADMIN_PASSWORD</code> are gone; the temporary admin is created from <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> and <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>, and only on the very first start against an empty database.</p>
+<pre><code class="language-yaml">spec:
+  containers:
+    - name: keycloak
+      image: quay.io/keycloak/keycloak:26.8.2
+      args: [&quot;start&quot;, &quot;--import-realm&quot;]
+      env:
+        - {name: KC_DB, value: postgres}
+        - {name: KC_DB_URL, value: jdbc:postgresql://keycloak-db:5432/keycloak}
+        - name: KC_DB_USERNAME
+          valueFrom: {secretKeyRef: {name: keycloak-db, key: POSTGRES_USER}}
+        - name: KC_DB_PASSWORD
+          valueFrom: {secretKeyRef: {name: keycloak-db, key: POSTGRES_PASSWORD}}
+        - {name: KC_HOSTNAME, value: &quot;https://keycloak.10.10.10.11.nip.io&quot;}
+        - {name: KC_HTTP_ENABLED, value: &quot;true&quot;}
+        - {name: KC_PROXY_HEADERS, value: xforwarded}
+        - {name: KC_HEALTH_ENABLED, value: &quot;true&quot;}
+        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+          valueFrom: {secretKeyRef: {name: keycloak-admin, key: password}}
+</code></pre>
+<p>Two details matter more than they look.</p>
+<p><code>KC_HOSTNAME</code> is the public URL. Keycloak puts it in the discovery document, and both the browser and the Argo CD server must be able to reach it. That is why the issuer is the nip.io name rather than a service name.</p>
+<p><code>KC_PROXY_HEADERS=xforwarded</code> tells Keycloak to trust <code>X-Forwarded-*</code> from Traefik. Without it the redirect URIs and cookies are generated for the wrong scheme, and the login loop never ends.</p>
+<p>The realm is imported from a mounted ConfigMap on start, so the client, groups and users exist before anyone logs in.</p>
+<pre><code class="language-yaml">- name: realm-import
+  mountPath: /opt/keycloak/data/import
+  readOnly: true
+args: [&quot;start&quot;, &quot;--import-realm&quot;]
+</code></pre>
+<p>The import file defines the realm <code>lab</code>, its two groups, two users, and one confidential client:</p>
+<pre><code class="language-json">{
+  &quot;realm&quot;: &quot;lab&quot;,
+  &quot;groups&quot;: [{ &quot;name&quot;: &quot;platform-admins&quot; }, { &quot;name&quot;: &quot;developers&quot; }],
+  &quot;clients&quot;: [{
+    &quot;clientId&quot;: &quot;argocd&quot;,
+    &quot;publicClient&quot;: false,
+    &quot;standardFlowEnabled&quot;: true,
+    &quot;redirectUris&quot;: [&quot;https://argocd.10.10.10.11.nip.io/auth/callback&quot;],
+    &quot;attributes&quot;: { &quot;pkce.code.challenge.method&quot;: &quot;S256&quot; },
+    &quot;protocolMappers&quot;: [{
+      &quot;name&quot;: &quot;groups&quot;,
+      &quot;protocolMapper&quot;: &quot;oidc-group-membership-mapper&quot;,
+      &quot;config&quot;: {
+        &quot;claim.name&quot;: &quot;groups&quot;,
+        &quot;full.path&quot;: &quot;false&quot;,
+        &quot;id.token.claim&quot;: &quot;true&quot;,
+        &quot;userinfo.token.claim&quot;: &quot;true&quot;
+      }
+    }]
+  }]
+}
+</code></pre>
+<p><code>full.path: false</code> is deliberate. Keycloak can emit either <code>developers</code> or <code>/developers</code> depending on that flag, and the Argo CD RBAC file has to match the exact string. Pick one and keep it consistent; mismatches here produce &quot;user logged in but has no permissions&quot;, which is a miserable thing to debug from the UI.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/07-keycloak-client.png" alt="Keycloak client configuration for Argo CD"></p>
+<p>The client is confidential, so it gets a generated secret. That secret is stored in a Kubernetes secret and never in the article or the Git repository.</p>
+<h2>Step 3: install Argo CD with OIDC and RBAC</h2>
+<p>Dex is disabled on purpose. Argo CD ships with Dex as a local identity broker, but there is no reason to run two identity layers when Keycloak is already the source of truth.</p>
+<pre><code class="language-yaml">dex:
+  enabled: false
+
+configs:
+  params:
+    server.insecure: true
+  cm:
+    url: https://argocd.10.10.10.11.nip.io
+    oidc.tls.insecure.skip.verify: &quot;true&quot;
+    oidc.config: |
+      name: Keycloak
+      issuer: https://keycloak.10.10.10.11.nip.io/realms/lab
+      clientID: argocd
+      clientSecret: $oidc.keycloak.clientSecret
+      enablePKCEAuthentication: true
+      requestedScopes:
+        - openid
+        - profile
+        - email
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+  rbac:
+    policy.default: &quot;&quot;
+    policy.csv: |
+      g, platform-admins, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, applications, sync, */*, allow
+      p, role:developer, applications, action/*, */*, allow
+      p, role:developer, logs, get, */*, allow
+      p, role:developer, projects, get, *, allow
+      g, developers, role:developer
+</code></pre>
+<p>Four lines in that file carry the whole security model.</p>
+<p><code>server.insecure: true</code> means the Argo CD server speaks plain HTTP and Traefik terminates TLS. That is the standard ingress pattern; the alternative is TLS passthrough, which makes every route harder to reason about.</p>
+<p><code>oidc.tls.insecure.skip.verify</code> exists because the lab uses the self-signed certificate that k3s generates for Traefik. It is a lab-only line. In production you install a real certificate and delete it.</p>
+<p><code>policy.default: &quot;&quot;</code> means deny. Argo CD&#39;s chart default is closer to <code>role:readonly</code>, and with that default a user with no group mapping still logs in and can browse Settings. Starting from deny makes every permission visible in the policy file, which is the only way to audit it later.</p>
+<p><code>requestedIDTokenClaims</code> marks <code>groups</code> as essential. If Keycloak ever stops sending the claim, Argo CD refuses the login instead of silently issuing a token with no groups. A silent failure here looks like &quot;SSO is broken for some users&quot; and is much harder to spot.</p>
+<p>Apply it with the pinned chart version:</p>
+<pre><code class="language-powershell">$env:KUBECONFIG = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+helm upgrade --install argocd argo/argo-cd --version 10.17.2 `
+  --namespace argocd --create-namespace `
+  -f argocd-values.yaml --wait --timeout 12m
+</code></pre>
+<h2>Step 4: connect the client secret</h2>
+<p>The <code>$oidc.keycloak.clientSecret</code> reference is resolved from the <code>argocd-secret</code> Secret, not from the values file. That keeps the secret out of Helm and out of Git.</p>
+<pre><code class="language-powershell">kubectl -n argocd patch secret argocd-secret --type merge `
+  --patch-file oidc-secret-patch.json
+kubectl -n argocd rollout restart deploy/argocd-server
+</code></pre>
+<p>Verify that Argo CD actually parsed the OIDC block before touching the browser:</p>
+<pre><code class="language-powershell">curl.exe -k https://argocd.10.10.10.11.nip.io/api/v1/settings
+</code></pre>
+<pre><code class="language-json">{
+  &quot;url&quot;: &quot;https://argocd.10.10.10.11.nip.io&quot;,
+  &quot;oidcConfig&quot;: {
+    &quot;name&quot;: &quot;Keycloak&quot;,
+    &quot;issuer&quot;: &quot;https://keycloak.10.10.10.11.nip.io/realms/lab&quot;,
+    &quot;clientID&quot;: &quot;argocd&quot;,
+    &quot;scopes&quot;: [&quot;openid&quot;, &quot;profile&quot;, &quot;email&quot;],
+    &quot;idTokenClaims&quot;: { &quot;groups&quot;: { &quot;essential&quot;: true } },
+    &quot;enablePKCEAuthentication&quot;: true
+  }
+}
+</code></pre>
+<p>If this response has no <code>oidcConfig</code>, the UI will show only the local admin login and no amount of Keycloak debugging will help.</p>
+<h2>Step 5: log in as a developer</h2>
+<p>Bob is a member of <code>developers</code>. He clicks the Keycloak button, gets redirected to the realm login page, and comes back with a session.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak login page for the lab realm"></p>
+<p>Argo CD shows the applications he is allowed to see, and nothing about them is admin-only:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/03-argocd-bob-apps.png" alt="Argo CD applications as the developer user"></p>
+<p>The decisive artifact is the User Info page. It shows the username, the issuer, and the claim Argo CD used to pick the role:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/04-argocd-bob-userinfo.png" alt="Argo CD user info showing the developers group"></p>
+<p>That single word, <code>developers</code>, is the entire link between Keycloak and the RBAC file. If it reads <code>/developers</code> here and <code>developers</code> in <code>policy.csv</code>, the mapping fails and the user lands with no permissions.</p>
+<h2>Step 6: prove the developer can deploy</h2>
+<p>Permission that is only visible in a config file is a claim. The app below was synced by the developer account, not by the admin, and Argo CD reports the real result:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/05-argocd-guestbook-healthy.png" alt="Guestbook application synced and healthy"></p>
+<pre><code class="language-powershell">kubectl -n argocd get applications
+kubectl -n guestbook get pods
+</code></pre>
+<pre><code>NAME        SYNC STATUS   HEALTH STATUS
+guestbook   Synced        Healthy
+
+NAME                            READY   STATUS    RESTARTS   AGE
+guestbook-ui-5d6468fd55-pmpjm   1/1     Running   0          7m
+</code></pre>
+<h2>Step 7: prove the admin boundary is real</h2>
+<p>Alice is in <code>platform-admins</code>, which maps to the built-in <code>role:admin</code>. The difference that matters is not the applications list, it is Settings. An admin can see the cluster connection used for deployments:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/06-argocd-admin-clusters.png" alt="Argo CD cluster settings as the admin user"></p>
+<p>Bob&#39;s token never grants <code>clusters</code> or <code>repositories</code>, so those Settings pages return empty lists rather than data. The permission is enforced server-side by the API, not by hiding a menu item; hiding the button would be cosmetic.</p>
+<p>The two groups in Keycloak are the whole authorization surface:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/08-keycloak-groups.png" alt="Keycloak groups used by the RBAC mapping"></p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/09-keycloak-user-bob.png" alt="Bob&#39;s group membership in Keycloak"></p>
+<h2>The four failures worth knowing about</h2>
+<p><strong>PKCE was enforced by Keycloak but not requested by Argo CD.</strong> The first login attempt came back to Argo CD with <code>Missing parameter: code_challenge_method</code>. The documented switch is not the one that exists in v3.6: <code>enablePKCE: true</code> is ignored, and the field that works is <code>enablePKCEAuthentication: true</code>. Reading <code>util/oidc/oidc.go</code> at the release tag is what settled it. After the fix the authorization request contains <code>code_challenge_method=S256</code>.</p>
+<p><strong>The self-signed certificate breaks the issuer check.</strong> Argo CD validates the issuer over TLS, and the k3s Traefik certificate is not trusted. <code>oidc.tls.insecure.skip.verify: &quot;true&quot;</code> is the lab answer. The browser also needs a one-time bypass for both hosts.</p>
+<p><strong>The admin console is not realm-aware by URL alone.</strong> <code>#/lab/clients</code> in the master console still renders master&#39;s clients. The reliable path is Manage realms → <code>lab</code>, or <code>/admin/lab/console/</code> after authenticating against master. The first attempt captured the wrong realm&#39;s client list, which is exactly the kind of error that produces a blog post full of screenshots of the wrong thing.</p>
+<p><strong><code>role:readonly</code> as the default quietly grants Settings.</strong> With the chart default, a user with no matching group still reached Settings → Repositories. It was not a permission escalation to data, but it made the demo meaningless and would confuse a real audit. Deny-by-default plus explicit grants fixed both.</p>
+<p>Two smaller realities: the Keycloak and Argo CD images took several minutes to pull on this lab, and Keycloak&#39;s first start spends about 90 seconds rebuilding its Quarkus image before the health endpoint reports ready. Neither is a misconfiguration; a startup probe with a generous budget avoids a restart loop.</p>
+<h2>What this lab proves and what it does not</h2>
+<p>Proved here: a real OIDC authorization code flow with PKCE, a signed token carrying a group claim, server-side RBAC enforcement, and a working sync performed by a non-admin identity.</p>
+<p>Not proved here: TLS trust. The self-signed certificate with verification disabled would be unacceptable outside a lab, and it is the first thing to replace. Also not proved: Keycloak availability. One replica with one Postgres pod is a single point of failure for the entire login path; if Keycloak is down, nobody can authenticate to Argo CD, including local admins if the local admin password was disabled.</p>
+<h2>Production checklist</h2>
+<ul>
+<li>Replace the Traefik default certificate with one issued by a trusted CA and remove <code>oidc.tls.insecure.skip.verify</code>.</li>
+<li>Run Keycloak with at least two replicas and a managed or operator-managed Postgres with backups. Export the realm on every change; the realm is configuration, and configuration that only exists inside a running pod is a future outage.</li>
+<li>Delete the temporary bootstrap admin and create a permanent one, or federate the admin console to the same IdP with a separate admin group.</li>
+<li>Turn off <code>directAccessGrantsEnabled</code> on the Argo CD client once no CLI password flow is needed.</li>
+<li>Scope the developer role with Argo CD Projects instead of <code>*/*</code>, so a team can only sync into its own project and namespace.</li>
+<li>Rotate the client secret on a schedule and keep the patch file out of the repository.</li>
+<li>Decide whether the group claim should be realm roles rather than group paths. Roles survive reorganising group hierarchies; paths do not.</li>
+<li>Audit the RBAC CSV in Git, because <code>policy.default: &quot;&quot;</code> is only as good as the grants written next to it.</li>
+</ul>
+<h2>Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Login page has no Keycloak button</td>
+<td><code>argocd-cm</code> has no <code>oidc.config</code>, or the server was not restarted after the secret patch</td>
+<td>Check <code>/api/v1/settings</code>, restart <code>argocd-server</code></td>
+</tr>
+<tr>
+<td><code>Missing parameter: code_challenge_method</code></td>
+<td>Keycloak client requires PKCE, Argo CD does not send it</td>
+<td><code>enablePKCEAuthentication: true</code></td>
+</tr>
+<tr>
+<td><code>failed to verify ID token: x509: certificate signed by unknown authority</code></td>
+<td>Self-signed issuer certificate</td>
+<td><code>oidc.tls.insecure.skip.verify: &quot;true&quot;</code> in a lab; real CA in production</td>
+</tr>
+<tr>
+<td>Login succeeds, user sees nothing</td>
+<td>Group claim and RBAC string do not match</td>
+<td>Compare User Info page with <code>policy.csv</code></td>
+</tr>
+<tr>
+<td><code>invalid_redirect_uri</code></td>
+<td>Redirect URI in Keycloak does not match <code>url</code> + <code>/auth/callback</code> exactly</td>
+<td>Fix the client, including scheme and port</td>
+</tr>
+<tr>
+<td>Postgres restarts with <code>directory ... is not empty</code></td>
+<td>Longhorn <code>lost+found</code> at the volume root</td>
+<td>Mount one level up and set <code>PGDATA</code></td>
+</tr>
+</tbody></table>
+<h2>Cleanup</h2>
+<pre><code class="language-powershell">helm -n argocd uninstall argocd
+kubectl delete namespace argocd keycloak guestbook --ignore-not-found
+</code></pre>
+<p>The Longhorn volumes created for Keycloak and the guestbook PVCs are deleted with their namespaces. Removing the namespace also removes the Keycloak database, so export the realm first if you intend to rebuild it.</p>
+<h2>Takeaways</h2>
+<p>SSO moves the password prompt out of Argo CD and into an identity provider. It does not move the authorization decision: that stays in Argo CD, and it is only as precise as the group claim and the policy file. The two settings that decide whether this works are both easy to get wrong in opposite directions — a default that grants too much, and a claim name that matches nothing. Deny by default, make the claim essential, and prove the boundary with a second user rather than trusting the YAML.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/">Argo CD: User Management</a></li>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/">Argo CD: RBAC Configuration</a></li>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/#configuring-an-oidc-identity-provider">Argo CD: OIDC configuration</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/securing_apps/">Keycloak: Securing applications and services</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Single sign-on is the easy half. The half that decides whether SSO is safe is what happens after the identity provider says yes: which Argo CD permissions the token actually buys. This lab wires Argo CD to Keycloak, maps a Keycloak group to an Argo CD role, and then proves the difference between an admin and a developer in the running UI.</p>
+<p>Everything below ran on a four-node k3s cluster (one server, three agents) running as Hyper-V VMs on a Windows machine. Argo CD and Keycloak both live in that cluster, behind the Traefik ingress that ships with k3s.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>4 nodes, <code>10.10.10.11</code>–<code>10.10.10.14</code></td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>quay.io/keycloak/keycloak:26.8.2</code></td>
+<td>namespace <code>keycloak</code></td>
+</tr>
+<tr>
+<td>Keycloak database</td>
+<td><code>postgres:16-alpine</code></td>
+<td>Longhorn PVC, 2 GiB</td>
+</tr>
+<tr>
+<td>Argo CD</td>
+<td>chart <code>10.17.2</code>, app <code>v3.6.1</code></td>
+<td>namespace <code>argocd</code></td>
+</tr>
+<tr>
+<td>Ingress</td>
+<td>Traefik (k3s built-in)</td>
+<td><code>keycloak.10.10.10.11.nip.io</code>, <code>argocd.10.10.10.11.nip.io</code></td>
+</tr>
+<tr>
+<td>Identity</td>
+<td>realm <code>lab</code>, client <code>argocd</code>, groups <code>platform-admins</code> and <code>developers</code></td>
+<td>Keycloak</td>
+</tr>
+</tbody></table>
+<p>nip.io is used purely so the hostnames resolve to the lab node without editing a hosts file. <code>keycloak.10.10.10.11.nip.io</code> resolves to <code>10.10.10.11</code> from inside the cluster and from the Windows browser, which matters: Argo CD has to fetch the OIDC discovery document from the same issuer URL the browser is sent to.</p>
+<h2>Authentication is not authorization</h2>
+<p>Three separate things are happening, and mixing them up is how SSO deployments end up with everyone as an admin.</p>
+<ol>
+<li>Keycloak authenticates the human and issues an ID token.</li>
+<li>The token carries a <code>groups</code> claim, because the client has a group membership mapper.</li>
+<li>Argo CD reads that claim and maps group names to RBAC roles. Nothing else grants access, because the default policy is deny.</li>
+</ol>
+<p>If step 3 is missing you get &quot;login works, but everyone sees everything&quot; — Keycloak was configured correctly and Argo CD was left wide open. Most of the configuration below exists to make step 3 explicit.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/01-argocd-login.png" alt="Argo CD login page with the Keycloak button"></p>
+<h2>Prerequisites</h2>
+<ul>
+<li>A k3s cluster you can reach from Windows. This lab uses <code>C:\Users\C\.kube\k3s-lab.yaml</code>.</li>
+<li><code>kubectl</code> and Helm 4 on the Windows host.</li>
+<li>A default StorageClass that actually provisions. Longhorn is used here; see the first trap below.</li>
+<li>One spare IP that both pods and the browser can reach. The node address is used, not <code>127.0.0.1</code>, because <code>127.0.0.1</code> inside a pod is the pod.</li>
+</ul>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes
+</code></pre>
+<pre><code>NAME          STATUS   ROLES           AGE   VERSION
+k3s-agent-0   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-agent-1   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-agent-2   Ready    &lt;none&gt;          6h    v1.36.5+k3s1
+k3s-server    Ready    control-plane   6h    v1.36.5+k3s1
+</code></pre>
+<h2>Trap 1: two default StorageClasses</h2>
+<p>Before deploying anything, look at the storage classes. This cluster had both <code>local-path</code> and <code>longhorn</code> marked as default, which is legal but ambiguous, and the PVC in this lab would have raced between provisioners.</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get sc -o jsonpath=&quot;{range .items[*]}{.metadata.name}{&#39;  &#39;}{.metadata.annotations.storageclass\.kubernetes\.io/is-default-class}{&#39;\n&#39;}{end}&quot;
+</code></pre>
+<pre><code>local-path  true
+longhorn  true
+longhorn-static
+</code></pre>
+<p>Pick one. Longhorn is the only class that gives a replicated volume, so <code>local-path</code> stops being the default:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml patch sc local-path `
+  -p &#39;{&quot;metadata&quot;:{&quot;annotations&quot;:{&quot;storageclass.kubernetes.io/is-default-class&quot;:&quot;false&quot;}}}&#39; --type merge
+</code></pre>
+<p>Leaving both in place is a slow-burning problem: it works until a PVC lands on the class you did not intend, and then a node reboot takes the data with it.</p>
+<h2>Step 1: PostgreSQL for Keycloak</h2>
+<p>Keycloak 26 no longer supports the embedded H2 database for anything you want to keep. A single Postgres instance with a Longhorn volume is enough for a lab, and it is the piece that later becomes an operator-managed HA cluster in production.</p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-db
+  namespace: keycloak
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: keycloak-db}
+  template:
+    metadata:
+      labels: {app: keycloak-db}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          envFrom:
+            - secretRef: {name: keycloak-db}
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: keycloak-db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: keycloak-db
+  namespace: keycloak
+spec:
+  storageClassName: longhorn
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+</code></pre>
+<p>The <code>PGDATA</code> indirection is not cosmetic. See trap 2.</p>
+<h2>Trap 2: Longhorn volumes are not empty</h2>
+<p>The first Postgres start failed with a message that looks like a corrupted volume:</p>
+<pre><code>initdb: error: directory &quot;/var/lib/postgresql/data&quot; exists but is not empty
+initdb: detail: It contains a lost+found directory, perhaps due to it being a mount point.
+</code></pre>
+<p>Longhorn formats its volume with an ext4 filesystem, and ext4 always creates <code>lost+found</code> at the root. Postgres refuses to initialise into a non-empty directory. Mounting the claim one level up and pointing <code>PGDATA</code> at a subdirectory solves it without touching the volume:</p>
+<pre><code class="language-yaml">env:
+  - name: PGDATA
+    value: /var/lib/postgresql/data/pgdata
+volumeMounts:
+  - name: data
+    mountPath: /var/lib/postgresql
+</code></pre>
+<p>After that the pod is <code>1/1</code> and the PVC is <code>Bound</code>.</p>
+<h2>Step 2: Keycloak</h2>
+<p>Keycloak 26 also renamed the bootstrap variables. <code>KEYCLOAK_ADMIN</code> and <code>KEYCLOAK_ADMIN_PASSWORD</code> are gone; the temporary admin is created from <code>KC_BOOTSTRAP_ADMIN_USERNAME</code> and <code>KC_BOOTSTRAP_ADMIN_PASSWORD</code>, and only on the very first start against an empty database.</p>
+<pre><code class="language-yaml">spec:
+  containers:
+    - name: keycloak
+      image: quay.io/keycloak/keycloak:26.8.2
+      args: [&quot;start&quot;, &quot;--import-realm&quot;]
+      env:
+        - {name: KC_DB, value: postgres}
+        - {name: KC_DB_URL, value: jdbc:postgresql://keycloak-db:5432/keycloak}
+        - name: KC_DB_USERNAME
+          valueFrom: {secretKeyRef: {name: keycloak-db, key: POSTGRES_USER}}
+        - name: KC_DB_PASSWORD
+          valueFrom: {secretKeyRef: {name: keycloak-db, key: POSTGRES_PASSWORD}}
+        - {name: KC_HOSTNAME, value: &quot;https://keycloak.10.10.10.11.nip.io&quot;}
+        - {name: KC_HTTP_ENABLED, value: &quot;true&quot;}
+        - {name: KC_PROXY_HEADERS, value: xforwarded}
+        - {name: KC_HEALTH_ENABLED, value: &quot;true&quot;}
+        - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+          valueFrom: {secretKeyRef: {name: keycloak-admin, key: password}}
+</code></pre>
+<p>Two details matter more than they look.</p>
+<p><code>KC_HOSTNAME</code> is the public URL. Keycloak puts it in the discovery document, and both the browser and the Argo CD server must be able to reach it. That is why the issuer is the nip.io name rather than a service name.</p>
+<p><code>KC_PROXY_HEADERS=xforwarded</code> tells Keycloak to trust <code>X-Forwarded-*</code> from Traefik. Without it the redirect URIs and cookies are generated for the wrong scheme, and the login loop never ends.</p>
+<p>The realm is imported from a mounted ConfigMap on start, so the client, groups and users exist before anyone logs in.</p>
+<pre><code class="language-yaml">- name: realm-import
+  mountPath: /opt/keycloak/data/import
+  readOnly: true
+args: [&quot;start&quot;, &quot;--import-realm&quot;]
+</code></pre>
+<p>The import file defines the realm <code>lab</code>, its two groups, two users, and one confidential client:</p>
+<pre><code class="language-json">{
+  &quot;realm&quot;: &quot;lab&quot;,
+  &quot;groups&quot;: [{ &quot;name&quot;: &quot;platform-admins&quot; }, { &quot;name&quot;: &quot;developers&quot; }],
+  &quot;clients&quot;: [{
+    &quot;clientId&quot;: &quot;argocd&quot;,
+    &quot;publicClient&quot;: false,
+    &quot;standardFlowEnabled&quot;: true,
+    &quot;redirectUris&quot;: [&quot;https://argocd.10.10.10.11.nip.io/auth/callback&quot;],
+    &quot;attributes&quot;: { &quot;pkce.code.challenge.method&quot;: &quot;S256&quot; },
+    &quot;protocolMappers&quot;: [{
+      &quot;name&quot;: &quot;groups&quot;,
+      &quot;protocolMapper&quot;: &quot;oidc-group-membership-mapper&quot;,
+      &quot;config&quot;: {
+        &quot;claim.name&quot;: &quot;groups&quot;,
+        &quot;full.path&quot;: &quot;false&quot;,
+        &quot;id.token.claim&quot;: &quot;true&quot;,
+        &quot;userinfo.token.claim&quot;: &quot;true&quot;
+      }
+    }]
+  }]
+}
+</code></pre>
+<p><code>full.path: false</code> is deliberate. Keycloak can emit either <code>developers</code> or <code>/developers</code> depending on that flag, and the Argo CD RBAC file has to match the exact string. Pick one and keep it consistent; mismatches here produce &quot;user logged in but has no permissions&quot;, which is a miserable thing to debug from the UI.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/07-keycloak-client.png" alt="Keycloak client configuration for Argo CD"></p>
+<p>The client is confidential, so it gets a generated secret. That secret is stored in a Kubernetes secret and never in the article or the Git repository.</p>
+<h2>Step 3: install Argo CD with OIDC and RBAC</h2>
+<p>Dex is disabled on purpose. Argo CD ships with Dex as a local identity broker, but there is no reason to run two identity layers when Keycloak is already the source of truth.</p>
+<pre><code class="language-yaml">dex:
+  enabled: false
+
+configs:
+  params:
+    server.insecure: true
+  cm:
+    url: https://argocd.10.10.10.11.nip.io
+    oidc.tls.insecure.skip.verify: &quot;true&quot;
+    oidc.config: |
+      name: Keycloak
+      issuer: https://keycloak.10.10.10.11.nip.io/realms/lab
+      clientID: argocd
+      clientSecret: $oidc.keycloak.clientSecret
+      enablePKCEAuthentication: true
+      requestedScopes:
+        - openid
+        - profile
+        - email
+      requestedIDTokenClaims:
+        groups:
+          essential: true
+  rbac:
+    policy.default: &quot;&quot;
+    policy.csv: |
+      g, platform-admins, role:admin
+      p, role:developer, applications, get, */*, allow
+      p, role:developer, applications, sync, */*, allow
+      p, role:developer, applications, action/*, */*, allow
+      p, role:developer, logs, get, */*, allow
+      p, role:developer, projects, get, *, allow
+      g, developers, role:developer
+</code></pre>
+<p>Four lines in that file carry the whole security model.</p>
+<p><code>server.insecure: true</code> means the Argo CD server speaks plain HTTP and Traefik terminates TLS. That is the standard ingress pattern; the alternative is TLS passthrough, which makes every route harder to reason about.</p>
+<p><code>oidc.tls.insecure.skip.verify</code> exists because the lab uses the self-signed certificate that k3s generates for Traefik. It is a lab-only line. In production you install a real certificate and delete it.</p>
+<p><code>policy.default: &quot;&quot;</code> means deny. Argo CD&#39;s chart default is closer to <code>role:readonly</code>, and with that default a user with no group mapping still logs in and can browse Settings. Starting from deny makes every permission visible in the policy file, which is the only way to audit it later.</p>
+<p><code>requestedIDTokenClaims</code> marks <code>groups</code> as essential. If Keycloak ever stops sending the claim, Argo CD refuses the login instead of silently issuing a token with no groups. A silent failure here looks like &quot;SSO is broken for some users&quot; and is much harder to spot.</p>
+<p>Apply it with the pinned chart version:</p>
+<pre><code class="language-powershell">$env:KUBECONFIG = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+helm upgrade --install argocd argo/argo-cd --version 10.17.2 `
+  --namespace argocd --create-namespace `
+  -f argocd-values.yaml --wait --timeout 12m
+</code></pre>
+<h2>Step 4: connect the client secret</h2>
+<p>The <code>$oidc.keycloak.clientSecret</code> reference is resolved from the <code>argocd-secret</code> Secret, not from the values file. That keeps the secret out of Helm and out of Git.</p>
+<pre><code class="language-powershell">kubectl -n argocd patch secret argocd-secret --type merge `
+  --patch-file oidc-secret-patch.json
+kubectl -n argocd rollout restart deploy/argocd-server
+</code></pre>
+<p>Verify that Argo CD actually parsed the OIDC block before touching the browser:</p>
+<pre><code class="language-powershell">curl.exe -k https://argocd.10.10.10.11.nip.io/api/v1/settings
+</code></pre>
+<pre><code class="language-json">{
+  &quot;url&quot;: &quot;https://argocd.10.10.10.11.nip.io&quot;,
+  &quot;oidcConfig&quot;: {
+    &quot;name&quot;: &quot;Keycloak&quot;,
+    &quot;issuer&quot;: &quot;https://keycloak.10.10.10.11.nip.io/realms/lab&quot;,
+    &quot;clientID&quot;: &quot;argocd&quot;,
+    &quot;scopes&quot;: [&quot;openid&quot;, &quot;profile&quot;, &quot;email&quot;],
+    &quot;idTokenClaims&quot;: { &quot;groups&quot;: { &quot;essential&quot;: true } },
+    &quot;enablePKCEAuthentication&quot;: true
+  }
+}
+</code></pre>
+<p>If this response has no <code>oidcConfig</code>, the UI will show only the local admin login and no amount of Keycloak debugging will help.</p>
+<h2>Step 5: log in as a developer</h2>
+<p>Bob is a member of <code>developers</code>. He clicks the Keycloak button, gets redirected to the realm login page, and comes back with a session.</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak login page for the lab realm"></p>
+<p>Argo CD shows the applications he is allowed to see, and nothing about them is admin-only:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/03-argocd-bob-apps.png" alt="Argo CD applications as the developer user"></p>
+<p>The decisive artifact is the User Info page. It shows the username, the issuer, and the claim Argo CD used to pick the role:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/04-argocd-bob-userinfo.png" alt="Argo CD user info showing the developers group"></p>
+<p>That single word, <code>developers</code>, is the entire link between Keycloak and the RBAC file. If it reads <code>/developers</code> here and <code>developers</code> in <code>policy.csv</code>, the mapping fails and the user lands with no permissions.</p>
+<h2>Step 6: prove the developer can deploy</h2>
+<p>Permission that is only visible in a config file is a claim. The app below was synced by the developer account, not by the admin, and Argo CD reports the real result:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/05-argocd-guestbook-healthy.png" alt="Guestbook application synced and healthy"></p>
+<pre><code class="language-powershell">kubectl -n argocd get applications
+kubectl -n guestbook get pods
+</code></pre>
+<pre><code>NAME        SYNC STATUS   HEALTH STATUS
+guestbook   Synced        Healthy
+
+NAME                            READY   STATUS    RESTARTS   AGE
+guestbook-ui-5d6468fd55-pmpjm   1/1     Running   0          7m
+</code></pre>
+<h2>Step 7: prove the admin boundary is real</h2>
+<p>Alice is in <code>platform-admins</code>, which maps to the built-in <code>role:admin</code>. The difference that matters is not the applications list, it is Settings. An admin can see the cluster connection used for deployments:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/06-argocd-admin-clusters.png" alt="Argo CD cluster settings as the admin user"></p>
+<p>Bob&#39;s token never grants <code>clusters</code> or <code>repositories</code>, so those Settings pages return empty lists rather than data. The permission is enforced server-side by the API, not by hiding a menu item; hiding the button would be cosmetic.</p>
+<p>The two groups in Keycloak are the whole authorization surface:</p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/08-keycloak-groups.png" alt="Keycloak groups used by the RBAC mapping"></p>
+<p><img src="../image/blog/ArgoCD-Keycloak-SSO/09-keycloak-user-bob.png" alt="Bob&#39;s group membership in Keycloak"></p>
+<h2>The four failures worth knowing about</h2>
+<p><strong>PKCE was enforced by Keycloak but not requested by Argo CD.</strong> The first login attempt came back to Argo CD with <code>Missing parameter: code_challenge_method</code>. The documented switch is not the one that exists in v3.6: <code>enablePKCE: true</code> is ignored, and the field that works is <code>enablePKCEAuthentication: true</code>. Reading <code>util/oidc/oidc.go</code> at the release tag is what settled it. After the fix the authorization request contains <code>code_challenge_method=S256</code>.</p>
+<p><strong>The self-signed certificate breaks the issuer check.</strong> Argo CD validates the issuer over TLS, and the k3s Traefik certificate is not trusted. <code>oidc.tls.insecure.skip.verify: &quot;true&quot;</code> is the lab answer. The browser also needs a one-time bypass for both hosts.</p>
+<p><strong>The admin console is not realm-aware by URL alone.</strong> <code>#/lab/clients</code> in the master console still renders master&#39;s clients. The reliable path is Manage realms → <code>lab</code>, or <code>/admin/lab/console/</code> after authenticating against master. The first attempt captured the wrong realm&#39;s client list, which is exactly the kind of error that produces a blog post full of screenshots of the wrong thing.</p>
+<p><strong><code>role:readonly</code> as the default quietly grants Settings.</strong> With the chart default, a user with no matching group still reached Settings → Repositories. It was not a permission escalation to data, but it made the demo meaningless and would confuse a real audit. Deny-by-default plus explicit grants fixed both.</p>
+<p>Two smaller realities: the Keycloak and Argo CD images took several minutes to pull on this lab, and Keycloak&#39;s first start spends about 90 seconds rebuilding its Quarkus image before the health endpoint reports ready. Neither is a misconfiguration; a startup probe with a generous budget avoids a restart loop.</p>
+<h2>What this lab proves and what it does not</h2>
+<p>Proved here: a real OIDC authorization code flow with PKCE, a signed token carrying a group claim, server-side RBAC enforcement, and a working sync performed by a non-admin identity.</p>
+<p>Not proved here: TLS trust. The self-signed certificate with verification disabled would be unacceptable outside a lab, and it is the first thing to replace. Also not proved: Keycloak availability. One replica with one Postgres pod is a single point of failure for the entire login path; if Keycloak is down, nobody can authenticate to Argo CD, including local admins if the local admin password was disabled.</p>
+<h2>Production checklist</h2>
+<ul>
+<li>Replace the Traefik default certificate with one issued by a trusted CA and remove <code>oidc.tls.insecure.skip.verify</code>.</li>
+<li>Run Keycloak with at least two replicas and a managed or operator-managed Postgres with backups. Export the realm on every change; the realm is configuration, and configuration that only exists inside a running pod is a future outage.</li>
+<li>Delete the temporary bootstrap admin and create a permanent one, or federate the admin console to the same IdP with a separate admin group.</li>
+<li>Turn off <code>directAccessGrantsEnabled</code> on the Argo CD client once no CLI password flow is needed.</li>
+<li>Scope the developer role with Argo CD Projects instead of <code>*/*</code>, so a team can only sync into its own project and namespace.</li>
+<li>Rotate the client secret on a schedule and keep the patch file out of the repository.</li>
+<li>Decide whether the group claim should be realm roles rather than group paths. Roles survive reorganising group hierarchies; paths do not.</li>
+<li>Audit the RBAC CSV in Git, because <code>policy.default: &quot;&quot;</code> is only as good as the grants written next to it.</li>
+</ul>
+<h2>Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Login page has no Keycloak button</td>
+<td><code>argocd-cm</code> has no <code>oidc.config</code>, or the server was not restarted after the secret patch</td>
+<td>Check <code>/api/v1/settings</code>, restart <code>argocd-server</code></td>
+</tr>
+<tr>
+<td><code>Missing parameter: code_challenge_method</code></td>
+<td>Keycloak client requires PKCE, Argo CD does not send it</td>
+<td><code>enablePKCEAuthentication: true</code></td>
+</tr>
+<tr>
+<td><code>failed to verify ID token: x509: certificate signed by unknown authority</code></td>
+<td>Self-signed issuer certificate</td>
+<td><code>oidc.tls.insecure.skip.verify: &quot;true&quot;</code> in a lab; real CA in production</td>
+</tr>
+<tr>
+<td>Login succeeds, user sees nothing</td>
+<td>Group claim and RBAC string do not match</td>
+<td>Compare User Info page with <code>policy.csv</code></td>
+</tr>
+<tr>
+<td><code>invalid_redirect_uri</code></td>
+<td>Redirect URI in Keycloak does not match <code>url</code> + <code>/auth/callback</code> exactly</td>
+<td>Fix the client, including scheme and port</td>
+</tr>
+<tr>
+<td>Postgres restarts with <code>directory ... is not empty</code></td>
+<td>Longhorn <code>lost+found</code> at the volume root</td>
+<td>Mount one level up and set <code>PGDATA</code></td>
+</tr>
+</tbody></table>
+<h2>Cleanup</h2>
+<pre><code class="language-powershell">helm -n argocd uninstall argocd
+kubectl delete namespace argocd keycloak guestbook --ignore-not-found
+</code></pre>
+<p>The Longhorn volumes created for Keycloak and the guestbook PVCs are deleted with their namespaces. Removing the namespace also removes the Keycloak database, so export the realm first if you intend to rebuild it.</p>
+<h2>Takeaways</h2>
+<p>SSO moves the password prompt out of Argo CD and into an identity provider. It does not move the authorization decision: that stays in Argo CD, and it is only as precise as the group claim and the policy file. The two settings that decide whether this works are both easy to get wrong in opposite directions — a default that grants too much, and a claim name that matches nothing. Deny by default, make the claim essential, and prove the boundary with a second user rather than trusting the YAML.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/">Argo CD: User Management</a></li>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/">Argo CD: RBAC Configuration</a></li>
+<li><a href="https://argo-cd.readthedocs.io/en/stable/operator-manual/user-management/#configuring-an-oidc-identity-provider">Argo CD: OIDC configuration</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/securing_apps/">Keycloak: Securing applications and services</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Argo%20CD%20SSO%20with%20Keycloak%20on%20k3s%3A%20OIDC%2C%20Groups%2C%20and%20RBAC&url=https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/ArgoCD-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC",
+                    date: "November 11, 2026",
+                    readingTime: "15 min read",
+                    tags: "<span class=\"tag\">argocd</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">traefik</span>\n<span class=\"tag\">rbac</span>",
+                },
+                th: {
+                    title: "Argo CD SSO with Keycloak on k3s: OIDC, Groups, and RBAC",
+                    date: "November 11, 2026",
+                    readingTime: "15 นาที",
+                    tags: "<span class=\"tag\">argocd</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">traefik</span>\n<span class=\"tag\">rbac</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
