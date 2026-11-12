@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Add browser SSO to kubectl with Keycloak and Pinniped, map groups to RBAC, and see why one ServiceAccount per user is the wrong model.">
+    <meta property="og:title" content="Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User — Champ Patyatawee">
+    <meta property="og:description" content="Add browser SSO to kubectl with Keycloak and Pinniped, map groups to RBAC, and see why one ServiceAccount per user is the wrong model.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Kubernetes-Pinniped-Keycloak-SSO/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User">
+    <meta name="twitter:description" content="Add browser SSO to kubectl with Keycloak and Pinniped, map groups to RBAC, and see why one ServiceAccount per user is the wrong model.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Kubernetes-Pinniped-Keycloak-SSO/og.jpg">
+    <meta name="twitter:image:alt" content="Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Add browser SSO to kubectl with Keycloak and Pinniped, map groups to RBAC, and see why one ServiceAccount per user is the wrong model." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO">
+    <title>Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">17 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">kubernetes</span>
+<span class="tag">keycloak</span>
+<span class="tag">pinniped</span>
+<span class="tag">oidc</span>
+<span class="tag">sso</span>
+<span class="tag">rbac</span>
+<span class="tag">k3s</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>The question keeps coming back in a slightly different shape: <em>can Keycloak create a Kubernetes ServiceAccount for each user?</em> The short answer is no. Keycloak is an OpenID Connect provider; it signs identity tokens. It has no Kubernetes API client and no concept of a namespace, a RoleBinding, or a workload identity.</p>
+<p>The longer answer is more useful. You do not want one ServiceAccount per human. A ServiceAccount is an identity for a workload, with a token that is easy to copy and hard to revoke per person. What you want is a short-lived credential derived from a real login, with the person&#39;s group membership deciding what they can do.</p>
+<p>That is what Pinniped adds. It lets <code>kubectl</code> use Keycloak SSO without changing kube-apiserver flags, and without creating a ServiceAccount for every developer. This lab installs Pinniped on the four-node <code>k3s-lab</code> cluster, logs in as <code>bob</code>, and proves the boundary with <code>kubectl auth whoami</code> and <code>auth can-i</code>.</p>
+<p>The part that matters for a k3s lab: the Concierge runs in <strong>ImpersonationProxy</strong> mode. The usual token-exchange mode needs a signing key from <code>kube-controller-manager</code>, which k3s does not run as a pod. Impersonation avoids that dependency entirely.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>four nodes, Traefik ingress</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>pinniped-supervisor</code></td>
+</tr>
+<tr>
+<td>Pinniped</td>
+<td><code>v0.47.0</code></td>
+<td>Supervisor + Concierge + CLI</td>
+</tr>
+<tr>
+<td>Traefik</td>
+<td><code>rancher/mirrored-library-traefik:3.7.13</code></td>
+<td>TLS passthrough for both Pinniped endpoints</td>
+</tr>
+<tr>
+<td>kubectl</td>
+<td><code>v1.36.1</code></td>
+<td>client on Windows</td>
+</tr>
+<tr>
+<td>Namespace</td>
+<td><code>guestbook</code></td>
+<td>developer-writable namespace</td>
+</tr>
+<tr>
+<td>Groups</td>
+<td><code>platform-admins</code>, <code>developers</code></td>
+<td>mapped to <code>cluster-admin</code> and <code>edit</code></td>
+</tr>
+</tbody></table>
+<p>Two hostnames are published through Traefik:</p>
+<ul>
+<li><code>https://pinniped.10.10.10.11.nip.io</code> — the Supervisor&#39;s federation endpoint.</li>
+<li><code>https://pinniped-proxy.10.10.10.11.nip.io</code> — the Concierge impersonation proxy.</li>
+</ul>
+<h2>The trust chain</h2>
+<p>There are three identities in this flow, and mixing them up makes the configuration look more magical than it is.</p>
+<ol>
+<li><strong>The human identity.</strong> <code>kubectl</code> invokes the Pinniped CLI as an exec credential plugin. The CLI opens a browser, the user signs in to Keycloak, and Keycloak returns an ID token containing <code>preferred_username</code> and <code>groups</code>.</li>
+<li><strong>The cluster identity.</strong> The Supervisor validates the Keycloak token against the realm issuer and JWKS, then issues its own short-lived token for the cluster. That token has the audience that the Concierge&#39;s <code>JWTAuthenticator</code> expects. This is the federation step: the cluster trusts the Supervisor, and the Supervisor trusts Keycloak.</li>
+<li><strong>The Kubernetes identity.</strong> The CLI presents the Supervisor token to the Concierge. The impersonation proxy validates it and calls the API server as the user <code>bob</code> with the groups <code>developers</code>. RBAC then decides what <code>bob</code> may do.</li>
+</ol>
+<p>The Kubernetes API server never talks to Keycloak. It only sees the impersonation proxy, which is a normal Kubernetes client with permission to impersonate users and groups. That is why no API server flags are required — and also why the Concierge is a cluster-level security component that deserves the same review as the API server itself.</p>
+<p>In a managed cluster, or any cluster with a healthy <code>kube-controller-manager</code>, the Concierge can use <code>TokenCredentialRequestAPI</code> instead. This lab cannot, because k3s does not run that controller as a pod.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>The <code>k3s-lab</code> kubeconfig at <code>C:\Users\C\.kube\k3s-lab.yaml</code>.</li>
+<li>Admin access to the <code>lab</code> realm in Keycloak.</li>
+<li>The lab CA certificate and key that signed the existing ingress certificates.</li>
+<li><code>pinniped.exe</code> on <code>PATH</code>, or referenced by full path.</li>
+<li>A namespace for developer workloads. This lab uses <code>guestbook</code>.</li>
+</ul>
+<p>Confirm the context before installing anything cluster-wide:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get ns
+</code></pre>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION
+k3s-agent-0   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-agent-1   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-agent-2   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-server    Ready    control-plane   21h   v1.36.5+k3s1
+</code></pre>
+<h2>Step 1: Install the Pinniped components</h2>
+<p>Pinniped ships three manifests: the Concierge CRDs, the Concierge controller, and the Supervisor. Pin the version instead of using <code>latest</code>:</p>
+<pre><code class="language-powershell">$v = &quot;v0.47.0&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-crds.yaml&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-resources.yaml&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-supervisor.yaml&quot;
+</code></pre>
+<p>Wait for both controllers:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor get pods
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-concierge get pods
+</code></pre>
+<pre><code class="language-text">NAME                                   READY   STATUS    RESTARTS   AGE
+pinniped-supervisor-79fd59b449-sqqcd   1/1     Running   0          22m
+pinniped-supervisor-79fd59b449-tmvn7   1/1     Running   0          22m
+
+NAME                                  READY   STATUS    RESTARTS   AGE
+pinniped-concierge-79b5545ff7-2psb4   1/1     Running   0          22m
+pinniped-concierge-79b5545ff7-j9n8v   1/1     Running   0          22m
+</code></pre>
+<p>Both deployments run the same pinned image, <code>ghcr.io/vmware/pinniped/pinniped-server:v0.47.0</code>.</p>
+<h2>Step 2: Terminate TLS in Pinniped, not in Traefik</h2>
+<p>The Supervisor serves HTTPS itself. If Traefik terminates TLS and forwards plain HTTP, the OIDC discovery document advertises the wrong scheme, the callback breaks, and certificate validation fails. The ingress must pass the TCP connection through untouched.</p>
+<p>That means a <code>TLSOption</code> or a normal <code>Ingress</code> is not enough. Use a Traefik <code>IngressRouteTCP</code> with <code>HostSNI</code> and <code>tls.passthrough: true</code>.</p>
+<p>First, create certificates with the correct SANs, signed by the lab CA. The exact CA paths stay outside the repository:</p>
+<pre><code class="language-bash">openssl req -new -newkey rsa:2048 -nodes \
+  -keyout tls.key -out tls.csr \
+  -subj &quot;/CN=pinniped.10.10.10.11.nip.io&quot;
+
+openssl x509 -req -in tls.csr \
+  -CA lab-ca.crt -CAkey lab-ca.key -CAcreateserial \
+  -out tls.crt -days 825 -sha256 -extfile tls.ext
+</code></pre>
+<p><code>tls.ext</code> contains the SAN and server-auth usage:</p>
+<pre><code class="language-text">subjectAltName=DNS:pinniped.10.10.10.11.nip.io
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+</code></pre>
+<p>Repeat for <code>pinniped-proxy.10.10.10.11.nip.io</code>, then create the two TLS Secrets:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor create secret tls pinniped-supervisor-tls --cert=tls.crt --key=tls.key
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-concierge create secret tls pinniped-proxy-tls --cert=proxy.crt --key=proxy.key
+</code></pre>
+<p>The external Services and the passthrough routes:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: pinniped-supervisor-external
+  namespace: pinniped-supervisor
+spec:
+  type: ClusterIP
+  selector:
+    app: pinniped-supervisor
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: pinniped-supervisor
+  namespace: pinniped-supervisor
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: HostSNI(`pinniped.10.10.10.11.nip.io`)
+      services:
+        - name: pinniped-supervisor-external
+          port: 443
+  tls:
+    passthrough: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: pinniped-concierge-proxy
+  namespace: pinniped-concierge
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: HostSNI(`pinniped-proxy.10.10.10.11.nip.io`)
+      services:
+        - name: pinniped-concierge-proxy
+          port: 443
+  tls:
+    passthrough: true
+</code></pre>
+<p>Check reachability before moving on:</p>
+<pre><code class="language-powershell">curl.exe -kI https://pinniped.10.10.10.11.nip.io/
+</code></pre>
+<p>A <code>200</code> or <code>404</code> proves TLS and routing work. On Windows, <code>curl.exe</code> against a private CA can fail with <code>CERT_TRUST_REVOCATION_STATUS_UNKNOWN</code>; <code>-k</code> is only for the reachability check, not for a client that will actually validate the chain.</p>
+<h2>Step 3: Create the Keycloak client</h2>
+<p>The Supervisor is a confidential OIDC client. It runs on the cluster, so a client secret is appropriate — unlike the public client used by a desktop <code>kubectl</code> plugin.</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/02-keycloak-pinniped-client.png" alt="Keycloak client pinniped-supervisor: confidential client, standard flow, callback to the Supervisor"></p>
+<p>The settings that matter:</p>
+<ul>
+<li>Client ID <code>pinniped-supervisor</code>, confidential, client-secret authentication.</li>
+<li>Standard flow enabled, direct access grants disabled.</li>
+<li>The Pinniped host as the web origin and its <code>/callback</code> path as the only redirect URI.</li>
+<li>A group membership mapper that writes <code>groups</code> into the ID token, with <strong>Full group path off</strong>.</li>
+</ul>
+<p>Use these exact values:</p>
+<pre><code class="language-text">Web origin:    https://pinniped.10.10.10.11.nip.io
+Redirect URI:  https://pinniped.10.10.10.11.nip.io/callback
+</code></pre>
+<p>The mapper is not optional. Without it, Keycloak returns no <code>groups</code> claim, the Supervisor has nothing to federate, and every user lands in Kubernetes with only <code>system:authenticated</code>.</p>
+<p>The equivalent Admin API request (the admin password comes from the <code>keycloak-admin</code> Secret and is never printed):</p>
+<pre><code class="language-powershell">$kc = &quot;https://keycloak.10.10.10.11.nip.io&quot;
+$token = (Invoke-RestMethod -SkipCertificateCheck -Method Post `
+  -Uri &quot;$kc/realms/master/protocol/openid-connect/token&quot; `
+  -Body @{ client_id = &quot;admin-cli&quot;; username = &quot;admin&quot;; password = $adminPassword; grant_type = &quot;password&quot; }).access_token
+$headers = @{ Authorization = &quot;Bearer $token&quot;; &quot;Content-Type&quot; = &quot;application/json&quot; }
+
+$client = @{
+  clientId = &quot;pinniped-supervisor&quot;
+  publicClient = $false
+  clientAuthenticatorType = &quot;client-secret&quot;
+  standardFlowEnabled = $true
+  directAccessGrantsEnabled = $false
+  redirectUris = @(&quot;https://pinniped.10.10.10.11.nip.io/callback&quot;)
+  webOrigins = @(&quot;https://pinniped.10.10.10.11.nip.io&quot;)
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -SkipCertificateCheck -Headers $headers -Method Post `
+  -Uri &quot;$kc/admin/realms/lab/clients&quot; -Body $client
+</code></pre>
+<p>Then create the mapper on the new client:</p>
+<pre><code class="language-powershell">$body = @{
+  name = &quot;groups&quot;
+  protocol = &quot;openid-connect&quot;
+  protocolMapper = &quot;oidc-group-membership-mapper&quot;
+  config = @{
+    &quot;claim.name&quot; = &quot;groups&quot;
+    &quot;full.path&quot; = &quot;false&quot;
+    &quot;id.token.claim&quot; = &quot;true&quot;
+    &quot;access.token.claim&quot; = &quot;true&quot;
+    &quot;userinfo.token.claim&quot; = &quot;true&quot;
+    &quot;introspection.token.claim&quot; = &quot;true&quot;
+  }
+} | ConvertTo-Json -Depth 5
+</code></pre>
+<p>Store the client secret as a Pinniped-typed Secret. The key names <code>clientID</code> and <code>clientSecret</code> are required:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor create secret generic keycloak-client `
+  --from-literal=clientID=pinniped-supervisor `
+  --from-literal=clientSecret=$env:KC_CLIENT_SECRET `
+  --type=secrets.pinniped.dev/oidc-client
+</code></pre>
+<h2>Step 4: Federate Keycloak through the Supervisor</h2>
+<p>The <code>OIDCIdentityProvider</code> describes the upstream Keycloak realm. The <code>FederationDomain</code> is what the CLI actually talks to.</p>
+<pre><code class="language-yaml">apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: OIDCIdentityProvider
+metadata:
+  name: keycloak
+  namespace: pinniped-supervisor
+spec:
+  issuer: https://keycloak.10.10.10.11.nip.io/realms/lab
+  tls:
+    certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+  authorizationConfig:
+    additionalScopes: [email]
+  claims:
+    username: preferred_username
+    groups: groups
+  client:
+    secretName: keycloak-client
+---
+apiVersion: config.supervisor.pinniped.dev/v1alpha1
+kind: FederationDomain
+metadata:
+  name: lab
+  namespace: pinniped-supervisor
+spec:
+  issuer: https://pinniped.10.10.10.11.nip.io
+  tls:
+    secretName: pinniped-supervisor-tls
+  identityProviders:
+    - displayName: Keycloak
+      objectRef:
+        apiGroup: idp.supervisor.pinniped.dev
+        kind: OIDCIdentityProvider
+        name: keycloak
+</code></pre>
+<p>Replace <code>&lt;base64 of lab-ca.crt&gt;</code> with the actual value:</p>
+<pre><code class="language-powershell">[Convert]::ToBase64String([IO.File]::ReadAllBytes(&quot;lab-ca.crt&quot;))
+</code></pre>
+<p>Two details are load-bearing:</p>
+<ul>
+<li>The issuer must match Keycloak&#39;s realm URL exactly, including the realm name and no trailing slash. A mismatch fails discovery before anyone reaches a login page.</li>
+<li><code>additionalScopes</code> must not include <code>offline_access</code> on this Keycloak version. Requesting an offline token makes Keycloak reject the code exchange, and the Supervisor surfaces it as a generic 502.</li>
+</ul>
+<p>Apply it and confirm both objects are <code>Ready</code>:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f supervisor-config.yaml
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor get federationdomain,oidcidentityprovider
+</code></pre>
+<pre><code class="language-text">NAME                                                  ISSUER                                STATUS   AGE
+federationdomain.config.supervisor.pinniped.dev/lab   https://pinniped.10.10.10.11.nip.io   Ready    21m
+
+NAME                                                        ISSUER                                           STATUS   AGE
+oidcidentityprovider.idp.supervisor.pinniped.dev/keycloak   https://keycloak.10.10.10.11.nip.io/realms/lab   Ready    21m
+</code></pre>
+<h2>Step 5: Put the Concierge into impersonation mode</h2>
+<p>This is the k3s-specific decision. The default Concierge strategy, <code>TokenCredentialRequestAPI</code>, needs the cluster signing key so it can mint client certificates. On k3s there is no <code>kube-controller-manager</code> pod to ask, so that strategy stays in <code>Error</code>:</p>
+<pre><code class="language-text">KubeClusterSigningCertificate  Error    CouldNotFetchKey
+</code></pre>
+<p>The ImpersonationProxy strategy does not need that key. It runs its own TLS endpoint and authenticates the caller before impersonating them.</p>
+<pre><code class="language-yaml">apiVersion: config.concierge.pinniped.dev/v1alpha1
+kind: CredentialIssuer
+metadata:
+  name: pinniped-concierge-config
+spec:
+  impersonationProxy:
+    mode: enabled
+    externalEndpoint: pinniped-proxy.10.10.10.11.nip.io:443
+    service:
+      type: ClusterIP
+    tls:
+      secretName: pinniped-proxy-tls
+      certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+</code></pre>
+<p><code>externalEndpoint</code> is a <code>host:port</code>, not a URL. Writing <code>https://pinniped-proxy...</code> produces:</p>
+<pre><code class="language-text">invalid port &quot;//pinniped-proxy.10.10.10.11.nip.io&quot;
+</code></pre>
+<p>After applying, the CredentialIssuer should report the impersonation proxy as healthy:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get credentialissuer
+</code></pre>
+<pre><code class="language-text">NAME                        PROXYMODE   DEFAULTSTRATEGY      AGE
+pinniped-concierge-config   enabled     ImpersonationProxy   22m
+</code></pre>
+<p>The detailed status is the useful part:</p>
+<pre><code class="language-text">KubeClusterSigningCertificate  Error    CouldNotFetchKey
+ImpersonationProxy             Success  Listening
+</code></pre>
+<p>A mixed status is expected here. The failed strategy is not a broken install; it is the reason impersonation is enabled.</p>
+<h2>Step 6: Trust the Supervisor and map groups to RBAC</h2>
+<p>The <code>JWTAuthenticator</code> tells the Concierge which issuer and audience to accept. The audience must match what the CLI requests, and the issuer must be the <code>FederationDomain</code>, not Keycloak.</p>
+<pre><code class="language-yaml">apiVersion: authentication.concierge.pinniped.dev/v1alpha1
+kind: JWTAuthenticator
+metadata:
+  name: keycloak
+spec:
+  issuer: https://pinniped.10.10.10.11.nip.io
+  audience: k3s-lab-keycloak-pinniped
+  tls:
+    certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pinniped-platform-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: Group
+    name: platform-admins
+    apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pinniped-developers-edit
+  namespace: guestbook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: Group
+    name: developers
+    apiGroup: rbac.authorization.k8s.io
+</code></pre>
+<p>Notice the group names: <code>developers</code>, not <code>oidc:developers</code>. Pinniped passes the upstream group claim through unchanged. This is different from direct API server OIDC, where a prefix keeps the identity provider&#39;s namespace separate.</p>
+<p>That difference is a security boundary. A Keycloak group literally named <code>system:masters</code> is not rewritten by Pinniped. Anyone who can create or join groups in Keycloak can therefore grant Kubernetes superuser access. Disable self-service group creation, restrict the realm&#39;s group-management roles, and audit group names as carefully as ClusterRoleBindings.</p>
+<h2>Step 7: Generate a kubeconfig and log in</h2>
+<p>Generate a kubeconfig that points <code>kubectl</code> at the impersonation proxy:</p>
+<pre><code class="language-powershell">$env:NO_PROXY = &quot;pinniped.10.10.10.11.nip.io,pinniped-proxy.10.10.10.11.nip.io,keycloak.10.10.10.11.nip.io,127.0.0.1,localhost&quot;
+
+C:\Users\C\bin\pinniped.exe get kubeconfig `
+  --kubeconfig C:\Users\C\.kube\k3s-lab.yaml `
+  --concierge-mode ImpersonationProxy `
+  -o C:\Users\C\k3s-lab-pinniped.yaml
+</code></pre>
+<p>The discovery output is worth reading, because it shows exactly what the CLI found and validated:</p>
+<pre><code class="language-text">discovered CredentialIssuer            {&quot;name&quot;: &quot;pinniped-concierge-config&quot;}
+discovered Concierge endpoint          {&quot;endpoint&quot;: &quot;https://pinniped-proxy.10.10.10.11.nip.io&quot;}
+discovered Concierge certificate authority bundle  {&quot;roots&quot;: 1}
+discovered JWTAuthenticator            {&quot;name&quot;: &quot;keycloak&quot;}
+discovered OIDC issuer                 {&quot;issuer&quot;: &quot;https://pinniped.10.10.10.11.nip.io&quot;}
+discovered OIDC audience               {&quot;audience&quot;: &quot;k3s-lab-keycloak-pinniped&quot;}
+validated connection to the cluster
+</code></pre>
+<p>The generated kubeconfig&#39;s <code>server</code> is the proxy, not the API server:</p>
+<pre><code class="language-yaml">server: https://pinniped-proxy.10.10.10.11.nip.io
+</code></pre>
+<p>The first <code>kubectl</code> command opens a browser. The user authenticates to Keycloak, and the CLI exchanges that login for a short-lived Kubernetes credential:</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/01-keycloak-login.png" alt="Keycloak sign-in reached through the Pinniped Supervisor"></p>
+<p>After the callback, Keycloak records a normal SSO session for the Pinniped client. There is no Kubernetes ServiceAccount behind this session:</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/04-keycloak-bob-session.png" alt="bob&#39;s active session for the pinniped-supervisor client in Keycloak"></p>
+<h2>Step 8: Prove the identity and the boundary</h2>
+<p>Start with the identity Kubernetes actually sees:</p>
+<pre><code class="language-powershell">$env:NO_PROXY = &quot;pinniped.10.10.10.11.nip.io,pinniped-proxy.10.10.10.11.nip.io,keycloak.10.10.10.11.nip.io,127.0.0.1,localhost&quot;
+
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth whoami
+</code></pre>
+<pre><code class="language-text">ATTRIBUTE                                           VALUE
+Username                                            bob
+Groups                                              [developers system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=...]
+</code></pre>
+<p>The username is <code>bob</code>. The only group from Keycloak is <code>developers</code>; <code>system:authenticated</code> is added by Kubernetes. That group is what the RoleBinding in <code>guestbook</code> matches.</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/03-keycloak-bob-groups.png" alt="bob&#39;s only Keycloak group is developers, which maps to edit in the guestbook namespace"></p>
+<p>Now test both sides of the boundary:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i create deployments -n guestbook
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i get secrets -n kube-system
+</code></pre>
+<pre><code class="language-text">yes
+no
+no
+</code></pre>
+<p>Reading cluster-scoped resources fails at the authorizer, and the error names the component that made the decision:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml get nodes
+</code></pre>
+<pre><code class="language-text">Error from server (Forbidden): nodes is forbidden: User &quot;bob&quot; cannot list resource &quot;nodes&quot; in API group &quot;&quot; at the cluster scope: decision made by impersonation-proxy.concierge.pinniped.dev
+</code></pre>
+<p>That is the whole point. <code>bob</code> has a working <code>kubectl</code>, a real browser login, and exactly the permissions of the <code>developers</code> group — without a per-user ServiceAccount and without restarting the control plane.</p>
+<h2>Why one ServiceAccount per user is the wrong model</h2>
+<p>It is technically possible to write a controller that watches Keycloak and creates a ServiceAccount, token, RoleBinding, and kubeconfig for every user. It is also a lot of moving parts that produce a worse security posture.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>ServiceAccount per user</th>
+<th>Keycloak + Pinniped</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Credential lifetime</td>
+<td>Long-lived token until deleted</td>
+<td>Short-lived, minted at login</td>
+</tr>
+<tr>
+<td>Revocation</td>
+<td>Delete the SA and every copy of its token</td>
+<td>Disable the Keycloak user or session</td>
+</tr>
+<tr>
+<td>Audit identity</td>
+<td>The ServiceAccount name</td>
+<td>The human&#39;s username and groups</td>
+</tr>
+<tr>
+<td>MFA and password policy</td>
+<td>None; the token bypasses Keycloak</td>
+<td>Enforced by Keycloak</td>
+</tr>
+<tr>
+<td>Group changes</td>
+<td>Reconcile RBAC per user</td>
+<td>Next login carries the new groups</td>
+</tr>
+<tr>
+<td>Keycloak&#39;s role</td>
+<td>Would need a custom Kubernetes controller</td>
+<td>Standard OIDC provider</td>
+</tr>
+</tbody></table>
+<p>A ServiceAccount is the right identity for a pod. A human should authenticate as a human.</p>
+<h2>Does this change the Kubernetes master?</h2>
+<p>No kube-apiserver flags change, and the control plane is not restarted. Pinniped is an add-on: CRDs, two controllers, TLS endpoints, and RBAC that lets the Concierge impersonate users and groups.</p>
+<p>That is not the same as &quot;no cluster-level change.&quot; Installing it requires cluster-admin, it adds an impersonation endpoint that must be protected, and it makes the Supervisor part of the authentication path. If your policy forbids impersonation entirely, Pinniped&#39;s Concierge may not be acceptable; the alternative is direct API server OIDC, which requires control-plane configuration and, on many managed clusters, provider-specific setup.</p>
+<h2>What went wrong, and why</h2>
+<p>Four failures cost most of the debugging time. Each one is a boundary, not a typo.</p>
+<p><strong>1. k3s has no <code>kube-controller-manager</code> pod.</strong> The default Concierge strategy reported <code>KubeClusterSigningCertificate: CouldNotFetchKey</code>. Enabling <code>ImpersonationProxy</code> was the fix, and it is also the reason this lab does not depend on a control-plane component that k3s does not expose.</p>
+<p><strong>2. <code>externalEndpoint</code> is not a URL.</strong> The field takes <code>host:port</code>. A scheme produces <code>invalid port &quot;//pinniped-proxy...&quot;</code>.</p>
+<p><strong>3. <code>offline_access</code> breaks the code exchange.</strong> With <code>offline_access</code> in the Supervisor&#39;s <code>additionalScopes</code>, Keycloak logged <code>CODE_TO_TOKEN_ERROR ... Offline tokens not allowed</code>, and the Supervisor returned a 502 during token exchange. Removing the scope fixed it. The default CLI scopes are not the same thing as the upstream scopes the Supervisor requests.</p>
+<p><strong>4. The Supervisor must terminate TLS.</strong> Traefik TLS termination makes the discovery document and callback inconsistent. <code>IngressRouteTCP</code> with <code>HostSNI</code> and <code>tls.passthrough: true</code> keeps the Supervisor&#39;s certificate end to end. On a Windows workstation behind a proxy, also add both Pinniped hosts to <code>NO_PROXY</code>; otherwise the CLI sends cluster-local hostnames to the corporate proxy.</p>
+<h2>Security boundaries and production gaps</h2>
+<p>This lab proves the authentication chain. It is not a production deployment.</p>
+<ul>
+<li><strong>The impersonation proxy is powerful.</strong> It can become any user or group. Protect its ServiceAccount, audit its logs, and do not expose it more broadly than the API server itself.</li>
+<li><strong>Keycloak group administration equals Kubernetes authorization.</strong> With no <code>oidc:</code> prefix, a group named <code>system:masters</code> is a superuser grant. Restrict group creation and reserve <code>system:*</code>.</li>
+<li><strong>The lab CA is self-signed.</strong> Production should use a managed certificate authority and automate rotation for both the Supervisor and proxy certificates.</li>
+<li><strong>Keycloak is a single instance.</strong> The Supervisor&#39;s availability is now part of <code>kubectl</code> availability. Use a highly available Keycloak and a production database.</li>
+<li><strong>Supervisor storage defaults to Kubernetes Secrets.</strong> That is acceptable for a lab; review the storage configuration and backup strategy for production.</li>
+<li><strong>Sessions and token lifetimes are policy.</strong> Shorten them deliberately, and test what happens when Keycloak is unavailable during a login.</li>
+<li><strong>The CLI is part of the client.</strong> Distribute a pinned <code>pinniped</code> binary and a generated kubeconfig; do not ask users to assemble either by hand.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the lab objects in reverse order. The CRDs are cluster-scoped, so deleting them removes every Pinniped custom resource:</p>
+<pre><code class="language-powershell">$k = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+
+kubectl --kubeconfig $k delete jwtauthenticator keycloak --ignore-not-found
+kubectl --kubeconfig $k delete clusterrolebinding pinniped-platform-admins --ignore-not-found
+kubectl --kubeconfig $k -n guestbook delete rolebinding pinniped-developers-edit --ignore-not-found
+kubectl --kubeconfig $k delete credentialissuer pinniped-concierge-config --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete federationdomain lab --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete oidcidentityprovider keycloak --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete ingressroutetcp pinniped-supervisor --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-concierge delete ingressroutetcp pinniped-concierge-proxy --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete service pinniped-supervisor-external --ignore-not-found
+</code></pre>
+<p>Then uninstall the controllers and CRDs:</p>
+<pre><code class="language-powershell">$v = &quot;v0.47.0&quot;
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-supervisor.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-resources.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-crds.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete namespace pinniped-supervisor pinniped-concierge --ignore-not-found
+</code></pre>
+<p>Finally, delete the generated kubeconfig and credential caches from the workstation, and delete the <code>pinniped-supervisor</code> client in Keycloak so no stale redirect URI or secret remains.</p>
+<h2>Takeaways</h2>
+<ul>
+<li>Keycloak cannot create Kubernetes ServiceAccounts, and a per-user ServiceAccount is the wrong abstraction for human access.</li>
+<li>Pinniped turns Keycloak into a Kubernetes identity source without changing API server flags.</li>
+<li>On k3s, use the Concierge&#39;s impersonation proxy; the token-exchange strategy needs a controller that k3s does not run.</li>
+<li>RBAC still decides everything. The group claim is only as safe as the system that manages group membership.</li>
+<li>The shortest path to a working demo is also the easiest place to over-grant. Test the negative cases, not just the successful login.</li>
+</ul>
+<h2>References</h2>
+<ul>
+<li><a href="https://pinniped.dev/docs/background/architecture/">Pinniped architecture</a></li>
+<li><a href="https://pinniped.dev/docs/reference/supported-clusters/">Supported clusters</a></li>
+<li><a href="https://pinniped.dev/docs/howto/install-supervisor/">Install the Supervisor</a></li>
+<li><a href="https://pinniped.dev/docs/howto/install-concierge/">Install the Concierge</a></li>
+<li><a href="https://pinniped.dev/docs/howto/concierge/configure-concierge-supervisor-jwt/">Configure the Concierge with a Supervisor JWT authenticator</a></li>
+<li><a href="https://pinniped.dev/docs/howto/supervisor/configure-supervisor-with-dex/">Configure the Supervisor with an OIDC identity provider</a></li>
+<li><a href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO.html">Kubernetes API SSO with Keycloak: direct OIDC and per-user RBAC</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>The question keeps coming back in a slightly different shape: <em>can Keycloak create a Kubernetes ServiceAccount for each user?</em> The short answer is no. Keycloak is an OpenID Connect provider; it signs identity tokens. It has no Kubernetes API client and no concept of a namespace, a RoleBinding, or a workload identity.</p>
+<p>The longer answer is more useful. You do not want one ServiceAccount per human. A ServiceAccount is an identity for a workload, with a token that is easy to copy and hard to revoke per person. What you want is a short-lived credential derived from a real login, with the person&#39;s group membership deciding what they can do.</p>
+<p>That is what Pinniped adds. It lets <code>kubectl</code> use Keycloak SSO without changing kube-apiserver flags, and without creating a ServiceAccount for every developer. This lab installs Pinniped on the four-node <code>k3s-lab</code> cluster, logs in as <code>bob</code>, and proves the boundary with <code>kubectl auth whoami</code> and <code>auth can-i</code>.</p>
+<p>The part that matters for a k3s lab: the Concierge runs in <strong>ImpersonationProxy</strong> mode. The usual token-exchange mode needs a signing key from <code>kube-controller-manager</code>, which k3s does not run as a pod. Impersonation avoids that dependency entirely.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>four nodes, Traefik ingress</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>pinniped-supervisor</code></td>
+</tr>
+<tr>
+<td>Pinniped</td>
+<td><code>v0.47.0</code></td>
+<td>Supervisor + Concierge + CLI</td>
+</tr>
+<tr>
+<td>Traefik</td>
+<td><code>rancher/mirrored-library-traefik:3.7.13</code></td>
+<td>TLS passthrough for both Pinniped endpoints</td>
+</tr>
+<tr>
+<td>kubectl</td>
+<td><code>v1.36.1</code></td>
+<td>client on Windows</td>
+</tr>
+<tr>
+<td>Namespace</td>
+<td><code>guestbook</code></td>
+<td>developer-writable namespace</td>
+</tr>
+<tr>
+<td>Groups</td>
+<td><code>platform-admins</code>, <code>developers</code></td>
+<td>mapped to <code>cluster-admin</code> and <code>edit</code></td>
+</tr>
+</tbody></table>
+<p>Two hostnames are published through Traefik:</p>
+<ul>
+<li><code>https://pinniped.10.10.10.11.nip.io</code> — the Supervisor&#39;s federation endpoint.</li>
+<li><code>https://pinniped-proxy.10.10.10.11.nip.io</code> — the Concierge impersonation proxy.</li>
+</ul>
+<h2>The trust chain</h2>
+<p>There are three identities in this flow, and mixing them up makes the configuration look more magical than it is.</p>
+<ol>
+<li><strong>The human identity.</strong> <code>kubectl</code> invokes the Pinniped CLI as an exec credential plugin. The CLI opens a browser, the user signs in to Keycloak, and Keycloak returns an ID token containing <code>preferred_username</code> and <code>groups</code>.</li>
+<li><strong>The cluster identity.</strong> The Supervisor validates the Keycloak token against the realm issuer and JWKS, then issues its own short-lived token for the cluster. That token has the audience that the Concierge&#39;s <code>JWTAuthenticator</code> expects. This is the federation step: the cluster trusts the Supervisor, and the Supervisor trusts Keycloak.</li>
+<li><strong>The Kubernetes identity.</strong> The CLI presents the Supervisor token to the Concierge. The impersonation proxy validates it and calls the API server as the user <code>bob</code> with the groups <code>developers</code>. RBAC then decides what <code>bob</code> may do.</li>
+</ol>
+<p>The Kubernetes API server never talks to Keycloak. It only sees the impersonation proxy, which is a normal Kubernetes client with permission to impersonate users and groups. That is why no API server flags are required — and also why the Concierge is a cluster-level security component that deserves the same review as the API server itself.</p>
+<p>In a managed cluster, or any cluster with a healthy <code>kube-controller-manager</code>, the Concierge can use <code>TokenCredentialRequestAPI</code> instead. This lab cannot, because k3s does not run that controller as a pod.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>The <code>k3s-lab</code> kubeconfig at <code>C:\Users\C\.kube\k3s-lab.yaml</code>.</li>
+<li>Admin access to the <code>lab</code> realm in Keycloak.</li>
+<li>The lab CA certificate and key that signed the existing ingress certificates.</li>
+<li><code>pinniped.exe</code> on <code>PATH</code>, or referenced by full path.</li>
+<li>A namespace for developer workloads. This lab uses <code>guestbook</code>.</li>
+</ul>
+<p>Confirm the context before installing anything cluster-wide:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get ns
+</code></pre>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION
+k3s-agent-0   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-agent-1   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-agent-2   Ready    &lt;none&gt;          20h   v1.36.5+k3s1
+k3s-server    Ready    control-plane   21h   v1.36.5+k3s1
+</code></pre>
+<h2>Step 1: Install the Pinniped components</h2>
+<p>Pinniped ships three manifests: the Concierge CRDs, the Concierge controller, and the Supervisor. Pin the version instead of using <code>latest</code>:</p>
+<pre><code class="language-powershell">$v = &quot;v0.47.0&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-crds.yaml&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-resources.yaml&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f &quot;https://get.pinniped.dev/$v/install-pinniped-supervisor.yaml&quot;
+</code></pre>
+<p>Wait for both controllers:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor get pods
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-concierge get pods
+</code></pre>
+<pre><code class="language-text">NAME                                   READY   STATUS    RESTARTS   AGE
+pinniped-supervisor-79fd59b449-sqqcd   1/1     Running   0          22m
+pinniped-supervisor-79fd59b449-tmvn7   1/1     Running   0          22m
+
+NAME                                  READY   STATUS    RESTARTS   AGE
+pinniped-concierge-79b5545ff7-2psb4   1/1     Running   0          22m
+pinniped-concierge-79b5545ff7-j9n8v   1/1     Running   0          22m
+</code></pre>
+<p>Both deployments run the same pinned image, <code>ghcr.io/vmware/pinniped/pinniped-server:v0.47.0</code>.</p>
+<h2>Step 2: Terminate TLS in Pinniped, not in Traefik</h2>
+<p>The Supervisor serves HTTPS itself. If Traefik terminates TLS and forwards plain HTTP, the OIDC discovery document advertises the wrong scheme, the callback breaks, and certificate validation fails. The ingress must pass the TCP connection through untouched.</p>
+<p>That means a <code>TLSOption</code> or a normal <code>Ingress</code> is not enough. Use a Traefik <code>IngressRouteTCP</code> with <code>HostSNI</code> and <code>tls.passthrough: true</code>.</p>
+<p>First, create certificates with the correct SANs, signed by the lab CA. The exact CA paths stay outside the repository:</p>
+<pre><code class="language-bash">openssl req -new -newkey rsa:2048 -nodes \
+  -keyout tls.key -out tls.csr \
+  -subj &quot;/CN=pinniped.10.10.10.11.nip.io&quot;
+
+openssl x509 -req -in tls.csr \
+  -CA lab-ca.crt -CAkey lab-ca.key -CAcreateserial \
+  -out tls.crt -days 825 -sha256 -extfile tls.ext
+</code></pre>
+<p><code>tls.ext</code> contains the SAN and server-auth usage:</p>
+<pre><code class="language-text">subjectAltName=DNS:pinniped.10.10.10.11.nip.io
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth
+</code></pre>
+<p>Repeat for <code>pinniped-proxy.10.10.10.11.nip.io</code>, then create the two TLS Secrets:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor create secret tls pinniped-supervisor-tls --cert=tls.crt --key=tls.key
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-concierge create secret tls pinniped-proxy-tls --cert=proxy.crt --key=proxy.key
+</code></pre>
+<p>The external Services and the passthrough routes:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  name: pinniped-supervisor-external
+  namespace: pinniped-supervisor
+spec:
+  type: ClusterIP
+  selector:
+    app: pinniped-supervisor
+  ports:
+    - name: https
+      port: 443
+      targetPort: 8443
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: pinniped-supervisor
+  namespace: pinniped-supervisor
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: HostSNI(`pinniped.10.10.10.11.nip.io`)
+      services:
+        - name: pinniped-supervisor-external
+          port: 443
+  tls:
+    passthrough: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRouteTCP
+metadata:
+  name: pinniped-concierge-proxy
+  namespace: pinniped-concierge
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: HostSNI(`pinniped-proxy.10.10.10.11.nip.io`)
+      services:
+        - name: pinniped-concierge-proxy
+          port: 443
+  tls:
+    passthrough: true
+</code></pre>
+<p>Check reachability before moving on:</p>
+<pre><code class="language-powershell">curl.exe -kI https://pinniped.10.10.10.11.nip.io/
+</code></pre>
+<p>A <code>200</code> or <code>404</code> proves TLS and routing work. On Windows, <code>curl.exe</code> against a private CA can fail with <code>CERT_TRUST_REVOCATION_STATUS_UNKNOWN</code>; <code>-k</code> is only for the reachability check, not for a client that will actually validate the chain.</p>
+<h2>Step 3: Create the Keycloak client</h2>
+<p>The Supervisor is a confidential OIDC client. It runs on the cluster, so a client secret is appropriate — unlike the public client used by a desktop <code>kubectl</code> plugin.</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/02-keycloak-pinniped-client.png" alt="Keycloak client pinniped-supervisor: confidential client, standard flow, callback to the Supervisor"></p>
+<p>The settings that matter:</p>
+<ul>
+<li>Client ID <code>pinniped-supervisor</code>, confidential, client-secret authentication.</li>
+<li>Standard flow enabled, direct access grants disabled.</li>
+<li>The Pinniped host as the web origin and its <code>/callback</code> path as the only redirect URI.</li>
+<li>A group membership mapper that writes <code>groups</code> into the ID token, with <strong>Full group path off</strong>.</li>
+</ul>
+<p>Use these exact values:</p>
+<pre><code class="language-text">Web origin:    https://pinniped.10.10.10.11.nip.io
+Redirect URI:  https://pinniped.10.10.10.11.nip.io/callback
+</code></pre>
+<p>The mapper is not optional. Without it, Keycloak returns no <code>groups</code> claim, the Supervisor has nothing to federate, and every user lands in Kubernetes with only <code>system:authenticated</code>.</p>
+<p>The equivalent Admin API request (the admin password comes from the <code>keycloak-admin</code> Secret and is never printed):</p>
+<pre><code class="language-powershell">$kc = &quot;https://keycloak.10.10.10.11.nip.io&quot;
+$token = (Invoke-RestMethod -SkipCertificateCheck -Method Post `
+  -Uri &quot;$kc/realms/master/protocol/openid-connect/token&quot; `
+  -Body @{ client_id = &quot;admin-cli&quot;; username = &quot;admin&quot;; password = $adminPassword; grant_type = &quot;password&quot; }).access_token
+$headers = @{ Authorization = &quot;Bearer $token&quot;; &quot;Content-Type&quot; = &quot;application/json&quot; }
+
+$client = @{
+  clientId = &quot;pinniped-supervisor&quot;
+  publicClient = $false
+  clientAuthenticatorType = &quot;client-secret&quot;
+  standardFlowEnabled = $true
+  directAccessGrantsEnabled = $false
+  redirectUris = @(&quot;https://pinniped.10.10.10.11.nip.io/callback&quot;)
+  webOrigins = @(&quot;https://pinniped.10.10.10.11.nip.io&quot;)
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -SkipCertificateCheck -Headers $headers -Method Post `
+  -Uri &quot;$kc/admin/realms/lab/clients&quot; -Body $client
+</code></pre>
+<p>Then create the mapper on the new client:</p>
+<pre><code class="language-powershell">$body = @{
+  name = &quot;groups&quot;
+  protocol = &quot;openid-connect&quot;
+  protocolMapper = &quot;oidc-group-membership-mapper&quot;
+  config = @{
+    &quot;claim.name&quot; = &quot;groups&quot;
+    &quot;full.path&quot; = &quot;false&quot;
+    &quot;id.token.claim&quot; = &quot;true&quot;
+    &quot;access.token.claim&quot; = &quot;true&quot;
+    &quot;userinfo.token.claim&quot; = &quot;true&quot;
+    &quot;introspection.token.claim&quot; = &quot;true&quot;
+  }
+} | ConvertTo-Json -Depth 5
+</code></pre>
+<p>Store the client secret as a Pinniped-typed Secret. The key names <code>clientID</code> and <code>clientSecret</code> are required:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor create secret generic keycloak-client `
+  --from-literal=clientID=pinniped-supervisor `
+  --from-literal=clientSecret=$env:KC_CLIENT_SECRET `
+  --type=secrets.pinniped.dev/oidc-client
+</code></pre>
+<h2>Step 4: Federate Keycloak through the Supervisor</h2>
+<p>The <code>OIDCIdentityProvider</code> describes the upstream Keycloak realm. The <code>FederationDomain</code> is what the CLI actually talks to.</p>
+<pre><code class="language-yaml">apiVersion: idp.supervisor.pinniped.dev/v1alpha1
+kind: OIDCIdentityProvider
+metadata:
+  name: keycloak
+  namespace: pinniped-supervisor
+spec:
+  issuer: https://keycloak.10.10.10.11.nip.io/realms/lab
+  tls:
+    certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+  authorizationConfig:
+    additionalScopes: [email]
+  claims:
+    username: preferred_username
+    groups: groups
+  client:
+    secretName: keycloak-client
+---
+apiVersion: config.supervisor.pinniped.dev/v1alpha1
+kind: FederationDomain
+metadata:
+  name: lab
+  namespace: pinniped-supervisor
+spec:
+  issuer: https://pinniped.10.10.10.11.nip.io
+  tls:
+    secretName: pinniped-supervisor-tls
+  identityProviders:
+    - displayName: Keycloak
+      objectRef:
+        apiGroup: idp.supervisor.pinniped.dev
+        kind: OIDCIdentityProvider
+        name: keycloak
+</code></pre>
+<p>Replace <code>&lt;base64 of lab-ca.crt&gt;</code> with the actual value:</p>
+<pre><code class="language-powershell">[Convert]::ToBase64String([IO.File]::ReadAllBytes(&quot;lab-ca.crt&quot;))
+</code></pre>
+<p>Two details are load-bearing:</p>
+<ul>
+<li>The issuer must match Keycloak&#39;s realm URL exactly, including the realm name and no trailing slash. A mismatch fails discovery before anyone reaches a login page.</li>
+<li><code>additionalScopes</code> must not include <code>offline_access</code> on this Keycloak version. Requesting an offline token makes Keycloak reject the code exchange, and the Supervisor surfaces it as a generic 502.</li>
+</ul>
+<p>Apply it and confirm both objects are <code>Ready</code>:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml apply -f supervisor-config.yaml
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n pinniped-supervisor get federationdomain,oidcidentityprovider
+</code></pre>
+<pre><code class="language-text">NAME                                                  ISSUER                                STATUS   AGE
+federationdomain.config.supervisor.pinniped.dev/lab   https://pinniped.10.10.10.11.nip.io   Ready    21m
+
+NAME                                                        ISSUER                                           STATUS   AGE
+oidcidentityprovider.idp.supervisor.pinniped.dev/keycloak   https://keycloak.10.10.10.11.nip.io/realms/lab   Ready    21m
+</code></pre>
+<h2>Step 5: Put the Concierge into impersonation mode</h2>
+<p>This is the k3s-specific decision. The default Concierge strategy, <code>TokenCredentialRequestAPI</code>, needs the cluster signing key so it can mint client certificates. On k3s there is no <code>kube-controller-manager</code> pod to ask, so that strategy stays in <code>Error</code>:</p>
+<pre><code class="language-text">KubeClusterSigningCertificate  Error    CouldNotFetchKey
+</code></pre>
+<p>The ImpersonationProxy strategy does not need that key. It runs its own TLS endpoint and authenticates the caller before impersonating them.</p>
+<pre><code class="language-yaml">apiVersion: config.concierge.pinniped.dev/v1alpha1
+kind: CredentialIssuer
+metadata:
+  name: pinniped-concierge-config
+spec:
+  impersonationProxy:
+    mode: enabled
+    externalEndpoint: pinniped-proxy.10.10.10.11.nip.io:443
+    service:
+      type: ClusterIP
+    tls:
+      secretName: pinniped-proxy-tls
+      certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+</code></pre>
+<p><code>externalEndpoint</code> is a <code>host:port</code>, not a URL. Writing <code>https://pinniped-proxy...</code> produces:</p>
+<pre><code class="language-text">invalid port &quot;//pinniped-proxy.10.10.10.11.nip.io&quot;
+</code></pre>
+<p>After applying, the CredentialIssuer should report the impersonation proxy as healthy:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get credentialissuer
+</code></pre>
+<pre><code class="language-text">NAME                        PROXYMODE   DEFAULTSTRATEGY      AGE
+pinniped-concierge-config   enabled     ImpersonationProxy   22m
+</code></pre>
+<p>The detailed status is the useful part:</p>
+<pre><code class="language-text">KubeClusterSigningCertificate  Error    CouldNotFetchKey
+ImpersonationProxy             Success  Listening
+</code></pre>
+<p>A mixed status is expected here. The failed strategy is not a broken install; it is the reason impersonation is enabled.</p>
+<h2>Step 6: Trust the Supervisor and map groups to RBAC</h2>
+<p>The <code>JWTAuthenticator</code> tells the Concierge which issuer and audience to accept. The audience must match what the CLI requests, and the issuer must be the <code>FederationDomain</code>, not Keycloak.</p>
+<pre><code class="language-yaml">apiVersion: authentication.concierge.pinniped.dev/v1alpha1
+kind: JWTAuthenticator
+metadata:
+  name: keycloak
+spec:
+  issuer: https://pinniped.10.10.10.11.nip.io
+  audience: k3s-lab-keycloak-pinniped
+  tls:
+    certificateAuthorityData: &lt;base64 of lab-ca.crt&gt;
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pinniped-platform-admins
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: Group
+    name: platform-admins
+    apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pinniped-developers-edit
+  namespace: guestbook
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: Group
+    name: developers
+    apiGroup: rbac.authorization.k8s.io
+</code></pre>
+<p>Notice the group names: <code>developers</code>, not <code>oidc:developers</code>. Pinniped passes the upstream group claim through unchanged. This is different from direct API server OIDC, where a prefix keeps the identity provider&#39;s namespace separate.</p>
+<p>That difference is a security boundary. A Keycloak group literally named <code>system:masters</code> is not rewritten by Pinniped. Anyone who can create or join groups in Keycloak can therefore grant Kubernetes superuser access. Disable self-service group creation, restrict the realm&#39;s group-management roles, and audit group names as carefully as ClusterRoleBindings.</p>
+<h2>Step 7: Generate a kubeconfig and log in</h2>
+<p>Generate a kubeconfig that points <code>kubectl</code> at the impersonation proxy:</p>
+<pre><code class="language-powershell">$env:NO_PROXY = &quot;pinniped.10.10.10.11.nip.io,pinniped-proxy.10.10.10.11.nip.io,keycloak.10.10.10.11.nip.io,127.0.0.1,localhost&quot;
+
+C:\Users\C\bin\pinniped.exe get kubeconfig `
+  --kubeconfig C:\Users\C\.kube\k3s-lab.yaml `
+  --concierge-mode ImpersonationProxy `
+  -o C:\Users\C\k3s-lab-pinniped.yaml
+</code></pre>
+<p>The discovery output is worth reading, because it shows exactly what the CLI found and validated:</p>
+<pre><code class="language-text">discovered CredentialIssuer            {&quot;name&quot;: &quot;pinniped-concierge-config&quot;}
+discovered Concierge endpoint          {&quot;endpoint&quot;: &quot;https://pinniped-proxy.10.10.10.11.nip.io&quot;}
+discovered Concierge certificate authority bundle  {&quot;roots&quot;: 1}
+discovered JWTAuthenticator            {&quot;name&quot;: &quot;keycloak&quot;}
+discovered OIDC issuer                 {&quot;issuer&quot;: &quot;https://pinniped.10.10.10.11.nip.io&quot;}
+discovered OIDC audience               {&quot;audience&quot;: &quot;k3s-lab-keycloak-pinniped&quot;}
+validated connection to the cluster
+</code></pre>
+<p>The generated kubeconfig&#39;s <code>server</code> is the proxy, not the API server:</p>
+<pre><code class="language-yaml">server: https://pinniped-proxy.10.10.10.11.nip.io
+</code></pre>
+<p>The first <code>kubectl</code> command opens a browser. The user authenticates to Keycloak, and the CLI exchanges that login for a short-lived Kubernetes credential:</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/01-keycloak-login.png" alt="Keycloak sign-in reached through the Pinniped Supervisor"></p>
+<p>After the callback, Keycloak records a normal SSO session for the Pinniped client. There is no Kubernetes ServiceAccount behind this session:</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/04-keycloak-bob-session.png" alt="bob&#39;s active session for the pinniped-supervisor client in Keycloak"></p>
+<h2>Step 8: Prove the identity and the boundary</h2>
+<p>Start with the identity Kubernetes actually sees:</p>
+<pre><code class="language-powershell">$env:NO_PROXY = &quot;pinniped.10.10.10.11.nip.io,pinniped-proxy.10.10.10.11.nip.io,keycloak.10.10.10.11.nip.io,127.0.0.1,localhost&quot;
+
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth whoami
+</code></pre>
+<pre><code class="language-text">ATTRIBUTE                                           VALUE
+Username                                            bob
+Groups                                              [developers system:authenticated]
+Extra: authentication.kubernetes.io/credential-id   [X509SHA256=...]
+</code></pre>
+<p>The username is <code>bob</code>. The only group from Keycloak is <code>developers</code>; <code>system:authenticated</code> is added by Kubernetes. That group is what the RoleBinding in <code>guestbook</code> matches.</p>
+<p><img src="../image/blog/Kubernetes-Pinniped-Keycloak-SSO/03-keycloak-bob-groups.png" alt="bob&#39;s only Keycloak group is developers, which maps to edit in the guestbook namespace"></p>
+<p>Now test both sides of the boundary:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i create deployments -n guestbook
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml auth can-i get secrets -n kube-system
+</code></pre>
+<pre><code class="language-text">yes
+no
+no
+</code></pre>
+<p>Reading cluster-scoped resources fails at the authorizer, and the error names the component that made the decision:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\k3s-lab-pinniped.yaml get nodes
+</code></pre>
+<pre><code class="language-text">Error from server (Forbidden): nodes is forbidden: User &quot;bob&quot; cannot list resource &quot;nodes&quot; in API group &quot;&quot; at the cluster scope: decision made by impersonation-proxy.concierge.pinniped.dev
+</code></pre>
+<p>That is the whole point. <code>bob</code> has a working <code>kubectl</code>, a real browser login, and exactly the permissions of the <code>developers</code> group — without a per-user ServiceAccount and without restarting the control plane.</p>
+<h2>Why one ServiceAccount per user is the wrong model</h2>
+<p>It is technically possible to write a controller that watches Keycloak and creates a ServiceAccount, token, RoleBinding, and kubeconfig for every user. It is also a lot of moving parts that produce a worse security posture.</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>ServiceAccount per user</th>
+<th>Keycloak + Pinniped</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Credential lifetime</td>
+<td>Long-lived token until deleted</td>
+<td>Short-lived, minted at login</td>
+</tr>
+<tr>
+<td>Revocation</td>
+<td>Delete the SA and every copy of its token</td>
+<td>Disable the Keycloak user or session</td>
+</tr>
+<tr>
+<td>Audit identity</td>
+<td>The ServiceAccount name</td>
+<td>The human&#39;s username and groups</td>
+</tr>
+<tr>
+<td>MFA and password policy</td>
+<td>None; the token bypasses Keycloak</td>
+<td>Enforced by Keycloak</td>
+</tr>
+<tr>
+<td>Group changes</td>
+<td>Reconcile RBAC per user</td>
+<td>Next login carries the new groups</td>
+</tr>
+<tr>
+<td>Keycloak&#39;s role</td>
+<td>Would need a custom Kubernetes controller</td>
+<td>Standard OIDC provider</td>
+</tr>
+</tbody></table>
+<p>A ServiceAccount is the right identity for a pod. A human should authenticate as a human.</p>
+<h2>Does this change the Kubernetes master?</h2>
+<p>No kube-apiserver flags change, and the control plane is not restarted. Pinniped is an add-on: CRDs, two controllers, TLS endpoints, and RBAC that lets the Concierge impersonate users and groups.</p>
+<p>That is not the same as &quot;no cluster-level change.&quot; Installing it requires cluster-admin, it adds an impersonation endpoint that must be protected, and it makes the Supervisor part of the authentication path. If your policy forbids impersonation entirely, Pinniped&#39;s Concierge may not be acceptable; the alternative is direct API server OIDC, which requires control-plane configuration and, on many managed clusters, provider-specific setup.</p>
+<h2>What went wrong, and why</h2>
+<p>Four failures cost most of the debugging time. Each one is a boundary, not a typo.</p>
+<p><strong>1. k3s has no <code>kube-controller-manager</code> pod.</strong> The default Concierge strategy reported <code>KubeClusterSigningCertificate: CouldNotFetchKey</code>. Enabling <code>ImpersonationProxy</code> was the fix, and it is also the reason this lab does not depend on a control-plane component that k3s does not expose.</p>
+<p><strong>2. <code>externalEndpoint</code> is not a URL.</strong> The field takes <code>host:port</code>. A scheme produces <code>invalid port &quot;//pinniped-proxy...&quot;</code>.</p>
+<p><strong>3. <code>offline_access</code> breaks the code exchange.</strong> With <code>offline_access</code> in the Supervisor&#39;s <code>additionalScopes</code>, Keycloak logged <code>CODE_TO_TOKEN_ERROR ... Offline tokens not allowed</code>, and the Supervisor returned a 502 during token exchange. Removing the scope fixed it. The default CLI scopes are not the same thing as the upstream scopes the Supervisor requests.</p>
+<p><strong>4. The Supervisor must terminate TLS.</strong> Traefik TLS termination makes the discovery document and callback inconsistent. <code>IngressRouteTCP</code> with <code>HostSNI</code> and <code>tls.passthrough: true</code> keeps the Supervisor&#39;s certificate end to end. On a Windows workstation behind a proxy, also add both Pinniped hosts to <code>NO_PROXY</code>; otherwise the CLI sends cluster-local hostnames to the corporate proxy.</p>
+<h2>Security boundaries and production gaps</h2>
+<p>This lab proves the authentication chain. It is not a production deployment.</p>
+<ul>
+<li><strong>The impersonation proxy is powerful.</strong> It can become any user or group. Protect its ServiceAccount, audit its logs, and do not expose it more broadly than the API server itself.</li>
+<li><strong>Keycloak group administration equals Kubernetes authorization.</strong> With no <code>oidc:</code> prefix, a group named <code>system:masters</code> is a superuser grant. Restrict group creation and reserve <code>system:*</code>.</li>
+<li><strong>The lab CA is self-signed.</strong> Production should use a managed certificate authority and automate rotation for both the Supervisor and proxy certificates.</li>
+<li><strong>Keycloak is a single instance.</strong> The Supervisor&#39;s availability is now part of <code>kubectl</code> availability. Use a highly available Keycloak and a production database.</li>
+<li><strong>Supervisor storage defaults to Kubernetes Secrets.</strong> That is acceptable for a lab; review the storage configuration and backup strategy for production.</li>
+<li><strong>Sessions and token lifetimes are policy.</strong> Shorten them deliberately, and test what happens when Keycloak is unavailable during a login.</li>
+<li><strong>The CLI is part of the client.</strong> Distribute a pinned <code>pinniped</code> binary and a generated kubeconfig; do not ask users to assemble either by hand.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the lab objects in reverse order. The CRDs are cluster-scoped, so deleting them removes every Pinniped custom resource:</p>
+<pre><code class="language-powershell">$k = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+
+kubectl --kubeconfig $k delete jwtauthenticator keycloak --ignore-not-found
+kubectl --kubeconfig $k delete clusterrolebinding pinniped-platform-admins --ignore-not-found
+kubectl --kubeconfig $k -n guestbook delete rolebinding pinniped-developers-edit --ignore-not-found
+kubectl --kubeconfig $k delete credentialissuer pinniped-concierge-config --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete federationdomain lab --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete oidcidentityprovider keycloak --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete ingressroutetcp pinniped-supervisor --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-concierge delete ingressroutetcp pinniped-concierge-proxy --ignore-not-found
+kubectl --kubeconfig $k -n pinniped-supervisor delete service pinniped-supervisor-external --ignore-not-found
+</code></pre>
+<p>Then uninstall the controllers and CRDs:</p>
+<pre><code class="language-powershell">$v = &quot;v0.47.0&quot;
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-supervisor.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-resources.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete -f &quot;https://get.pinniped.dev/$v/install-pinniped-concierge-crds.yaml&quot; --ignore-not-found
+kubectl --kubeconfig $k delete namespace pinniped-supervisor pinniped-concierge --ignore-not-found
+</code></pre>
+<p>Finally, delete the generated kubeconfig and credential caches from the workstation, and delete the <code>pinniped-supervisor</code> client in Keycloak so no stale redirect URI or secret remains.</p>
+<h2>Takeaways</h2>
+<ul>
+<li>Keycloak cannot create Kubernetes ServiceAccounts, and a per-user ServiceAccount is the wrong abstraction for human access.</li>
+<li>Pinniped turns Keycloak into a Kubernetes identity source without changing API server flags.</li>
+<li>On k3s, use the Concierge&#39;s impersonation proxy; the token-exchange strategy needs a controller that k3s does not run.</li>
+<li>RBAC still decides everything. The group claim is only as safe as the system that manages group membership.</li>
+<li>The shortest path to a working demo is also the easiest place to over-grant. Test the negative cases, not just the successful login.</li>
+</ul>
+<h2>References</h2>
+<ul>
+<li><a href="https://pinniped.dev/docs/background/architecture/">Pinniped architecture</a></li>
+<li><a href="https://pinniped.dev/docs/reference/supported-clusters/">Supported clusters</a></li>
+<li><a href="https://pinniped.dev/docs/howto/install-supervisor/">Install the Supervisor</a></li>
+<li><a href="https://pinniped.dev/docs/howto/install-concierge/">Install the Concierge</a></li>
+<li><a href="https://pinniped.dev/docs/howto/concierge/configure-concierge-supervisor-jwt/">Configure the Concierge with a Supervisor JWT authenticator</a></li>
+<li><a href="https://pinniped.dev/docs/howto/supervisor/configure-supervisor-with-dex/">Configure the Supervisor with an OIDC identity provider</a></li>
+<li><a href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO.html">Kubernetes API SSO with Keycloak: direct OIDC and per-user RBAC</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Keycloak%20SSO%20for%20Kubernetes%20with%20Pinniped%3A%20No%20ServiceAccount%20per%20User&url=https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Kubernetes-Pinniped-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User",
+                    date: "November 12, 2026",
+                    readingTime: "17 min read",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">pinniped</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
+                },
+                th: {
+                    title: "Keycloak SSO for Kubernetes with Pinniped: No ServiceAccount per User",
+                    date: "November 12, 2026",
+                    readingTime: "17 นาที",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">pinniped</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
