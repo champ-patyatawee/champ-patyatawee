@@ -136,8 +136,9 @@
             <!-- English content -->
             <div id="content-en" class="lang-content active">
                 <div class="post-content en-content">
-                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The pattern this lab builds is simpler: Keycloak authenticates the user, Vault accepts that identity over OIDC, and the user&#39;s Keycloak group decides which Vault policies apply.</p>
-<p>One direction of trust, one cluster:</p>
+                    <p>Vault&#39;s default answer to &quot;who are you&quot; is a token you paste in. That is fine for a bootstrap and wrong for everything after it: no central user list, no groups, and no way to cut off one person without rotating a token other people also hold.</p>
+<p>So put Keycloak in front of it. You open the Vault UI, Vault redirects you to the existing <code>lab</code> realm, and Keycloak comes back with a signed OIDC token. Vault validates that token, reads the group claim, and applies the policies that group is entitled to. There is no Vault password to distribute and no per-user account to create inside Vault: identity is defined once, in Keycloak.</p>
+<p>The trust runs in one direction:</p>
 <ul>
 <li><strong>Keycloak → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with the group claim deciding whether you are an admin or a developer.</li>
 <li><strong>Groups → policies.</strong> Vault external groups map claim values to <code>platform-admin</code> and <code>developer</code> policies, so access is decided in one place instead of per role.</li>
@@ -427,8 +428,9 @@ kubectl delete namespace vault --ignore-not-found
             <!-- Thai content -->
             <div id="content-th" class="lang-content">
                 <div class="post-content th-content">
-                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The pattern this lab builds is simpler: Keycloak authenticates the user, Vault accepts that identity over OIDC, and the user&#39;s Keycloak group decides which Vault policies apply.</p>
-<p>One direction of trust, one cluster:</p>
+                    <p>Vault&#39;s default answer to &quot;who are you&quot; is a token you paste in. That is fine for a bootstrap and wrong for everything after it: no central user list, no groups, and no way to cut off one person without rotating a token other people also hold.</p>
+<p>So put Keycloak in front of it. You open the Vault UI, Vault redirects you to the existing <code>lab</code> realm, and Keycloak comes back with a signed OIDC token. Vault validates that token, reads the group claim, and applies the policies that group is entitled to. There is no Vault password to distribute and no per-user account to create inside Vault: identity is defined once, in Keycloak.</p>
+<p>The trust runs in one direction:</p>
 <ul>
 <li><strong>Keycloak → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with the group claim deciding whether you are an admin or a developer.</li>
 <li><strong>Groups → policies.</strong> Vault external groups map claim values to <code>platform-admin</code> and <code>developer</code> policies, so access is decided in one place instead of per role.</li>
