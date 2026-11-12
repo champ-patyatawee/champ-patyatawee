@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Put Keycloak in front of Grafana, map realm groups to Grafana Admin and Viewer, and prove the difference against a running cluster.">
+    <meta property="og:title" content="Grafana SSO with Keycloak: OIDC Login and Role Mapping — Champ Patyatawee">
+    <meta property="og:description" content="Put Keycloak in front of Grafana, map realm groups to Grafana Admin and Viewer, and prove the difference against a running cluster.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Grafana-Keycloak-SSO/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Grafana SSO with Keycloak: OIDC Login and Role Mapping">
+    <meta name="twitter:description" content="Put Keycloak in front of Grafana, map realm groups to Grafana Admin and Viewer, and prove the difference against a running cluster.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Grafana-Keycloak-SSO/og.jpg">
+    <meta name="twitter:image:alt" content="Grafana SSO with Keycloak: OIDC Login and Role Mapping">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Put Keycloak in front of Grafana, map realm groups to Grafana Admin and Viewer, and prove the difference against a running cluster." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO">
+    <title>Grafana SSO with Keycloak: OIDC Login and Role Mapping — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Grafana SSO with Keycloak: OIDC Login and Role Mapping</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">10 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">grafana</span>
+<span class="tag">keycloak</span>
+<span class="tag">sso</span>
+<span class="tag">oidc</span>
+<span class="tag">kubernetes</span>
+<span class="tag">k3s</span>
+<span class="tag">security</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>Grafana ships with a local admin account, and that is the right way to bootstrap it. It is the wrong way to run it for a team. A shared local password cannot tell you who viewed a dashboard, cannot be revoked per person, and does not follow anyone out of the company.</p>
+<p>This lab removes that account from the login path. Keycloak already knows who the users are, so Grafana asks Keycloak instead: an OIDC redirect, a signed token, a group claim, and a role. <code>alice</code> lands as a Grafana server admin because she is in <code>platform-admins</code>. <code>bob</code> lands as a Viewer because he is in <code>developers</code>. Neither has a Grafana password.</p>
+<p>The whole flow is one direction: Keycloak authenticates, Grafana authorizes.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td><code>v1.36.5+k3s1</code></td>
+<td>1 server + 3 agents</td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td><code>10.5.15</code> / <code>12.3.1</code></td>
+<td>OIDC client and sessions</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>grafana</code></td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td><code>16</code></td>
+<td>Keycloak&#39;s database</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Longhorn <code>1.13.0</code></td>
+<td>5Gi <code>longhorn</code> volume</td>
+</tr>
+<tr>
+<td>Ingress</td>
+<td>Traefik</td>
+<td>lab default TLS cert</td>
+</tr>
+<tr>
+<td>TLS</td>
+<td><code>kube-system/lab-tls</code></td>
+<td>same CA Keycloak uses</td>
+</tr>
+</tbody></table>
+<p>The Keycloak realm and the two test users already exist from the earlier Vault and Argo CD labs. This article reuses them instead of creating a second identity provider.</p>
+<h2>Why Grafana needs the lab CA</h2>
+<p>Grafana is a Go service. Before it redirects a browser, it fetches the realm&#39;s <code>/.well-known/openid-configuration</code> document from Keycloak and validates that certificate like any other HTTPS client. The lab CA is not in the container&#39;s trust store, so the check fails with <code>x509: certificate signed by unknown authority</code>.</p>
+<p>There are two ways out. <code>tls_skip_verify_insecure = true</code> makes the error disappear and disables the only check that proves Grafana is talking to your Keycloak. The other way is to teach Grafana the CA:</p>
+<pre><code class="language-yaml">env:
+  SSL_CERT_FILE: /etc/grafana/certs/ca.crt
+
+extraConfigmapMounts:
+  - name: lab-ca
+    mountPath: /etc/grafana/certs
+    configMap: lab-ca
+    readOnly: true
+</code></pre>
+<p>Go reads <code>SSL_CERT_FILE</code> into its system root pool, so every outbound TLS call, including the token exchange, trusts the same CA the browser already trusts.</p>
+<h2>Step 1: register Grafana as a Keycloak client</h2>
+<p>The client is confidential, uses the standard authorization-code flow, and needs exactly one redirect URI:</p>
+<pre><code class="language-powershell">$token = (Invoke-RestMethod -Method Post `
+  -Uri &#39;https://keycloak.10.10.10.11.nip.io/realms/master/protocol/openid-connect/token&#39; `
+  -Body @{ grant_type=&#39;password&#39;; client_id=&#39;admin-cli&#39;; username=&#39;admin&#39;; password=$KC_ADMIN } `
+  -SkipCertificateCheck).access_token
+
+$client = @{
+  clientId = &#39;grafana&#39;
+  publicClient = $false
+  standardFlowEnabled = $true
+  redirectUris = @(&#39;https://grafana.10.10.10.11.nip.io/login/generic_oauth&#39;)
+  protocolMappers = @(@{
+    name = &#39;groups&#39;
+    protocol = &#39;openid-connect&#39;
+    protocolMapper = &#39;oidc-group-membership-mapper&#39;
+    config = @{
+      &#39;claim.name&#39; = &#39;groups&#39;
+      &#39;full.path&#39; = &#39;false&#39;
+      &#39;id.token.claim&#39; = &#39;true&#39;
+      &#39;access.token.claim&#39; = &#39;true&#39;
+      &#39;userinfo.token.claim&#39; = &#39;true&#39;
+    }
+  })
+} | ConvertTo-Json -Depth 8
+
+Invoke-RestMethod -Method Post `
+  -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients&#39; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -Body $client -SkipCertificateCheck
+</code></pre>
+<p>Then read the generated secret once and store it outside the repository:</p>
+<pre><code class="language-powershell">$id = (Invoke-RestMethod -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients?clientId=grafana&#39; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -SkipCertificateCheck)[0].id
+(Invoke-RestMethod -Uri &quot;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients/$id/client-secret&quot; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -SkipCertificateCheck).value |
+  Set-Content -NoNewline client-secret.txt
+</code></pre>
+<p><code>full.path = false</code> matters. With it, the claim contains <code>platform-admins</code>; without it, <code>/platform-admins</code>. Every role expression in Grafana is a string comparison, so the leading slash silently breaks the mapping.</p>
+<h2>Step 2: deploy Grafana</h2>
+<p>Three Kubernetes objects come before the chart: the CA, the OAuth secret, and the bootstrap admin password.</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml create namespace grafana
+
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create configmap lab-ca `
+  --from-file=ca.crt=C:\path\to\ca.crt
+
+$oauth = Get-Content -Raw client-secret.txt
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create secret generic grafana-oauth `
+  --from-literal=client-secret=$oauth
+
+$adminPass = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create secret generic grafana-admin `
+  --from-literal=admin-user=admin --from-literal=admin-password=$adminPass
+</code></pre>
+<p>The chart values carry the actual integration:</p>
+<pre><code class="language-yaml">admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+persistence:
+  enabled: true
+  storageClassName: longhorn
+  size: 5Gi
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hosts:
+    - grafana.10.10.10.11.nip.io
+  tls: []
+
+env:
+  GF_SERVER_ROOT_URL: https://grafana.10.10.10.11.nip.io
+  GF_SERVER_DOMAIN: grafana.10.10.10.11.nip.io
+  GF_SECURITY_COOKIE_SECURE: &quot;true&quot;
+  GF_SECURITY_COOKIE_SAMESITE: lax
+  GF_AUTH_GENERIC_OAUTH_ENABLED: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_NAME: Keycloak
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
+  GF_AUTH_GENERIC_OAUTH_SCOPES: &quot;openid profile email&quot;
+  GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/auth
+  GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/token
+  GF_AUTH_GENERIC_OAUTH_API_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/userinfo
+  GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: preferred_username
+  GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: name
+  GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: email
+  GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: &quot;contains(groups[*], &#39;platform-admins&#39;) &amp;&amp; &#39;GrafanaAdmin&#39; || contains(groups[*], &#39;developers&#39;) &amp;&amp; &#39;Viewer&#39;&quot;
+  GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_USE_PKCE: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE: &quot;false&quot;
+  GF_LOG_LEVEL: info
+  SSL_CERT_FILE: /etc/grafana/certs/ca.crt
+
+envValueFrom:
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+    secretKeyRef:
+      name: grafana-oauth
+      key: client-secret
+</code></pre>
+<p><code>maxSurge: 0</code> is not cosmetic. Grafana&#39;s data volume is a ReadWriteOnce Longhorn claim. With the default surge, the new pod is scheduled on another node while the old pod still holds the volume, and the rollout blocks on <code>FailedAttachVolume: Volume is already used by pod(s)</code>. Removing the surge makes the chart replace the pod instead of running two.</p>
+<p>Install and check the route:</p>
+<pre><code class="language-powershell">$helm = &quot;C:\Users\C\AppData\Local\Microsoft\WinGet\Packages\Helm.Helm_Microsoft.Winget.Source_8wekyb3d8bbwe\windows-amd64\helm.exe&quot;
+&amp; $helm --kubeconfig C:\Users\C\.kube\k3s-lab.yaml upgrade --install grafana grafana/grafana `
+  --version 10.5.15 -n grafana -f grafana-values.yaml --wait --timeout 5m
+</code></pre>
+<p>After login, Grafana shows the provider and the exact values it is running with:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/08-grafana-oauth-config.png" alt="Generic OAuth provider configured for Keycloak"></p>
+<p>The login page is the user-facing result:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/01-grafana-login.png" alt="Grafana login page with the Keycloak button"></p>
+<h2>Step 3: map groups to Grafana roles</h2>
+<p>The role expression is one line of JMESPath:</p>
+<pre><code class="language-text">contains(groups[*], &#39;platform-admins&#39;) &amp;&amp; &#39;GrafanaAdmin&#39; || contains(groups[*], &#39;developers&#39;) &amp;&amp; &#39;Viewer&#39;
+</code></pre>
+<p>Read it as two rules, not one:</p>
+<ul>
+<li><code>platform-admins</code> becomes <code>GrafanaAdmin</code>, which sets both the organization role and the server admin flag. That second half only happens because <code>allow_assign_grafana_admin</code> is true.</li>
+<li><code>developers</code> becomes <code>Viewer</code>, which can read dashboards but cannot create folders, edit dashboards, or open Administration.</li>
+</ul>
+<p>Anything unmatched falls back to <code>auto_assign_org_role</code>, which is set to <code>Viewer</code>. That is intentional: a user who authenticates successfully but is in no recognized group gets the least access, not an error page that hides the mistake.</p>
+<h2>Step 4: sign in as the admin</h2>
+<p><code>alice</code> clicks the Keycloak button, gets the lab realm form, and returns to Grafana with a session.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak lab realm login form"></p>
+<p>Her sidebar includes Administration, because the group claim resolved to <code>GrafanaAdmin</code>:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/03-alice-home.png" alt="Grafana home for the platform admin"></p>
+<p>The user list shows both accounts with origin <code>Generic OAuth</code>, which is the evidence that no local Grafana password was used:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/04-alice-users.png" alt="Grafana users created by the OIDC login"></p>
+<p>Alice&#39;s detail page is the authorization proof: Grafana Admin <code>Yes</code>, Main Org role <code>Admin</code>, and every field marked <code>Synced via Generic OAuth</code>:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/05-alice-admin-role.png" alt="Alice mapped to Grafana Admin"></p>
+<h2>Step 5: sign in as the developer</h2>
+<p><code>bob</code> goes through the same Keycloak form and lands in the same organization with a different role. His sidebar has no Administration, no Explore, and no Connections:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/06-bob-home.png" alt="Bob&#39;s restricted Grafana home"></p>
+<p>His detail page confirms why: Grafana Admin <code>No</code>, Main Org role <code>Viewer</code>.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/07-bob-viewer-role.png" alt="Bob mapped to Viewer"></p>
+<p>The UI is only half of the check. Asking the API as Bob returns a denial, because Grafana hides admin routes from non-admins instead of advertising a 403:</p>
+<pre><code class="language-json">{&quot;message&quot;:&quot;Not found&quot;}
+</code></pre>
+<p>That is the same behavior a missing resource produces, so do not read a 404 as &quot;the endpoint is gone&quot;. Read it as &quot;you are not an admin&quot;.</p>
+<h2>Two failures that cost time</h2>
+<p><strong>Keycloak rejected <code>groups</code> as a scope.</strong> The first login ended with &quot;Login provider denied login request&quot;, and the Grafana log had the real cause:</p>
+<pre><code class="language-text">level=error msg=&quot;failed to login &quot; error=invalid_scope
+errorDesc=&quot;Invalid scopes: openid profile email groups&quot;
+</code></pre>
+<p>Keycloak validates requested scopes against the client&#39;s available scopes. A group membership mapper on the client injects the claim whether or not <code>groups</code> is requested, so listing it as a scope was both unnecessary and invalid. Removing it from <code>GF_AUTH_GENERIC_OAUTH_SCOPES</code> fixed the login without touching the mapper.</p>
+<p><strong>The rollout deadlocked on the data volume.</strong> After a values change, the new pod waited on the Longhorn volume while the old pod kept it attached:</p>
+<pre><code class="language-text">FailedAttachVolume: Waiting for detach for volume &quot;pvc-...&quot; 
+Volume is already used by pod(s) grafana-...
+</code></pre>
+<p>Choosing <code>Recreate</code> in the chart exposed a second problem: server-side apply kept the previous <code>rollingUpdate</code> fields and Kubernetes rejected the object with <code>may not be specified when strategy type is &#39;Recreate&#39;</code>. The working setting is <code>RollingUpdate</code> with <code>maxSurge: 0</code> and <code>maxUnavailable: 1</code>, which removes the surge without fighting the chart&#39;s schema.</p>
+<h2>What this lab proves and what it does not</h2>
+<p>Proved: OIDC discovery over a private CA, authorization-code login with PKCE, a group claim that produces two different Grafana roles, server-admin assignment from a group, and session creation without a local Grafana password.</p>
+<p>Not proved: high availability. One Grafana replica on one Longhorn volume means a restart or node loss takes the UI down. Keycloak is a hard dependency of every login, which is the cost of centralising identity. Team sync is not configured because it is a Grafana Enterprise/Cloud feature; the OSS chart maps an organization role, not Grafana teams. The local admin account is still enabled as a break-glass path, and Basic auth is still reachable on the login form.</p>
+<h2>Production checklist</h2>
+<ul>
+<li>Set <code>GF_AUTH_DISABLE_LOGIN_FORM=true</code> after the OIDC path is verified, and keep the local admin only as a documented break-glass account with a rotated password.</li>
+<li>Run more than one Grafana replica with a shared database (PostgreSQL or MySQL) instead of SQLite on a single Longhorn volume.</li>
+<li>Replace the lab CA with a managed certificate and mount only the issuing chain Grafana actually needs.</li>
+<li>Require <code>email_verified</code> and add <code>bound_claims</code> or an allow-list so a valid Keycloak account is not automatically a Grafana user.</li>
+<li>Decide whether <code>GrafanaAdmin</code> should come from a group at all. Server admin can read every organization and every user; most teams should grant organization <code>Admin</code> and keep server admin manual.</li>
+<li>Turn on Keycloak event logging for <code>LOGIN</code> and <code>LOGIN_ERROR</code>, and keep Grafana&#39;s auth proxy logs. Together they answer who signed in and when.</li>
+<li>Treat Grafana folder and dashboard permissions as a separate layer. An organization role is coarse, and <code>Viewer</code> still sees every dashboard shared with the organization.</li>
+<li>Put a NetworkPolicy in front of Grafana and Keycloak if the cluster is shared; OIDC does not restrict which pods can reach the token endpoint.</li>
+</ul>
+<h2>Cleanup</h2>
+<pre><code class="language-powershell">&amp; $helm --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana uninstall grafana
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete namespace grafana --ignore-not-found
+</code></pre>
+<p>Deleting the namespace also deletes the Longhorn volume and every dashboard stored in Grafana&#39;s SQLite file. Export what matters first.</p>
+<h2>Takeaways</h2>
+<p>The login flow is the easy part. The part that decides whether SSO is useful is the claim-to-role mapping, and that mapping fails quietly: a successful login with the wrong role looks exactly like a successful login with the right one. Check the user page, check the API, and keep the group name, the <code>full.path</code> setting, and the JMESPath expression in sync. Keycloak answers who the user is; Grafana still has to decide what that identity may do.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/">Grafana: Configure generic OAuth</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping">Grafana: Role mapping</a></li>
+<li><a href="https://github.com/grafana/helm-charts/tree/main/charts/grafana">Grafana Helm chart</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>Grafana ships with a local admin account, and that is the right way to bootstrap it. It is the wrong way to run it for a team. A shared local password cannot tell you who viewed a dashboard, cannot be revoked per person, and does not follow anyone out of the company.</p>
+<p>This lab removes that account from the login path. Keycloak already knows who the users are, so Grafana asks Keycloak instead: an OIDC redirect, a signed token, a group claim, and a role. <code>alice</code> lands as a Grafana server admin because she is in <code>platform-admins</code>. <code>bob</code> lands as a Viewer because he is in <code>developers</code>. Neither has a Grafana password.</p>
+<p>The whole flow is one direction: Keycloak authenticates, Grafana authorizes.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td><code>v1.36.5+k3s1</code></td>
+<td>1 server + 3 agents</td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td><code>10.5.15</code> / <code>12.3.1</code></td>
+<td>OIDC client and sessions</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>grafana</code></td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td><code>16</code></td>
+<td>Keycloak&#39;s database</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>Longhorn <code>1.13.0</code></td>
+<td>5Gi <code>longhorn</code> volume</td>
+</tr>
+<tr>
+<td>Ingress</td>
+<td>Traefik</td>
+<td>lab default TLS cert</td>
+</tr>
+<tr>
+<td>TLS</td>
+<td><code>kube-system/lab-tls</code></td>
+<td>same CA Keycloak uses</td>
+</tr>
+</tbody></table>
+<p>The Keycloak realm and the two test users already exist from the earlier Vault and Argo CD labs. This article reuses them instead of creating a second identity provider.</p>
+<h2>Why Grafana needs the lab CA</h2>
+<p>Grafana is a Go service. Before it redirects a browser, it fetches the realm&#39;s <code>/.well-known/openid-configuration</code> document from Keycloak and validates that certificate like any other HTTPS client. The lab CA is not in the container&#39;s trust store, so the check fails with <code>x509: certificate signed by unknown authority</code>.</p>
+<p>There are two ways out. <code>tls_skip_verify_insecure = true</code> makes the error disappear and disables the only check that proves Grafana is talking to your Keycloak. The other way is to teach Grafana the CA:</p>
+<pre><code class="language-yaml">env:
+  SSL_CERT_FILE: /etc/grafana/certs/ca.crt
+
+extraConfigmapMounts:
+  - name: lab-ca
+    mountPath: /etc/grafana/certs
+    configMap: lab-ca
+    readOnly: true
+</code></pre>
+<p>Go reads <code>SSL_CERT_FILE</code> into its system root pool, so every outbound TLS call, including the token exchange, trusts the same CA the browser already trusts.</p>
+<h2>Step 1: register Grafana as a Keycloak client</h2>
+<p>The client is confidential, uses the standard authorization-code flow, and needs exactly one redirect URI:</p>
+<pre><code class="language-powershell">$token = (Invoke-RestMethod -Method Post `
+  -Uri &#39;https://keycloak.10.10.10.11.nip.io/realms/master/protocol/openid-connect/token&#39; `
+  -Body @{ grant_type=&#39;password&#39;; client_id=&#39;admin-cli&#39;; username=&#39;admin&#39;; password=$KC_ADMIN } `
+  -SkipCertificateCheck).access_token
+
+$client = @{
+  clientId = &#39;grafana&#39;
+  publicClient = $false
+  standardFlowEnabled = $true
+  redirectUris = @(&#39;https://grafana.10.10.10.11.nip.io/login/generic_oauth&#39;)
+  protocolMappers = @(@{
+    name = &#39;groups&#39;
+    protocol = &#39;openid-connect&#39;
+    protocolMapper = &#39;oidc-group-membership-mapper&#39;
+    config = @{
+      &#39;claim.name&#39; = &#39;groups&#39;
+      &#39;full.path&#39; = &#39;false&#39;
+      &#39;id.token.claim&#39; = &#39;true&#39;
+      &#39;access.token.claim&#39; = &#39;true&#39;
+      &#39;userinfo.token.claim&#39; = &#39;true&#39;
+    }
+  })
+} | ConvertTo-Json -Depth 8
+
+Invoke-RestMethod -Method Post `
+  -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients&#39; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -Body $client -SkipCertificateCheck
+</code></pre>
+<p>Then read the generated secret once and store it outside the repository:</p>
+<pre><code class="language-powershell">$id = (Invoke-RestMethod -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients?clientId=grafana&#39; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -SkipCertificateCheck)[0].id
+(Invoke-RestMethod -Uri &quot;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients/$id/client-secret&quot; `
+  -Headers @{ Authorization = &quot;Bearer $token&quot; } -SkipCertificateCheck).value |
+  Set-Content -NoNewline client-secret.txt
+</code></pre>
+<p><code>full.path = false</code> matters. With it, the claim contains <code>platform-admins</code>; without it, <code>/platform-admins</code>. Every role expression in Grafana is a string comparison, so the leading slash silently breaks the mapping.</p>
+<h2>Step 2: deploy Grafana</h2>
+<p>Three Kubernetes objects come before the chart: the CA, the OAuth secret, and the bootstrap admin password.</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml create namespace grafana
+
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create configmap lab-ca `
+  --from-file=ca.crt=C:\path\to\ca.crt
+
+$oauth = Get-Content -Raw client-secret.txt
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create secret generic grafana-oauth `
+  --from-literal=client-secret=$oauth
+
+$adminPass = -join ((48..57) + (65..90) + (97..122) | Get-Random -Count 24 | ForEach-Object { [char]$_ })
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana create secret generic grafana-admin `
+  --from-literal=admin-user=admin --from-literal=admin-password=$adminPass
+</code></pre>
+<p>The chart values carry the actual integration:</p>
+<pre><code class="language-yaml">admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+persistence:
+  enabled: true
+  storageClassName: longhorn
+  size: 5Gi
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hosts:
+    - grafana.10.10.10.11.nip.io
+  tls: []
+
+env:
+  GF_SERVER_ROOT_URL: https://grafana.10.10.10.11.nip.io
+  GF_SERVER_DOMAIN: grafana.10.10.10.11.nip.io
+  GF_SECURITY_COOKIE_SECURE: &quot;true&quot;
+  GF_SECURITY_COOKIE_SAMESITE: lax
+  GF_AUTH_GENERIC_OAUTH_ENABLED: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_NAME: Keycloak
+  GF_AUTH_GENERIC_OAUTH_CLIENT_ID: grafana
+  GF_AUTH_GENERIC_OAUTH_SCOPES: &quot;openid profile email&quot;
+  GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/auth
+  GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/token
+  GF_AUTH_GENERIC_OAUTH_API_URL: https://keycloak.10.10.10.11.nip.io/realms/lab/protocol/openid-connect/userinfo
+  GF_AUTH_GENERIC_OAUTH_LOGIN_ATTRIBUTE_PATH: preferred_username
+  GF_AUTH_GENERIC_OAUTH_NAME_ATTRIBUTE_PATH: name
+  GF_AUTH_GENERIC_OAUTH_EMAIL_ATTRIBUTE_PATH: email
+  GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: &quot;contains(groups[*], &#39;platform-admins&#39;) &amp;&amp; &#39;GrafanaAdmin&#39; || contains(groups[*], &#39;developers&#39;) &amp;&amp; &#39;Viewer&#39;&quot;
+  GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_USE_PKCE: &quot;true&quot;
+  GF_AUTH_GENERIC_OAUTH_TLS_SKIP_VERIFY_INSECURE: &quot;false&quot;
+  GF_LOG_LEVEL: info
+  SSL_CERT_FILE: /etc/grafana/certs/ca.crt
+
+envValueFrom:
+  GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+    secretKeyRef:
+      name: grafana-oauth
+      key: client-secret
+</code></pre>
+<p><code>maxSurge: 0</code> is not cosmetic. Grafana&#39;s data volume is a ReadWriteOnce Longhorn claim. With the default surge, the new pod is scheduled on another node while the old pod still holds the volume, and the rollout blocks on <code>FailedAttachVolume: Volume is already used by pod(s)</code>. Removing the surge makes the chart replace the pod instead of running two.</p>
+<p>Install and check the route:</p>
+<pre><code class="language-powershell">$helm = &quot;C:\Users\C\AppData\Local\Microsoft\WinGet\Packages\Helm.Helm_Microsoft.Winget.Source_8wekyb3d8bbwe\windows-amd64\helm.exe&quot;
+&amp; $helm --kubeconfig C:\Users\C\.kube\k3s-lab.yaml upgrade --install grafana grafana/grafana `
+  --version 10.5.15 -n grafana -f grafana-values.yaml --wait --timeout 5m
+</code></pre>
+<p>After login, Grafana shows the provider and the exact values it is running with:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/08-grafana-oauth-config.png" alt="Generic OAuth provider configured for Keycloak"></p>
+<p>The login page is the user-facing result:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/01-grafana-login.png" alt="Grafana login page with the Keycloak button"></p>
+<h2>Step 3: map groups to Grafana roles</h2>
+<p>The role expression is one line of JMESPath:</p>
+<pre><code class="language-text">contains(groups[*], &#39;platform-admins&#39;) &amp;&amp; &#39;GrafanaAdmin&#39; || contains(groups[*], &#39;developers&#39;) &amp;&amp; &#39;Viewer&#39;
+</code></pre>
+<p>Read it as two rules, not one:</p>
+<ul>
+<li><code>platform-admins</code> becomes <code>GrafanaAdmin</code>, which sets both the organization role and the server admin flag. That second half only happens because <code>allow_assign_grafana_admin</code> is true.</li>
+<li><code>developers</code> becomes <code>Viewer</code>, which can read dashboards but cannot create folders, edit dashboards, or open Administration.</li>
+</ul>
+<p>Anything unmatched falls back to <code>auto_assign_org_role</code>, which is set to <code>Viewer</code>. That is intentional: a user who authenticates successfully but is in no recognized group gets the least access, not an error page that hides the mistake.</p>
+<h2>Step 4: sign in as the admin</h2>
+<p><code>alice</code> clicks the Keycloak button, gets the lab realm form, and returns to Grafana with a session.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak lab realm login form"></p>
+<p>Her sidebar includes Administration, because the group claim resolved to <code>GrafanaAdmin</code>:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/03-alice-home.png" alt="Grafana home for the platform admin"></p>
+<p>The user list shows both accounts with origin <code>Generic OAuth</code>, which is the evidence that no local Grafana password was used:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/04-alice-users.png" alt="Grafana users created by the OIDC login"></p>
+<p>Alice&#39;s detail page is the authorization proof: Grafana Admin <code>Yes</code>, Main Org role <code>Admin</code>, and every field marked <code>Synced via Generic OAuth</code>:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/05-alice-admin-role.png" alt="Alice mapped to Grafana Admin"></p>
+<h2>Step 5: sign in as the developer</h2>
+<p><code>bob</code> goes through the same Keycloak form and lands in the same organization with a different role. His sidebar has no Administration, no Explore, and no Connections:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/06-bob-home.png" alt="Bob&#39;s restricted Grafana home"></p>
+<p>His detail page confirms why: Grafana Admin <code>No</code>, Main Org role <code>Viewer</code>.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/07-bob-viewer-role.png" alt="Bob mapped to Viewer"></p>
+<p>The UI is only half of the check. Asking the API as Bob returns a denial, because Grafana hides admin routes from non-admins instead of advertising a 403:</p>
+<pre><code class="language-json">{&quot;message&quot;:&quot;Not found&quot;}
+</code></pre>
+<p>That is the same behavior a missing resource produces, so do not read a 404 as &quot;the endpoint is gone&quot;. Read it as &quot;you are not an admin&quot;.</p>
+<h2>Two failures that cost time</h2>
+<p><strong>Keycloak rejected <code>groups</code> as a scope.</strong> The first login ended with &quot;Login provider denied login request&quot;, and the Grafana log had the real cause:</p>
+<pre><code class="language-text">level=error msg=&quot;failed to login &quot; error=invalid_scope
+errorDesc=&quot;Invalid scopes: openid profile email groups&quot;
+</code></pre>
+<p>Keycloak validates requested scopes against the client&#39;s available scopes. A group membership mapper on the client injects the claim whether or not <code>groups</code> is requested, so listing it as a scope was both unnecessary and invalid. Removing it from <code>GF_AUTH_GENERIC_OAUTH_SCOPES</code> fixed the login without touching the mapper.</p>
+<p><strong>The rollout deadlocked on the data volume.</strong> After a values change, the new pod waited on the Longhorn volume while the old pod kept it attached:</p>
+<pre><code class="language-text">FailedAttachVolume: Waiting for detach for volume &quot;pvc-...&quot; 
+Volume is already used by pod(s) grafana-...
+</code></pre>
+<p>Choosing <code>Recreate</code> in the chart exposed a second problem: server-side apply kept the previous <code>rollingUpdate</code> fields and Kubernetes rejected the object with <code>may not be specified when strategy type is &#39;Recreate&#39;</code>. The working setting is <code>RollingUpdate</code> with <code>maxSurge: 0</code> and <code>maxUnavailable: 1</code>, which removes the surge without fighting the chart&#39;s schema.</p>
+<h2>What this lab proves and what it does not</h2>
+<p>Proved: OIDC discovery over a private CA, authorization-code login with PKCE, a group claim that produces two different Grafana roles, server-admin assignment from a group, and session creation without a local Grafana password.</p>
+<p>Not proved: high availability. One Grafana replica on one Longhorn volume means a restart or node loss takes the UI down. Keycloak is a hard dependency of every login, which is the cost of centralising identity. Team sync is not configured because it is a Grafana Enterprise/Cloud feature; the OSS chart maps an organization role, not Grafana teams. The local admin account is still enabled as a break-glass path, and Basic auth is still reachable on the login form.</p>
+<h2>Production checklist</h2>
+<ul>
+<li>Set <code>GF_AUTH_DISABLE_LOGIN_FORM=true</code> after the OIDC path is verified, and keep the local admin only as a documented break-glass account with a rotated password.</li>
+<li>Run more than one Grafana replica with a shared database (PostgreSQL or MySQL) instead of SQLite on a single Longhorn volume.</li>
+<li>Replace the lab CA with a managed certificate and mount only the issuing chain Grafana actually needs.</li>
+<li>Require <code>email_verified</code> and add <code>bound_claims</code> or an allow-list so a valid Keycloak account is not automatically a Grafana user.</li>
+<li>Decide whether <code>GrafanaAdmin</code> should come from a group at all. Server admin can read every organization and every user; most teams should grant organization <code>Admin</code> and keep server admin manual.</li>
+<li>Turn on Keycloak event logging for <code>LOGIN</code> and <code>LOGIN_ERROR</code>, and keep Grafana&#39;s auth proxy logs. Together they answer who signed in and when.</li>
+<li>Treat Grafana folder and dashboard permissions as a separate layer. An organization role is coarse, and <code>Viewer</code> still sees every dashboard shared with the organization.</li>
+<li>Put a NetworkPolicy in front of Grafana and Keycloak if the cluster is shared; OIDC does not restrict which pods can reach the token endpoint.</li>
+</ul>
+<h2>Cleanup</h2>
+<pre><code class="language-powershell">&amp; $helm --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n grafana uninstall grafana
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete namespace grafana --ignore-not-found
+</code></pre>
+<p>Deleting the namespace also deletes the Longhorn volume and every dashboard stored in Grafana&#39;s SQLite file. Export what matters first.</p>
+<h2>Takeaways</h2>
+<p>The login flow is the easy part. The part that decides whether SSO is useful is the claim-to-role mapping, and that mapping fails quietly: a successful login with the wrong role looks exactly like a successful login with the right one. Check the user page, check the API, and keep the group name, the <code>full.path</code> setting, and the JMESPath expression in sync. Keycloak answers who the user is; Grafana still has to decide what that identity may do.</p>
+<h2>References</h2>
+<ul>
+<li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/">Grafana: Configure generic OAuth</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping">Grafana: Role mapping</a></li>
+<li><a href="https://github.com/grafana/helm-charts/tree/main/charts/grafana">Grafana Helm chart</a></li>
+<li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Grafana%20SSO%20with%20Keycloak%3A%20OIDC%20Login%20and%20Role%20Mapping&url=https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Grafana-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Grafana SSO with Keycloak: OIDC Login and Role Mapping",
+                    date: "November 12, 2026",
+                    readingTime: "10 min read",
+                    tags: "<span class=\"tag\">grafana</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
+                },
+                th: {
+                    title: "Grafana SSO with Keycloak: OIDC Login and Role Mapping",
+                    date: "November 12, 2026",
+                    readingTime: "10 นาที",
+                    tags: "<span class=\"tag\">grafana</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
