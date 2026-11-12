@@ -235,6 +235,63 @@ The UI is only half of the check. Asking the API as Bob returns a denial, becaus
 
 That is the same behavior a missing resource produces, so do not read a 404 as "the endpoint is gone". Read it as "you are not an admin".
 
+## How many roles does Grafana have?
+
+Grafana OSS has five basic roles, split across two very different scopes:
+
+| Role | Scope | Can do |
+|---|---|---|
+| Grafana Admin | Server | Manage users, organizations, and server settings |
+| Admin | Organization | Everything in the organization, including users and teams |
+| Editor | Organization | Create and edit dashboards, folders, alerts |
+| Viewer | Organization | View dashboards and query data sources |
+| None | Organization | Nothing until something else grants it |
+
+The server flag and the organization role are separate. Alice has both because the OIDC claim set `GrafanaAdmin`, which implies organization `Admin`. A user can be an organization Admin without being Grafana Admin, and that is the safer default.
+
+Custom roles exist, but not here. Fixed roles and custom RBAC roles are Grafana Enterprise and Grafana Cloud features. The OSS build includes the role picker and the RBAC API surface, yet assigning a hand-built role is not supported. What OSS does give you is folder and dashboard permissions, which is enough for the common request below.
+
+## Can a user see only one dashboard?
+
+Yes, but a role cannot express that. Every basic role is organization-wide by definition. The boundary has to be a folder or a dashboard permission.
+
+The pattern is small:
+
+1. Put the single dashboard in its own folder.
+2. For every folder the user must not see, remove the `Viewer` and `Editor` role entries and leave only `Admin`.
+3. Keep the user at `Viewer`, or drop them to `None` and grant `View` on the one folder for a stricter boundary.
+
+In the lab, `Ops Overview` lives in `Team Ops` with default permissions, and `Finance KPIs` lives in `Finance`, whose permission list contains only the Admin role:
+
+~~~powershell
+$perm = @{ items = @(@{ role = 'Admin'; permission = 4 }) } | ConvertTo-Json -Depth 4
+curl.exe -sk -u "admin:$GRAFANA_ADMIN_PASSWORD" -X POST `
+  "https://grafana.10.10.10.11.nip.io/api/folders/finance/permissions" `
+  -H "Content-Type: application/json" -d $perm
+~~~
+
+Permission values are `1` for View, `2` for Edit, and `4` for Admin. Sending a list without a role entry removes that role's access; folder permissions are inherited by every dashboard inside.
+
+The UI makes the result visible: the folder has exactly one grant, and the dialog warns that it applies to the folder and its descendants.
+
+![Finance folder restricted to the Admin role](../image/blog/Grafana-Keycloak-SSO/09-folder-permissions.png)
+
+Bob still has the `Viewer` organization role, but the only folder he can see is `Team Ops`, and it contains one dashboard:
+
+![Bob's dashboard list contains one folder](../image/blog/Grafana-Keycloak-SSO/10-bob-one-dashboard.png)
+
+He can open it:
+
+![Bob opens the one dashboard he is allowed to see](../image/blog/Grafana-Keycloak-SSO/11-bob-dashboard-ok.png)
+
+And the other dashboard fails at the API with a 403, not a rendered empty page:
+
+![Bob is denied on the restricted dashboard](../image/blog/Grafana-Keycloak-SSO/12-bob-dashboard-denied.png)
+
+For the strictest OSS version, set the user's organization role to `None` and grant `View` to that user or team on the one folder. The user then has no organization-wide read at all, only the folder grant. That is the closest OSS gets to a custom role.
+
+Two limits are worth knowing. A public dashboard or a snapshot link has its own access path and ignores folder permissions, so disable public sharing if the boundary matters. And `Viewer` can still query the data sources behind an allowed dashboard; hiding the dashboard is not the same as hiding the data.
+
 ## Two failures that cost time
 
 **Keycloak rejected `groups` as a scope.** The first login ended with "Login provider denied login request", and the Grafana log had the real cause:
@@ -270,6 +327,7 @@ Not proved: high availability. One Grafana replica on one Longhorn volume means 
 - Decide whether `GrafanaAdmin` should come from a group at all. Server admin can read every organization and every user; most teams should grant organization `Admin` and keep server admin manual.
 - Turn on Keycloak event logging for `LOGIN` and `LOGIN_ERROR`, and keep Grafana's auth proxy logs. Together they answer who signed in and when.
 - Treat Grafana folder and dashboard permissions as a separate layer. An organization role is coarse, and `Viewer` still sees every dashboard shared with the organization.
+- Restrict the one-dashboard case with folder permissions, not with a role. Keep public dashboards and snapshot sharing disabled if the folder is meant to be the boundary.
 - Put a NetworkPolicy in front of Grafana and Keycloak if the cluster is shared; OIDC does not restrict which pods can reach the token endpoint.
 
 ## Cleanup
@@ -289,6 +347,8 @@ The login flow is the easy part. The part that decides whether SSO is useful is 
 
 - [Grafana: Configure generic OAuth](https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/)
 - [Grafana: Role mapping](https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping)
+- [Grafana: Roles and permissions](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/)
+- [Grafana: Folder access control](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#folder-permissions)
 - [Grafana Helm chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana)
 - [Keycloak: Server administration guide](https://www.keycloak.org/docs/latest/server_admin/)
 

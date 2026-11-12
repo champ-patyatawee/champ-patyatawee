@@ -114,7 +114,7 @@
                 <h1 class="post-title" id="post-title">Grafana SSO with Keycloak: OIDC Login and Role Mapping</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">10 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">13 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">grafana</span>
@@ -341,6 +341,69 @@ envValueFrom:
 <pre><code class="language-json">{&quot;message&quot;:&quot;Not found&quot;}
 </code></pre>
 <p>That is the same behavior a missing resource produces, so do not read a 404 as &quot;the endpoint is gone&quot;. Read it as &quot;you are not an admin&quot;.</p>
+<h2>How many roles does Grafana have?</h2>
+<p>Grafana OSS has five basic roles, split across two very different scopes:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Scope</th>
+<th>Can do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Grafana Admin</td>
+<td>Server</td>
+<td>Manage users, organizations, and server settings</td>
+</tr>
+<tr>
+<td>Admin</td>
+<td>Organization</td>
+<td>Everything in the organization, including users and teams</td>
+</tr>
+<tr>
+<td>Editor</td>
+<td>Organization</td>
+<td>Create and edit dashboards, folders, alerts</td>
+</tr>
+<tr>
+<td>Viewer</td>
+<td>Organization</td>
+<td>View dashboards and query data sources</td>
+</tr>
+<tr>
+<td>None</td>
+<td>Organization</td>
+<td>Nothing until something else grants it</td>
+</tr>
+</tbody></table>
+<p>The server flag and the organization role are separate. Alice has both because the OIDC claim set <code>GrafanaAdmin</code>, which implies organization <code>Admin</code>. A user can be an organization Admin without being Grafana Admin, and that is the safer default.</p>
+<p>Custom roles exist, but not here. Fixed roles and custom RBAC roles are Grafana Enterprise and Grafana Cloud features. The OSS build includes the role picker and the RBAC API surface, yet assigning a hand-built role is not supported. What OSS does give you is folder and dashboard permissions, which is enough for the common request below.</p>
+<h2>Can a user see only one dashboard?</h2>
+<p>Yes, but a role cannot express that. Every basic role is organization-wide by definition. The boundary has to be a folder or a dashboard permission.</p>
+<p>The pattern is small:</p>
+<ol>
+<li>Put the single dashboard in its own folder.</li>
+<li>For every folder the user must not see, remove the <code>Viewer</code> and <code>Editor</code> role entries and leave only <code>Admin</code>.</li>
+<li>Keep the user at <code>Viewer</code>, or drop them to <code>None</code> and grant <code>View</code> on the one folder for a stricter boundary.</li>
+</ol>
+<p>In the lab, <code>Ops Overview</code> lives in <code>Team Ops</code> with default permissions, and <code>Finance KPIs</code> lives in <code>Finance</code>, whose permission list contains only the Admin role:</p>
+<pre><code class="language-powershell">$perm = @{ items = @(@{ role = &#39;Admin&#39;; permission = 4 }) } | ConvertTo-Json -Depth 4
+curl.exe -sk -u &quot;admin:$GRAFANA_ADMIN_PASSWORD&quot; -X POST `
+  &quot;https://grafana.10.10.10.11.nip.io/api/folders/finance/permissions&quot; `
+  -H &quot;Content-Type: application/json&quot; -d $perm
+</code></pre>
+<p>Permission values are <code>1</code> for View, <code>2</code> for Edit, and <code>4</code> for Admin. Sending a list without a role entry removes that role&#39;s access; folder permissions are inherited by every dashboard inside.</p>
+<p>The UI makes the result visible: the folder has exactly one grant, and the dialog warns that it applies to the folder and its descendants.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/09-folder-permissions.png" alt="Finance folder restricted to the Admin role"></p>
+<p>Bob still has the <code>Viewer</code> organization role, but the only folder he can see is <code>Team Ops</code>, and it contains one dashboard:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/10-bob-one-dashboard.png" alt="Bob&#39;s dashboard list contains one folder"></p>
+<p>He can open it:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/11-bob-dashboard-ok.png" alt="Bob opens the one dashboard he is allowed to see"></p>
+<p>And the other dashboard fails at the API with a 403, not a rendered empty page:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/12-bob-dashboard-denied.png" alt="Bob is denied on the restricted dashboard"></p>
+<p>For the strictest OSS version, set the user&#39;s organization role to <code>None</code> and grant <code>View</code> to that user or team on the one folder. The user then has no organization-wide read at all, only the folder grant. That is the closest OSS gets to a custom role.</p>
+<p>Two limits are worth knowing. A public dashboard or a snapshot link has its own access path and ignores folder permissions, so disable public sharing if the boundary matters. And <code>Viewer</code> can still query the data sources behind an allowed dashboard; hiding the dashboard is not the same as hiding the data.</p>
 <h2>Two failures that cost time</h2>
 <p><strong>Keycloak rejected <code>groups</code> as a scope.</strong> The first login ended with &quot;Login provider denied login request&quot;, and the Grafana log had the real cause:</p>
 <pre><code class="language-text">level=error msg=&quot;failed to login &quot; error=invalid_scope
@@ -364,6 +427,7 @@ Volume is already used by pod(s) grafana-...
 <li>Decide whether <code>GrafanaAdmin</code> should come from a group at all. Server admin can read every organization and every user; most teams should grant organization <code>Admin</code> and keep server admin manual.</li>
 <li>Turn on Keycloak event logging for <code>LOGIN</code> and <code>LOGIN_ERROR</code>, and keep Grafana&#39;s auth proxy logs. Together they answer who signed in and when.</li>
 <li>Treat Grafana folder and dashboard permissions as a separate layer. An organization role is coarse, and <code>Viewer</code> still sees every dashboard shared with the organization.</li>
+<li>Restrict the one-dashboard case with folder permissions, not with a role. Keep public dashboards and snapshot sharing disabled if the folder is meant to be the boundary.</li>
 <li>Put a NetworkPolicy in front of Grafana and Keycloak if the cluster is shared; OIDC does not restrict which pods can reach the token endpoint.</li>
 </ul>
 <h2>Cleanup</h2>
@@ -377,6 +441,8 @@ kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete namespace grafana --ig
 <ul>
 <li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/">Grafana: Configure generic OAuth</a></li>
 <li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping">Grafana: Role mapping</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/">Grafana: Roles and permissions</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#folder-permissions">Grafana: Folder access control</a></li>
 <li><a href="https://github.com/grafana/helm-charts/tree/main/charts/grafana">Grafana Helm chart</a></li>
 <li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
 </ul>
@@ -592,6 +658,69 @@ envValueFrom:
 <pre><code class="language-json">{&quot;message&quot;:&quot;Not found&quot;}
 </code></pre>
 <p>That is the same behavior a missing resource produces, so do not read a 404 as &quot;the endpoint is gone&quot;. Read it as &quot;you are not an admin&quot;.</p>
+<h2>How many roles does Grafana have?</h2>
+<p>Grafana OSS has five basic roles, split across two very different scopes:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Scope</th>
+<th>Can do</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Grafana Admin</td>
+<td>Server</td>
+<td>Manage users, organizations, and server settings</td>
+</tr>
+<tr>
+<td>Admin</td>
+<td>Organization</td>
+<td>Everything in the organization, including users and teams</td>
+</tr>
+<tr>
+<td>Editor</td>
+<td>Organization</td>
+<td>Create and edit dashboards, folders, alerts</td>
+</tr>
+<tr>
+<td>Viewer</td>
+<td>Organization</td>
+<td>View dashboards and query data sources</td>
+</tr>
+<tr>
+<td>None</td>
+<td>Organization</td>
+<td>Nothing until something else grants it</td>
+</tr>
+</tbody></table>
+<p>The server flag and the organization role are separate. Alice has both because the OIDC claim set <code>GrafanaAdmin</code>, which implies organization <code>Admin</code>. A user can be an organization Admin without being Grafana Admin, and that is the safer default.</p>
+<p>Custom roles exist, but not here. Fixed roles and custom RBAC roles are Grafana Enterprise and Grafana Cloud features. The OSS build includes the role picker and the RBAC API surface, yet assigning a hand-built role is not supported. What OSS does give you is folder and dashboard permissions, which is enough for the common request below.</p>
+<h2>Can a user see only one dashboard?</h2>
+<p>Yes, but a role cannot express that. Every basic role is organization-wide by definition. The boundary has to be a folder or a dashboard permission.</p>
+<p>The pattern is small:</p>
+<ol>
+<li>Put the single dashboard in its own folder.</li>
+<li>For every folder the user must not see, remove the <code>Viewer</code> and <code>Editor</code> role entries and leave only <code>Admin</code>.</li>
+<li>Keep the user at <code>Viewer</code>, or drop them to <code>None</code> and grant <code>View</code> on the one folder for a stricter boundary.</li>
+</ol>
+<p>In the lab, <code>Ops Overview</code> lives in <code>Team Ops</code> with default permissions, and <code>Finance KPIs</code> lives in <code>Finance</code>, whose permission list contains only the Admin role:</p>
+<pre><code class="language-powershell">$perm = @{ items = @(@{ role = &#39;Admin&#39;; permission = 4 }) } | ConvertTo-Json -Depth 4
+curl.exe -sk -u &quot;admin:$GRAFANA_ADMIN_PASSWORD&quot; -X POST `
+  &quot;https://grafana.10.10.10.11.nip.io/api/folders/finance/permissions&quot; `
+  -H &quot;Content-Type: application/json&quot; -d $perm
+</code></pre>
+<p>Permission values are <code>1</code> for View, <code>2</code> for Edit, and <code>4</code> for Admin. Sending a list without a role entry removes that role&#39;s access; folder permissions are inherited by every dashboard inside.</p>
+<p>The UI makes the result visible: the folder has exactly one grant, and the dialog warns that it applies to the folder and its descendants.</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/09-folder-permissions.png" alt="Finance folder restricted to the Admin role"></p>
+<p>Bob still has the <code>Viewer</code> organization role, but the only folder he can see is <code>Team Ops</code>, and it contains one dashboard:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/10-bob-one-dashboard.png" alt="Bob&#39;s dashboard list contains one folder"></p>
+<p>He can open it:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/11-bob-dashboard-ok.png" alt="Bob opens the one dashboard he is allowed to see"></p>
+<p>And the other dashboard fails at the API with a 403, not a rendered empty page:</p>
+<p><img src="../image/blog/Grafana-Keycloak-SSO/12-bob-dashboard-denied.png" alt="Bob is denied on the restricted dashboard"></p>
+<p>For the strictest OSS version, set the user&#39;s organization role to <code>None</code> and grant <code>View</code> to that user or team on the one folder. The user then has no organization-wide read at all, only the folder grant. That is the closest OSS gets to a custom role.</p>
+<p>Two limits are worth knowing. A public dashboard or a snapshot link has its own access path and ignores folder permissions, so disable public sharing if the boundary matters. And <code>Viewer</code> can still query the data sources behind an allowed dashboard; hiding the dashboard is not the same as hiding the data.</p>
 <h2>Two failures that cost time</h2>
 <p><strong>Keycloak rejected <code>groups</code> as a scope.</strong> The first login ended with &quot;Login provider denied login request&quot;, and the Grafana log had the real cause:</p>
 <pre><code class="language-text">level=error msg=&quot;failed to login &quot; error=invalid_scope
@@ -615,6 +744,7 @@ Volume is already used by pod(s) grafana-...
 <li>Decide whether <code>GrafanaAdmin</code> should come from a group at all. Server admin can read every organization and every user; most teams should grant organization <code>Admin</code> and keep server admin manual.</li>
 <li>Turn on Keycloak event logging for <code>LOGIN</code> and <code>LOGIN_ERROR</code>, and keep Grafana&#39;s auth proxy logs. Together they answer who signed in and when.</li>
 <li>Treat Grafana folder and dashboard permissions as a separate layer. An organization role is coarse, and <code>Viewer</code> still sees every dashboard shared with the organization.</li>
+<li>Restrict the one-dashboard case with folder permissions, not with a role. Keep public dashboards and snapshot sharing disabled if the folder is meant to be the boundary.</li>
 <li>Put a NetworkPolicy in front of Grafana and Keycloak if the cluster is shared; OIDC does not restrict which pods can reach the token endpoint.</li>
 </ul>
 <h2>Cleanup</h2>
@@ -628,6 +758,8 @@ kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete namespace grafana --ig
 <ul>
 <li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/">Grafana: Configure generic OAuth</a></li>
 <li><a href="https://grafana.com/docs/grafana/latest/setup-grafana/configure-security/configure-authentication/generic-oauth/#configure-role-mapping">Grafana: Role mapping</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/">Grafana: Roles and permissions</a></li>
+<li><a href="https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/#folder-permissions">Grafana: Folder access control</a></li>
 <li><a href="https://github.com/grafana/helm-charts/tree/main/charts/grafana">Grafana Helm chart</a></li>
 <li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
 </ul>
@@ -903,13 +1035,13 @@ kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete namespace grafana --ig
                 en: {
                     title: "Grafana SSO with Keycloak: OIDC Login and Role Mapping",
                     date: "November 12, 2026",
-                    readingTime: "10 min read",
+                    readingTime: "13 min read",
                     tags: "<span class=\"tag\">grafana</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
                 th: {
                     title: "Grafana SSO with Keycloak: OIDC Login and Role Mapping",
                     date: "November 12, 2026",
-                    readingTime: "10 นาที",
+                    readingTime: "13 นาที",
                     tags: "<span class=\"tag\">grafana</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
             };
