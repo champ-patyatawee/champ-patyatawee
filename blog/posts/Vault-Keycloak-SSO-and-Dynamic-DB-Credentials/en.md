@@ -1,5 +1,5 @@
 ---
-title: "Vault + Keycloak: SSO for Humans, Short-Lived Credentials for Apps"
+title: "Vault + Keycloak: OIDC Login and Dynamic Database Credentials"
 date: 2026-11-12
 tags: [vault, keycloak, sso, oidc, kubernetes, k3s, security, postgres]
 excerpt: "Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself."
@@ -401,3 +401,4 @@ SSO is only half of "Vault + Keycloak". The first half removes a password prompt
 - [Vault: Database secrets engine](https://developer.hashicorp.com/vault/docs/secrets/databases)
 - [Vault: Kubernetes Helm chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm)
 - [Keycloak: Server administration guide](https://www.keycloak.org/docs/latest/server_admin/)
+
