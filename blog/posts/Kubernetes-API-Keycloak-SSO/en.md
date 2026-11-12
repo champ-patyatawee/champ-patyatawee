@@ -201,7 +201,48 @@ Expand-Archive $env:TEMP\kubelogin.zip $env:TEMP\kubelogin
 Copy-Item $env:TEMP\kubelogin\kubelogin.exe C:\Users\C\bin\kubelogin.exe
 ```
 
-The kubeconfig is the stock cluster entry plus an `exec` block:
+`C:\Users\C\.kube\k3s-lab-oidc.yaml` is not downloaded. It is generated locally from the existing admin kubeconfig, and it deliberately contains only the OIDC user. Do not copy `k3s-lab.yaml` and hand it out: that file also contains the cluster-admin client certificate.
+
+Two certificate files are involved, and they are not the same CA:
+
+- The **cluster CA** is copied from `k3s-lab.yaml` so `kubectl` can verify the API server at `https://10.10.10.11:6443`.
+- The **Keycloak CA** is `C:\Users\C\.kube\lab-ca.crt`, extracted from the `lab-tls` Secret in Step 2, so kubelogin can verify Keycloak's HTTPS endpoint.
+
+Generate the clean kubeconfig:
+
+```powershell
+$src = "C:\Users\C\.kube\k3s-lab.yaml"
+$dst = "C:\Users\C\.kube\k3s-lab-oidc.yaml"
+$caFile = "$env:TEMP\k3s-cluster-ca.crt"
+Remove-Item $dst, $caFile -ErrorAction SilentlyContinue
+
+$view = kubectl --kubeconfig $src config view --raw --minify -o json | ConvertFrom-Json
+$c = $view.clusters[0]
+[IO.File]::WriteAllBytes($caFile, [Convert]::FromBase64String($c.cluster.'certificate-authority-data'))
+
+kubectl --kubeconfig $dst config set-cluster "$($c.name)" `
+  --server="$($c.cluster.server)" `
+  --certificate-authority="$caFile" --embed-certs=true
+
+kubectl --kubeconfig $dst config set-credentials oidc `
+  --exec-command='C:/Users/C/bin/kubelogin.exe' `
+  --exec-api-version='client.authentication.k8s.io/v1' `
+  --exec-interactive-mode='IfAvailable' `
+  --exec-arg='get-token' `
+  --exec-arg='--oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab' `
+  --exec-arg='--oidc-client-id=kubernetes' `
+  --exec-arg='--certificate-authority=C:\Users\C\.kube\lab-ca.crt' `
+  --exec-arg='--grant-type=authcode' `
+  --exec-arg='--oidc-pkce-method=S256' `
+  --exec-arg='--skip-open-browser'
+
+kubectl --kubeconfig $dst config set-context k3s-lab-oidc `
+  --cluster="$($c.name)" --user=oidc
+kubectl --kubeconfig $dst config use-context k3s-lab-oidc
+Remove-Item $caFile
+```
+
+The result has one cluster, one OIDC user, and one context — no admin certificate:
 
 ```yaml
 apiVersion: v1
@@ -210,13 +251,13 @@ clusters:
   - name: k3s-lab
     cluster:
       server: https://10.10.10.11:6443
-      certificate-authority-data: <same value as k3s-lab.yaml>
+      certificate-authority-data: <cluster CA copied from k3s-lab.yaml>
 users:
   - name: oidc
     user:
       exec:
         apiVersion: client.authentication.k8s.io/v1
-        command: C:\Users\C\bin\kubelogin.exe
+        command: C:/Users/C/bin/kubelogin.exe
         args:
           - get-token
           - --oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab
@@ -233,6 +274,15 @@ contexts:
       user: oidc
 current-context: k3s-lab-oidc
 ```
+
+Confirm the file before using it:
+
+```powershell
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config current-context
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config view --minify
+```
+
+The context must be `k3s-lab-oidc`, and the only user must be `oidc`. If the file is lost, rerun the block; nothing server-side needs to change.
 
 `--skip-open-browser` prints `http://localhost:8000/` instead of opening a browser. The lab used that so the login page could be driven in BrowserOS. On a normal desktop, drop the flag and kubelogin opens the browser itself.
 

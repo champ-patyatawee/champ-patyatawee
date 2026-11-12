@@ -114,7 +114,7 @@
                 <h1 class="post-title" id="post-title">Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">14 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">15 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">kubernetes</span>
@@ -307,20 +307,57 @@ Groups     [system:masters system:authenticated]
 Expand-Archive $env:TEMP\kubelogin.zip $env:TEMP\kubelogin
 Copy-Item $env:TEMP\kubelogin\kubelogin.exe C:\Users\C\bin\kubelogin.exe
 </code></pre>
-<p>The kubeconfig is the stock cluster entry plus an <code>exec</code> block:</p>
+<p><code>C:\Users\C\.kube\k3s-lab-oidc.yaml</code> is not downloaded. It is generated locally from the existing admin kubeconfig, and it deliberately contains only the OIDC user. Do not copy <code>k3s-lab.yaml</code> and hand it out: that file also contains the cluster-admin client certificate.</p>
+<p>Two certificate files are involved, and they are not the same CA:</p>
+<ul>
+<li>The <strong>cluster CA</strong> is copied from <code>k3s-lab.yaml</code> so <code>kubectl</code> can verify the API server at <code>https://10.10.10.11:6443</code>.</li>
+<li>The <strong>Keycloak CA</strong> is <code>C:\Users\C\.kube\lab-ca.crt</code>, extracted from the <code>lab-tls</code> Secret in Step 2, so kubelogin can verify Keycloak&#39;s HTTPS endpoint.</li>
+</ul>
+<p>Generate the clean kubeconfig:</p>
+<pre><code class="language-powershell">$src = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+$dst = &quot;C:\Users\C\.kube\k3s-lab-oidc.yaml&quot;
+$caFile = &quot;$env:TEMP\k3s-cluster-ca.crt&quot;
+Remove-Item $dst, $caFile -ErrorAction SilentlyContinue
+
+$view = kubectl --kubeconfig $src config view --raw --minify -o json | ConvertFrom-Json
+$c = $view.clusters[0]
+[IO.File]::WriteAllBytes($caFile, [Convert]::FromBase64String($c.cluster.&#39;certificate-authority-data&#39;))
+
+kubectl --kubeconfig $dst config set-cluster &quot;$($c.name)&quot; `
+  --server=&quot;$($c.cluster.server)&quot; `
+  --certificate-authority=&quot;$caFile&quot; --embed-certs=true
+
+kubectl --kubeconfig $dst config set-credentials oidc `
+  --exec-command=&#39;C:/Users/C/bin/kubelogin.exe&#39; `
+  --exec-api-version=&#39;client.authentication.k8s.io/v1&#39; `
+  --exec-interactive-mode=&#39;IfAvailable&#39; `
+  --exec-arg=&#39;get-token&#39; `
+  --exec-arg=&#39;--oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab&#39; `
+  --exec-arg=&#39;--oidc-client-id=kubernetes&#39; `
+  --exec-arg=&#39;--certificate-authority=C:\Users\C\.kube\lab-ca.crt&#39; `
+  --exec-arg=&#39;--grant-type=authcode&#39; `
+  --exec-arg=&#39;--oidc-pkce-method=S256&#39; `
+  --exec-arg=&#39;--skip-open-browser&#39;
+
+kubectl --kubeconfig $dst config set-context k3s-lab-oidc `
+  --cluster=&quot;$($c.name)&quot; --user=oidc
+kubectl --kubeconfig $dst config use-context k3s-lab-oidc
+Remove-Item $caFile
+</code></pre>
+<p>The result has one cluster, one OIDC user, and one context — no admin certificate:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Config
 clusters:
   - name: k3s-lab
     cluster:
       server: https://10.10.10.11:6443
-      certificate-authority-data: &lt;same value as k3s-lab.yaml&gt;
+      certificate-authority-data: &lt;cluster CA copied from k3s-lab.yaml&gt;
 users:
   - name: oidc
     user:
       exec:
         apiVersion: client.authentication.k8s.io/v1
-        command: C:\Users\C\bin\kubelogin.exe
+        command: C:/Users/C/bin/kubelogin.exe
         args:
           - get-token
           - --oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab
@@ -337,6 +374,11 @@ contexts:
       user: oidc
 current-context: k3s-lab-oidc
 </code></pre>
+<p>Confirm the file before using it:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config current-context
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config view --minify
+</code></pre>
+<p>The context must be <code>k3s-lab-oidc</code>, and the only user must be <code>oidc</code>. If the file is lost, rerun the block; nothing server-side needs to change.</p>
 <p><code>--skip-open-browser</code> prints <code>http://localhost:8000/</code> instead of opening a browser. The lab used that so the login page could be driven in BrowserOS. On a normal desktop, drop the flag and kubelogin opens the browser itself.</p>
 <p>The token cache is on disk under <code>~/.kube/cache/oidc-login</code>. The cache key includes the plugin arguments, not just the issuer and client. Changing <code>--grant-type</code> or <code>--oidc-pkce-method</code> forces a second login even for the same user. That is expected; it is not a broken cache.</p>
 <h2>Step 4: Map groups to RBAC</h2>
@@ -685,20 +727,57 @@ Groups     [system:masters system:authenticated]
 Expand-Archive $env:TEMP\kubelogin.zip $env:TEMP\kubelogin
 Copy-Item $env:TEMP\kubelogin\kubelogin.exe C:\Users\C\bin\kubelogin.exe
 </code></pre>
-<p>The kubeconfig is the stock cluster entry plus an <code>exec</code> block:</p>
+<p><code>C:\Users\C\.kube\k3s-lab-oidc.yaml</code> is not downloaded. It is generated locally from the existing admin kubeconfig, and it deliberately contains only the OIDC user. Do not copy <code>k3s-lab.yaml</code> and hand it out: that file also contains the cluster-admin client certificate.</p>
+<p>Two certificate files are involved, and they are not the same CA:</p>
+<ul>
+<li>The <strong>cluster CA</strong> is copied from <code>k3s-lab.yaml</code> so <code>kubectl</code> can verify the API server at <code>https://10.10.10.11:6443</code>.</li>
+<li>The <strong>Keycloak CA</strong> is <code>C:\Users\C\.kube\lab-ca.crt</code>, extracted from the <code>lab-tls</code> Secret in Step 2, so kubelogin can verify Keycloak&#39;s HTTPS endpoint.</li>
+</ul>
+<p>Generate the clean kubeconfig:</p>
+<pre><code class="language-powershell">$src = &quot;C:\Users\C\.kube\k3s-lab.yaml&quot;
+$dst = &quot;C:\Users\C\.kube\k3s-lab-oidc.yaml&quot;
+$caFile = &quot;$env:TEMP\k3s-cluster-ca.crt&quot;
+Remove-Item $dst, $caFile -ErrorAction SilentlyContinue
+
+$view = kubectl --kubeconfig $src config view --raw --minify -o json | ConvertFrom-Json
+$c = $view.clusters[0]
+[IO.File]::WriteAllBytes($caFile, [Convert]::FromBase64String($c.cluster.&#39;certificate-authority-data&#39;))
+
+kubectl --kubeconfig $dst config set-cluster &quot;$($c.name)&quot; `
+  --server=&quot;$($c.cluster.server)&quot; `
+  --certificate-authority=&quot;$caFile&quot; --embed-certs=true
+
+kubectl --kubeconfig $dst config set-credentials oidc `
+  --exec-command=&#39;C:/Users/C/bin/kubelogin.exe&#39; `
+  --exec-api-version=&#39;client.authentication.k8s.io/v1&#39; `
+  --exec-interactive-mode=&#39;IfAvailable&#39; `
+  --exec-arg=&#39;get-token&#39; `
+  --exec-arg=&#39;--oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab&#39; `
+  --exec-arg=&#39;--oidc-client-id=kubernetes&#39; `
+  --exec-arg=&#39;--certificate-authority=C:\Users\C\.kube\lab-ca.crt&#39; `
+  --exec-arg=&#39;--grant-type=authcode&#39; `
+  --exec-arg=&#39;--oidc-pkce-method=S256&#39; `
+  --exec-arg=&#39;--skip-open-browser&#39;
+
+kubectl --kubeconfig $dst config set-context k3s-lab-oidc `
+  --cluster=&quot;$($c.name)&quot; --user=oidc
+kubectl --kubeconfig $dst config use-context k3s-lab-oidc
+Remove-Item $caFile
+</code></pre>
+<p>The result has one cluster, one OIDC user, and one context — no admin certificate:</p>
 <pre><code class="language-yaml">apiVersion: v1
 kind: Config
 clusters:
   - name: k3s-lab
     cluster:
       server: https://10.10.10.11:6443
-      certificate-authority-data: &lt;same value as k3s-lab.yaml&gt;
+      certificate-authority-data: &lt;cluster CA copied from k3s-lab.yaml&gt;
 users:
   - name: oidc
     user:
       exec:
         apiVersion: client.authentication.k8s.io/v1
-        command: C:\Users\C\bin\kubelogin.exe
+        command: C:/Users/C/bin/kubelogin.exe
         args:
           - get-token
           - --oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab
@@ -715,6 +794,11 @@ contexts:
       user: oidc
 current-context: k3s-lab-oidc
 </code></pre>
+<p>Confirm the file before using it:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config current-context
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml config view --minify
+</code></pre>
+<p>The context must be <code>k3s-lab-oidc</code>, and the only user must be <code>oidc</code>. If the file is lost, rerun the block; nothing server-side needs to change.</p>
 <p><code>--skip-open-browser</code> prints <code>http://localhost:8000/</code> instead of opening a browser. The lab used that so the login page could be driven in BrowserOS. On a normal desktop, drop the flag and kubelogin opens the browser itself.</p>
 <p>The token cache is on disk under <code>~/.kube/cache/oidc-login</code>. The cache key includes the plugin arguments, not just the issuer and client. Changing <code>--grant-type</code> or <code>--oidc-pkce-method</code> forces a second login even for the same user. That is expected; it is not a broken cache.</p>
 <h2>Step 4: Map groups to RBAC</h2>
@@ -1156,13 +1240,13 @@ kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n guestbook delete rolebindi
                 en: {
                     title: "Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts",
                     date: "November 12, 2026",
-                    readingTime: "14 min read",
+                    readingTime: "15 min read",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
                 },
                 th: {
                     title: "Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts",
                     date: "November 12, 2026",
-                    readingTime: "14 นาที",
+                    readingTime: "15 นาที",
                     tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
                 },
             };
