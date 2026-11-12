@@ -294,6 +294,29 @@ Impersonation proves the RBAC graph. It does not prove that Keycloak issues thos
 
 ## Step 5: Log in as a real user
 
+Nothing in `k3s-lab-oidc.yaml` contains a password or a Kubernetes token. The `exec` block makes `kubectl` call `kubelogin get-token` whenever the cached credential is missing or expired. The login is a conversation between `kubectl`, `kubelogin`, the browser, Keycloak, and the API server — a password is never sent to Kubernetes.
+
+When you run the first command:
+
+```powershell
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth whoami
+```
+
+this is what happens:
+
+1. `kubectl` starts `kubelogin.exe get-token` from the kubeconfig's `exec` block.
+2. `kubelogin` listens on `127.0.0.1:8000` and builds a Keycloak authorization URL with the `kubernetes` client ID, a `state` value, and a PKCE `code_challenge`.
+3. With `--skip-open-browser`, `kubectl` prints `http://localhost:8000/`. You open that URL. Without the flag, `kubelogin` opens the default browser directly.
+4. The browser goes to Keycloak. The user enters their Keycloak username, password, and any MFA. Kubernetes never sees these credentials.
+5. Keycloak redirects to `http://localhost:8000/?code=...&state=...`. `kubelogin` checks `state`, then exchanges the one-time code and the PKCE verifier at Keycloak's token endpoint.
+6. `kubelogin` caches the tokens under `~/.kube/cache/oidc-login`, prints an `ExecCredential` containing the ID token, and exits.
+7. `kubectl` sends the token to `https://10.10.10.11:6443` in the `Authorization: Bearer ...` header.
+8. The k3s API server validates the signature against Keycloak's JWKS, checks the issuer, audience, and expiry, and builds the Kubernetes identity `oidc:bob` with the prefixed groups. RBAC then answers the request.
+
+Subsequent `kubectl` commands reuse the cached token until it expires; `kubelogin` uses the refresh token or starts another browser login when needed. To log out, remove the cache entry or revoke the session in Keycloak.
+
+### Why the first attempt failed
+
 The first attempt used the device-code grant and failed twice, in a useful order:
 
 ```text
@@ -306,7 +329,7 @@ after enabling the grant on the client:
 invalid_request (Missing parameter: code_challenge_method)
 ```
 
-Keycloak enforces PKCE on this client, and kubelogin's device-code request does not carry a PKCE challenge. The working path is the authorization-code flow with PKCE, which is also the better choice for a desktop user. `kubectl` prints a local URL, the browser completes the login, and the callback lands on `localhost:8000`.
+Keycloak enforces PKCE on this client, and kubelogin's device-code request does not carry a PKCE challenge. The authorization-code flow above is the one that completes, and it is also the better choice for a desktop user.
 
 ![The active Keycloak session shows bob using the kubernetes client](../image/blog/Kubernetes-API-Keycloak-SSO/04-keycloak-kubernetes-session.png)
 
