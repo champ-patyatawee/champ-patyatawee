@@ -1,18 +1,18 @@
 ---
-title: "Vault + Keycloak: OIDC Login and Dynamic Database Credentials"
+title: "Vault SSO with Keycloak: OIDC Login and Group-Based Access"
 date: 2026-11-12
-tags: [vault, keycloak, sso, oidc, kubernetes, k3s, security, postgres]
-excerpt: "Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself."
-image: Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/og.jpg
+tags: [vault, keycloak, sso, oidc, kubernetes, k3s, security]
+excerpt: "Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, and prove the authorization boundary against the Vault API."
+image: Vault-Keycloak-SSO/og.jpg
 lang: en
 ---
 
-A Vault deployment with its own password database is a second identity system nobody asked for. The more useful pattern is the one this lab builds: Keycloak authenticates the human, Vault maps the human's groups to policies, and the same Vault instance also removes the static database password that Keycloak itself uses.
+A Vault deployment with its own password database is a second identity system nobody asked for. The pattern this lab builds is simpler: Keycloak authenticates the user, Vault accepts that identity over OIDC, and the user's Keycloak group decides which Vault policies apply.
 
-Two directions of trust, one cluster:
+One direction of trust, one cluster:
 
-- **Humans → Vault.** An OIDC login against the existing `lab` realm, with Keycloak's group claim deciding whether you are an admin or a developer.
-- **Vault → PostgreSQL.** Vault holds one privileged connection and hands out five-minute roles instead of a shared password, then drops the role when the lease is revoked.
+- **Keycloak → Vault.** An OIDC login against the existing `lab` realm, with the group claim deciding whether you are an admin or a developer.
+- **Groups → policies.** Vault external groups map claim values to `platform-admin` and `developer` policies, so access is decided in one place instead of per role.
 
 Everything ran on the four-node k3s lab, reusing the Keycloak from the previous article. No new identity provider was created.
 
@@ -23,7 +23,6 @@ Everything ran on the four-node k3s lab, reusing the Keycloak from the previous 
 | Kubernetes | k3s `v1.36.5+k3s1` | 4 nodes, `10.10.10.11`–`10.10.10.14` |
 | Vault | chart `0.34.1`, app `2.0.4` | OIDC client, Raft storage, Longhorn PVC |
 | Keycloak | `26.8.2` | realm `lab`, client `vault`, groups `platform-admins` / `developers` |
-| PostgreSQL | `postgres:16-alpine` | Keycloak's database; target of the dynamic credentials |
 | Ingress | Traefik | `vault.10.10.10.11.nip.io` |
 | TLS | a local CA issued for the three lab hosts | Vault verifies the OIDC issuer instead of skipping checks |
 
@@ -101,7 +100,7 @@ Invoke-RestMethod -Method Post `
   -Headers @{ Authorization = "Bearer $token" } -Body $client
 ~~~
 
-![Keycloak client for Vault with the callback URI](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/08-keycloak-client.png)
+![Keycloak client for Vault with the callback URI](../image/blog/Vault-Keycloak-SSO/08-keycloak-client.png)
 
 The redirect path is the part people get wrong. Vault's UI callback is `/ui/vault/auth/oidc/oidc/callback` — the auth mount path appears twice because the first `oidc` is the mount and the second is the method type.
 
@@ -232,15 +231,15 @@ If `full.path` were `true` in the Keycloak mapper, the alias names would need to
 
 The Vault login page sends you straight to Keycloak:
 
-![Vault login page with the OIDC method](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/01-vault-login.png)
+![Vault login page with the OIDC method](../image/blog/Vault-Keycloak-SSO/01-vault-login.png)
 
-![Keycloak login form](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/02-keycloak-login.png)
+![Keycloak login form](../image/blog/Vault-Keycloak-SSO/02-keycloak-login.png)
 
 Alice is in `platform-admins`, so she sees both trees:
 
-![Both dev and prod visible to the platform admin](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/03-alice-secrets.png)
+![Both dev and prod visible to the platform admin](../image/blog/Vault-Keycloak-SSO/03-alice-secrets.png)
 
-![Production secret readable by the admin](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/04-alice-prod-secret.png)
+![Production secret readable by the admin](../image/blog/Vault-Keycloak-SSO/04-alice-prod-secret.png)
 
 The UI masks values by default, which is why these screenshots are safe to publish at all.
 
@@ -254,15 +253,15 @@ Bob logs in with the same flow and a different group. His token carries exactly 
 
 The practical consequences are visible in the UI. He cannot list the engine root, so Vault falls back to asking for a path:
 
-![Developer cannot list the secrets engine root](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/05-bob-root-denied.png)
+![Developer cannot list the secrets engine root](../image/blog/Vault-Keycloak-SSO/05-bob-root-denied.png)
 
 He can read the development secret:
 
-![Developer reads the dev secret](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/06-bob-dev-allowed.png)
+![Developer reads the dev secret](../image/blog/Vault-Keycloak-SSO/06-bob-dev-allowed.png)
 
 And the production path is refused:
 
-![Developer is denied on the production secret](../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/07-bob-prod-denied.png)
+![Developer is denied on the production secret](../image/blog/Vault-Keycloak-SSO/07-bob-prod-denied.png)
 
 The API agrees, which is the check that actually matters:
 
@@ -276,73 +275,6 @@ curl.exe -k -H "X-Vault-Token: $BOB_TOKEN" https://vault.10.10.10.11.nip.io/v1/s
 
 A 403 from the API is proof. A hidden menu item is not.
 
-## Step 7: issue short-lived PostgreSQL credentials
-
-The second half of the lab has nothing to do with SSO, and that is the point: the same Vault that authenticates people can also remove the static password Keycloak uses to reach its database.
-
-~~~powershell
-vault secrets enable database
-
-vault write database/config/keycloak `
-  plugin_name=postgresql-database-plugin `
-  connection_url="postgresql://{{username}}:{{password}}@keycloak-db.keycloak.svc:5432/keycloak?sslmode=disable" `
-  allowed_roles="keycloak-readonly" `
-  username="keycloak" password="$POSTGRES_ADMIN_PASSWORD"
-
-vault write database/roles/keycloak-readonly `
-  db_name=keycloak `
-  creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}'; GRANT CONNECT ON DATABASE keycloak TO \"{{name}}\"; GRANT USAGE ON SCHEMA public TO \"{{name}}\"; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \"{{name}}\";" `
-  default_ttl="5m" max_ttl="1h"
-~~~
-
-Reading credentials creates a real PostgreSQL role, not a stored secret:
-
-~~~powershell
-vault read database/creds/keycloak-readonly
-~~~
-
-~~~
-Key                Value
----                -----
-lease_id           database/creds/keycloak-readonly/GDqqrl...
-lease_duration     5m
-lease_renewable    true
-password           A1a-...redacted
-username           v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806
-~~~
-
-The username is generated per lease. The role is named from the Vault entity, the role, and an expiry stamp. Five minutes later it stops working whether or not anyone remembers to clean up.
-
-Proving it from inside the cluster:
-
-~~~powershell
-kubectl -n keycloak run psql-lease-test --restart=Never --image=postgres:16-alpine `
-  --env="PGPASSWORD=$LEASE_PASSWORD" -- `
-  psql -h keycloak-db -U $LEASE_USER -d keycloak `
-       -c "select current_user, (select count(*) from client) as clients;"
-~~~
-
-~~~
-                  current_user                   | clients
--------------------------------------------------+---------
- v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806 |      15
-~~~
-
-That is a live query against Keycloak's own schema, run as a user that did not exist a minute earlier.
-
-Revoking the lease drops the role immediately:
-
-~~~powershell
-vault lease revoke database/creds/keycloak-readonly/GDqqrl...
-~~~
-
-~~~
-psql: error: connection to server at "keycloak-db" (10.43.18.44), port 5432 failed:
-FATAL:  password authentication failed for user "v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806"
-~~~
-
-This is the difference between a secret and a credential. The password never appears in a ConfigMap, a Helm value, or a Git commit, and it stops existing on a timer you control.
-
 ## The failures that cost time
 
 **Vault's UI runs OIDC in a popup.** Navigating the same tab to the callback URL produces `Cannot read properties of null (reading 'postMessage')`, because the callback page posts the token back to `window.opener`. If you are automating the flow, drive the popup, not the tab.
@@ -355,20 +287,19 @@ This is the difference between a secret and a credential. The password never app
 
 ## What this lab proves and what it does not
 
-Proved: OIDC login with a private CA, group claims reaching Vault as external identities, policy enforcement at the API, dynamic PostgreSQL credentials, and immediate revocation.
+Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.
 
-Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every human login. There is no audit device enabled, which in a real deployment would be the first thing to add, because "who read `secret/prod/db`" is the question Vault exists to answer.
+Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every login, which is the cost of centralising identity. There is no audit device enabled, which in a real deployment would be the first thing to add, because "who read `secret/prod/db`" is the question Vault exists to answer.
 
 ## Production checklist
 
 - Run Vault with three Raft nodes, auto-unseal through a KMS or transit seal, and a real backup of the Raft snapshots.
 - Enable at least one audit device before storing anything that matters.
 - Replace the lab CA with a managed certificate and keep `oidc_discovery_ca_pem` only if the issuer is genuinely private.
-- Give the database engine its own least-privilege PostgreSQL account. The `keycloak` superuser is convenient and wrong.
-- Shorten `max_ttl` and require renewal for long-running consumers; five minutes is a demo value, not a policy.
+- Set an explicit `ttl` on the OIDC role and a shorter one for admin access; identity proves who you are, not how long a session should live.
+- Keep the group-to-policy mapping in Vault identity groups only. Duplicating it on each login role guarantees the two copies drift.
 - Add `bound_claims` for tenant or environment so a group alone is not sufficient for production access.
 - Store the root token in a break-glass process, not in a file on the workstation.
-- Decide whether Keycloak itself should fetch its database password from Vault at startup. That closes the loop, but it also makes Vault a hard dependency of the login path — a trade-off worth documenting before adopting it.
 
 ## Troubleshooting
 
@@ -378,8 +309,7 @@ Not proved: availability. One Vault pod with Raft on a single Longhorn volume me
 | `invalid_redirect_uri` after Keycloak login | Callback path does not match the client exactly | Register `/ui/vault/auth/oidc/oidc/callback` verbatim |
 | Login succeeds, no permissions | Group claim and alias names disagree | Check `full.path` and the alias names |
 | `Cannot read properties of null (reading 'postMessage')` | Callback opened in the same tab | Use the popup flow |
-| Database config write fails | Connection string or admin credentials wrong | Test `psql` from a pod with the same values |
-| Lease credentials stop working early | TTL expired or lease revoked | Re-read `database/creds/...` |
+| User lands in the wrong policy | Keycloak group missing from the token | Check the group mapper and `groups_claim` |
 
 ## Cleanup
 
@@ -392,13 +322,12 @@ Removing the namespace also removes the Raft volume, which means the unseal keys
 
 ## Takeaways
 
-SSO is only half of "Vault + Keycloak". The first half removes a password prompt; the second half removes a password. Keycloak answers who the human is, Vault decides what that identity can read, and the database engine makes sure the answer has an expiry. Keep the group claim and the policy file in sync, verify authorization with the API rather than the UI, and treat unseal keys and root tokens as the break-glass material they are.
+SSO to Vault has three moving parts: Keycloak proves identity, the group claim carries authorization, and Vault policies decide what that group can touch. The part that usually breaks is not the login flow. It is the name of the group on each side. Keep the claim, the alias, and the policy file in sync, verify authorization against the API instead of the UI, and treat unseal keys and root tokens as the break-glass material they are.
 
 ## References
 
 - [Vault: OIDC auth method](https://developer.hashicorp.com/vault/docs/auth/jwt)
 - [Vault: External groups and aliases](https://developer.hashicorp.com/vault/docs/secrets/identity)
-- [Vault: Database secrets engine](https://developer.hashicorp.com/vault/docs/secrets/databases)
 - [Vault: Kubernetes Helm chart](https://developer.hashicorp.com/vault/docs/platform/k8s/helm)
 - [Keycloak: Server administration guide](https://www.keycloak.org/docs/latest/server_admin/)
 

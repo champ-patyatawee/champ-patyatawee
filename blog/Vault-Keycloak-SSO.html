@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself.">
-    <meta property="og:title" content="Vault + Keycloak: OIDC Login and Dynamic Database Credentials — Champ Patyatawee">
-    <meta property="og:description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself.">
+    <meta name="description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, and prove the authorization boundary against the Vault API.">
+    <meta property="og:title" content="Vault SSO with Keycloak: OIDC Login and Group-Based Access — Champ Patyatawee">
+    <meta property="og:description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, and prove the authorization boundary against the Vault API.">
     <meta property="og:type" content="article">
-    <meta property="og:url" content="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials">
-    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/og.jpg">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Vault-Keycloak-SSO/og.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:type" content="image/jpeg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Vault + Keycloak: OIDC Login and Dynamic Database Credentials">
-    <meta name="twitter:description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself.">
-    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/og.jpg">
-    <meta name="twitter:image:alt" content="Vault + Keycloak: OIDC Login and Dynamic Database Credentials">
+    <meta name="twitter:title" content="Vault SSO with Keycloak: OIDC Login and Group-Based Access">
+    <meta name="twitter:description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, and prove the authorization boundary against the Vault API.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Vault-Keycloak-SSO/og.jpg">
+    <meta name="twitter:image:alt" content="Vault SSO with Keycloak: OIDC Login and Group-Based Access">
     <!-- Thai alternate meta -->
-    <meta name="description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, then let Vault issue five-minute PostgreSQL credentials for the Keycloak database itself." lang="th">
+    <meta name="description" content="Log into HashiCorp Vault with the Keycloak identity you already have, map Keycloak groups to Vault policies, and prove the authorization boundary against the Vault API." lang="th">
     <meta property="og:locale:alternate" content="th_TH">
-    <link rel="canonical" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials">
-    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials">
-    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials">
-    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials">
-    <title>Vault + Keycloak: OIDC Login and Dynamic Database Credentials — Champ Patyatawee</title>
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Vault-Keycloak-SSO">
+    <title>Vault SSO with Keycloak: OIDC Login and Group-Based Access — Champ Patyatawee</title>
     <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
     <link rel="stylesheet" href="style.css?v=8">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
@@ -111,10 +111,10 @@
             <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
             
             <header class="post-header">
-                <h1 class="post-title" id="post-title">Vault + Keycloak: OIDC Login and Dynamic Database Credentials</h1>
+                <h1 class="post-title" id="post-title">Vault SSO with Keycloak: OIDC Login and Group-Based Access</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">12 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">10 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">vault</span>
@@ -124,7 +124,6 @@
 <span class="tag">kubernetes</span>
 <span class="tag">k3s</span>
 <span class="tag">security</span>
-<span class="tag">postgres</span>
                 </div>
 
                 <!-- Language tabs -->
@@ -137,11 +136,11 @@
             <!-- English content -->
             <div id="content-en" class="lang-content active">
                 <div class="post-content en-content">
-                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The more useful pattern is the one this lab builds: Keycloak authenticates the human, Vault maps the human&#39;s groups to policies, and the same Vault instance also removes the static database password that Keycloak itself uses.</p>
-<p>Two directions of trust, one cluster:</p>
+                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The pattern this lab builds is simpler: Keycloak authenticates the user, Vault accepts that identity over OIDC, and the user&#39;s Keycloak group decides which Vault policies apply.</p>
+<p>One direction of trust, one cluster:</p>
 <ul>
-<li><strong>Humans → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with Keycloak&#39;s group claim deciding whether you are an admin or a developer.</li>
-<li><strong>Vault → PostgreSQL.</strong> Vault holds one privileged connection and hands out five-minute roles instead of a shared password, then drops the role when the lease is revoked.</li>
+<li><strong>Keycloak → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with the group claim deciding whether you are an admin or a developer.</li>
+<li><strong>Groups → policies.</strong> Vault external groups map claim values to <code>platform-admin</code> and <code>developer</code> policies, so access is decided in one place instead of per role.</li>
 </ul>
 <p>Everything ran on the four-node k3s lab, reusing the Keycloak from the previous article. No new identity provider was created.</p>
 <h2>What gets built</h2>
@@ -167,11 +166,6 @@
 <td>Keycloak</td>
 <td><code>26.8.2</code></td>
 <td>realm <code>lab</code>, client <code>vault</code>, groups <code>platform-admins</code> / <code>developers</code></td>
-</tr>
-<tr>
-<td>PostgreSQL</td>
-<td><code>postgres:16-alpine</code></td>
-<td>Keycloak&#39;s database; target of the dynamic credentials</td>
 </tr>
 <tr>
 <td>Ingress</td>
@@ -240,7 +234,7 @@ Invoke-RestMethod -Method Post `
   -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients&#39; `
   -Headers @{ Authorization = &quot;Bearer $token&quot; } -Body $client
 </code></pre>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/08-keycloak-client.png" alt="Keycloak client for Vault with the callback URI"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/08-keycloak-client.png" alt="Keycloak client for Vault with the callback URI"></p>
 <p>The redirect path is the part people get wrong. Vault&#39;s UI callback is <code>/ui/vault/auth/oidc/oidc/callback</code> — the auth mount path appears twice because the first <code>oidc</code> is the mount and the second is the method type.</p>
 <h2>Step 2: deploy Vault</h2>
 <p>Standalone Raft with a Longhorn volume is enough to prove the model. It is not highly available, and that limitation is listed honestly at the end.</p>
@@ -337,91 +331,45 @@ vault write identity/group-alias name=&quot;developers&quot; `
 <p>If <code>full.path</code> were <code>true</code> in the Keycloak mapper, the alias names would need to be <code>/platform-admins</code> and <code>/developers</code>. This mismatch is the most common reason a correctly authenticated user lands with no permissions.</p>
 <h2>Step 5: log in as the admin</h2>
 <p>The Vault login page sends you straight to Keycloak:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/01-vault-login.png" alt="Vault login page with the OIDC method"></p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/02-keycloak-login.png" alt="Keycloak login form"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/01-vault-login.png" alt="Vault login page with the OIDC method"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak login form"></p>
 <p>Alice is in <code>platform-admins</code>, so she sees both trees:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/03-alice-secrets.png" alt="Both dev and prod visible to the platform admin"></p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/04-alice-prod-secret.png" alt="Production secret readable by the admin"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/03-alice-secrets.png" alt="Both dev and prod visible to the platform admin"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/04-alice-prod-secret.png" alt="Production secret readable by the admin"></p>
 <p>The UI masks values by default, which is why these screenshots are safe to publish at all.</p>
 <h2>Step 6: prove the developer boundary</h2>
 <p>Bob logs in with the same flow and a different group. His token carries exactly two policies:</p>
 <pre><code class="language-json">{ &quot;policies&quot;: [&quot;default&quot;, &quot;developer&quot;] }
 </code></pre>
 <p>The practical consequences are visible in the UI. He cannot list the engine root, so Vault falls back to asking for a path:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/05-bob-root-denied.png" alt="Developer cannot list the secrets engine root"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/05-bob-root-denied.png" alt="Developer cannot list the secrets engine root"></p>
 <p>He can read the development secret:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/06-bob-dev-allowed.png" alt="Developer reads the dev secret"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/06-bob-dev-allowed.png" alt="Developer reads the dev secret"></p>
 <p>And the production path is refused:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/07-bob-prod-denied.png" alt="Developer is denied on the production secret"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/07-bob-prod-denied.png" alt="Developer is denied on the production secret"></p>
 <p>The API agrees, which is the check that actually matters:</p>
 <pre><code class="language-powershell">curl.exe -k -H &quot;X-Vault-Token: $BOB_TOKEN&quot; https://vault.10.10.10.11.nip.io/v1/secret/data/prod/db
 </code></pre>
 <pre><code class="language-json">{&quot;errors&quot;:[&quot;1 error occurred:\n\t* permission denied\n\n&quot;]}
 </code></pre>
 <p>A 403 from the API is proof. A hidden menu item is not.</p>
-<h2>Step 7: issue short-lived PostgreSQL credentials</h2>
-<p>The second half of the lab has nothing to do with SSO, and that is the point: the same Vault that authenticates people can also remove the static password Keycloak uses to reach its database.</p>
-<pre><code class="language-powershell">vault secrets enable database
-
-vault write database/config/keycloak `
-  plugin_name=postgresql-database-plugin `
-  connection_url=&quot;postgresql://{{username}}:{{password}}@keycloak-db.keycloak.svc:5432/keycloak?sslmode=disable&quot; `
-  allowed_roles=&quot;keycloak-readonly&quot; `
-  username=&quot;keycloak&quot; password=&quot;$POSTGRES_ADMIN_PASSWORD&quot;
-
-vault write database/roles/keycloak-readonly `
-  db_name=keycloak `
-  creation_statements=&quot;CREATE ROLE \&quot;{{name}}\&quot; WITH LOGIN PASSWORD &#39;{{password}}&#39; VALID UNTIL &#39;{{expiration}}&#39;; GRANT CONNECT ON DATABASE keycloak TO \&quot;{{name}}\&quot;; GRANT USAGE ON SCHEMA public TO \&quot;{{name}}\&quot;; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \&quot;{{name}}\&quot;;&quot; `
-  default_ttl=&quot;5m&quot; max_ttl=&quot;1h&quot;
-</code></pre>
-<p>Reading credentials creates a real PostgreSQL role, not a stored secret:</p>
-<pre><code class="language-powershell">vault read database/creds/keycloak-readonly
-</code></pre>
-<pre><code>Key                Value
----                -----
-lease_id           database/creds/keycloak-readonly/GDqqrl...
-lease_duration     5m
-lease_renewable    true
-password           A1a-...redacted
-username           v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806
-</code></pre>
-<p>The username is generated per lease. The role is named from the Vault entity, the role, and an expiry stamp. Five minutes later it stops working whether or not anyone remembers to clean up.</p>
-<p>Proving it from inside the cluster:</p>
-<pre><code class="language-powershell">kubectl -n keycloak run psql-lease-test --restart=Never --image=postgres:16-alpine `
-  --env=&quot;PGPASSWORD=$LEASE_PASSWORD&quot; -- `
-  psql -h keycloak-db -U $LEASE_USER -d keycloak `
-       -c &quot;select current_user, (select count(*) from client) as clients;&quot;
-</code></pre>
-<pre><code>                  current_user                   | clients
--------------------------------------------------+---------
- v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806 |      15
-</code></pre>
-<p>That is a live query against Keycloak&#39;s own schema, run as a user that did not exist a minute earlier.</p>
-<p>Revoking the lease drops the role immediately:</p>
-<pre><code class="language-powershell">vault lease revoke database/creds/keycloak-readonly/GDqqrl...
-</code></pre>
-<pre><code>psql: error: connection to server at &quot;keycloak-db&quot; (10.43.18.44), port 5432 failed:
-FATAL:  password authentication failed for user &quot;v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806&quot;
-</code></pre>
-<p>This is the difference between a secret and a credential. The password never appears in a ConfigMap, a Helm value, or a Git commit, and it stops existing on a timer you control.</p>
 <h2>The failures that cost time</h2>
 <p><strong>Vault&#39;s UI runs OIDC in a popup.</strong> Navigating the same tab to the callback URL produces <code>Cannot read properties of null (reading &#39;postMessage&#39;)</code>, because the callback page posts the token back to <code>window.opener</code>. If you are automating the flow, drive the popup, not the tab.</p>
 <p><strong>A stale SPA route can look like a permission bug.</strong> After logging in as the developer in a tab that previously held the admin session, the production page still rendered its path metadata. The API returned 403 the whole time. Always confirm authorization with a request, not with a page that may be showing cached shell state.</p>
 <p><strong>One Vault page wedged the browser renderer.</strong> The Access → Auth Methods welcome page hung <code>Page.captureScreenshot</code> for every page in that tab until it was closed. Reopening a fresh tab restored screenshots. Worth knowing before concluding the UI is broken.</p>
 <p><strong>Traefik kept logging a missing secret.</strong> Argo CD&#39;s ingress declared <code>argocd-server-tls</code> while the chart did not create it, so the route fell back to the default certificate and Traefik logged an error on every reconcile. Creating the secret from the lab CA fixed both the warning and the certificate consistency.</p>
 <h2>What this lab proves and what it does not</h2>
-<p>Proved: OIDC login with a private CA, group claims reaching Vault as external identities, policy enforcement at the API, dynamic PostgreSQL credentials, and immediate revocation.</p>
-<p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every human login. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
+<p>Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.</p>
+<p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every login, which is the cost of centralising identity. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
 <h2>Production checklist</h2>
 <ul>
 <li>Run Vault with three Raft nodes, auto-unseal through a KMS or transit seal, and a real backup of the Raft snapshots.</li>
 <li>Enable at least one audit device before storing anything that matters.</li>
 <li>Replace the lab CA with a managed certificate and keep <code>oidc_discovery_ca_pem</code> only if the issuer is genuinely private.</li>
-<li>Give the database engine its own least-privilege PostgreSQL account. The <code>keycloak</code> superuser is convenient and wrong.</li>
-<li>Shorten <code>max_ttl</code> and require renewal for long-running consumers; five minutes is a demo value, not a policy.</li>
+<li>Set an explicit <code>ttl</code> on the OIDC role and a shorter one for admin access; identity proves who you are, not how long a session should live.</li>
+<li>Keep the group-to-policy mapping in Vault identity groups only. Duplicating it on each login role guarantees the two copies drift.</li>
 <li>Add <code>bound_claims</code> for tenant or environment so a group alone is not sufficient for production access.</li>
 <li>Store the root token in a break-glass process, not in a file on the workstation.</li>
-<li>Decide whether Keycloak itself should fetch its database password from Vault at startup. That closes the loop, but it also makes Vault a hard dependency of the login path — a trade-off worth documenting before adopting it.</li>
 </ul>
 <h2>Troubleshooting</h2>
 <table>
@@ -453,14 +401,9 @@ FATAL:  password authentication failed for user &quot;v-root-keycloak-PNllHaWWar
 <td>Use the popup flow</td>
 </tr>
 <tr>
-<td>Database config write fails</td>
-<td>Connection string or admin credentials wrong</td>
-<td>Test <code>psql</code> from a pod with the same values</td>
-</tr>
-<tr>
-<td>Lease credentials stop working early</td>
-<td>TTL expired or lease revoked</td>
-<td>Re-read <code>database/creds/...</code></td>
+<td>User lands in the wrong policy</td>
+<td>Keycloak group missing from the token</td>
+<td>Check the group mapper and <code>groups_claim</code></td>
 </tr>
 </tbody></table>
 <h2>Cleanup</h2>
@@ -469,12 +412,11 @@ kubectl delete namespace vault --ignore-not-found
 </code></pre>
 <p>Removing the namespace also removes the Raft volume, which means the unseal keys become useless. Export what you need first.</p>
 <h2>Takeaways</h2>
-<p>SSO is only half of &quot;Vault + Keycloak&quot;. The first half removes a password prompt; the second half removes a password. Keycloak answers who the human is, Vault decides what that identity can read, and the database engine makes sure the answer has an expiry. Keep the group claim and the policy file in sync, verify authorization with the API rather than the UI, and treat unseal keys and root tokens as the break-glass material they are.</p>
+<p>SSO to Vault has three moving parts: Keycloak proves identity, the group claim carries authorization, and Vault policies decide what that group can touch. The part that usually breaks is not the login flow. It is the name of the group on each side. Keep the claim, the alias, and the policy file in sync, verify authorization against the API instead of the UI, and treat unseal keys and root tokens as the break-glass material they are.</p>
 <h2>References</h2>
 <ul>
 <li><a href="https://developer.hashicorp.com/vault/docs/auth/jwt">Vault: OIDC auth method</a></li>
 <li><a href="https://developer.hashicorp.com/vault/docs/secrets/identity">Vault: External groups and aliases</a></li>
-<li><a href="https://developer.hashicorp.com/vault/docs/secrets/databases">Vault: Database secrets engine</a></li>
 <li><a href="https://developer.hashicorp.com/vault/docs/platform/k8s/helm">Vault: Kubernetes Helm chart</a></li>
 <li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
 </ul>
@@ -485,11 +427,11 @@ kubectl delete namespace vault --ignore-not-found
             <!-- Thai content -->
             <div id="content-th" class="lang-content">
                 <div class="post-content th-content">
-                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The more useful pattern is the one this lab builds: Keycloak authenticates the human, Vault maps the human&#39;s groups to policies, and the same Vault instance also removes the static database password that Keycloak itself uses.</p>
-<p>Two directions of trust, one cluster:</p>
+                    <p>A Vault deployment with its own password database is a second identity system nobody asked for. The pattern this lab builds is simpler: Keycloak authenticates the user, Vault accepts that identity over OIDC, and the user&#39;s Keycloak group decides which Vault policies apply.</p>
+<p>One direction of trust, one cluster:</p>
 <ul>
-<li><strong>Humans → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with Keycloak&#39;s group claim deciding whether you are an admin or a developer.</li>
-<li><strong>Vault → PostgreSQL.</strong> Vault holds one privileged connection and hands out five-minute roles instead of a shared password, then drops the role when the lease is revoked.</li>
+<li><strong>Keycloak → Vault.</strong> An OIDC login against the existing <code>lab</code> realm, with the group claim deciding whether you are an admin or a developer.</li>
+<li><strong>Groups → policies.</strong> Vault external groups map claim values to <code>platform-admin</code> and <code>developer</code> policies, so access is decided in one place instead of per role.</li>
 </ul>
 <p>Everything ran on the four-node k3s lab, reusing the Keycloak from the previous article. No new identity provider was created.</p>
 <h2>What gets built</h2>
@@ -515,11 +457,6 @@ kubectl delete namespace vault --ignore-not-found
 <td>Keycloak</td>
 <td><code>26.8.2</code></td>
 <td>realm <code>lab</code>, client <code>vault</code>, groups <code>platform-admins</code> / <code>developers</code></td>
-</tr>
-<tr>
-<td>PostgreSQL</td>
-<td><code>postgres:16-alpine</code></td>
-<td>Keycloak&#39;s database; target of the dynamic credentials</td>
 </tr>
 <tr>
 <td>Ingress</td>
@@ -588,7 +525,7 @@ Invoke-RestMethod -Method Post `
   -Uri &#39;https://keycloak.10.10.10.11.nip.io/admin/realms/lab/clients&#39; `
   -Headers @{ Authorization = &quot;Bearer $token&quot; } -Body $client
 </code></pre>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/08-keycloak-client.png" alt="Keycloak client for Vault with the callback URI"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/08-keycloak-client.png" alt="Keycloak client for Vault with the callback URI"></p>
 <p>The redirect path is the part people get wrong. Vault&#39;s UI callback is <code>/ui/vault/auth/oidc/oidc/callback</code> — the auth mount path appears twice because the first <code>oidc</code> is the mount and the second is the method type.</p>
 <h2>Step 2: deploy Vault</h2>
 <p>Standalone Raft with a Longhorn volume is enough to prove the model. It is not highly available, and that limitation is listed honestly at the end.</p>
@@ -685,91 +622,45 @@ vault write identity/group-alias name=&quot;developers&quot; `
 <p>If <code>full.path</code> were <code>true</code> in the Keycloak mapper, the alias names would need to be <code>/platform-admins</code> and <code>/developers</code>. This mismatch is the most common reason a correctly authenticated user lands with no permissions.</p>
 <h2>Step 5: log in as the admin</h2>
 <p>The Vault login page sends you straight to Keycloak:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/01-vault-login.png" alt="Vault login page with the OIDC method"></p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/02-keycloak-login.png" alt="Keycloak login form"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/01-vault-login.png" alt="Vault login page with the OIDC method"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/02-keycloak-login.png" alt="Keycloak login form"></p>
 <p>Alice is in <code>platform-admins</code>, so she sees both trees:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/03-alice-secrets.png" alt="Both dev and prod visible to the platform admin"></p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/04-alice-prod-secret.png" alt="Production secret readable by the admin"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/03-alice-secrets.png" alt="Both dev and prod visible to the platform admin"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/04-alice-prod-secret.png" alt="Production secret readable by the admin"></p>
 <p>The UI masks values by default, which is why these screenshots are safe to publish at all.</p>
 <h2>Step 6: prove the developer boundary</h2>
 <p>Bob logs in with the same flow and a different group. His token carries exactly two policies:</p>
 <pre><code class="language-json">{ &quot;policies&quot;: [&quot;default&quot;, &quot;developer&quot;] }
 </code></pre>
 <p>The practical consequences are visible in the UI. He cannot list the engine root, so Vault falls back to asking for a path:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/05-bob-root-denied.png" alt="Developer cannot list the secrets engine root"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/05-bob-root-denied.png" alt="Developer cannot list the secrets engine root"></p>
 <p>He can read the development secret:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/06-bob-dev-allowed.png" alt="Developer reads the dev secret"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/06-bob-dev-allowed.png" alt="Developer reads the dev secret"></p>
 <p>And the production path is refused:</p>
-<p><img src="../image/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials/07-bob-prod-denied.png" alt="Developer is denied on the production secret"></p>
+<p><img src="../image/blog/Vault-Keycloak-SSO/07-bob-prod-denied.png" alt="Developer is denied on the production secret"></p>
 <p>The API agrees, which is the check that actually matters:</p>
 <pre><code class="language-powershell">curl.exe -k -H &quot;X-Vault-Token: $BOB_TOKEN&quot; https://vault.10.10.10.11.nip.io/v1/secret/data/prod/db
 </code></pre>
 <pre><code class="language-json">{&quot;errors&quot;:[&quot;1 error occurred:\n\t* permission denied\n\n&quot;]}
 </code></pre>
 <p>A 403 from the API is proof. A hidden menu item is not.</p>
-<h2>Step 7: issue short-lived PostgreSQL credentials</h2>
-<p>The second half of the lab has nothing to do with SSO, and that is the point: the same Vault that authenticates people can also remove the static password Keycloak uses to reach its database.</p>
-<pre><code class="language-powershell">vault secrets enable database
-
-vault write database/config/keycloak `
-  plugin_name=postgresql-database-plugin `
-  connection_url=&quot;postgresql://{{username}}:{{password}}@keycloak-db.keycloak.svc:5432/keycloak?sslmode=disable&quot; `
-  allowed_roles=&quot;keycloak-readonly&quot; `
-  username=&quot;keycloak&quot; password=&quot;$POSTGRES_ADMIN_PASSWORD&quot;
-
-vault write database/roles/keycloak-readonly `
-  db_name=keycloak `
-  creation_statements=&quot;CREATE ROLE \&quot;{{name}}\&quot; WITH LOGIN PASSWORD &#39;{{password}}&#39; VALID UNTIL &#39;{{expiration}}&#39;; GRANT CONNECT ON DATABASE keycloak TO \&quot;{{name}}\&quot;; GRANT USAGE ON SCHEMA public TO \&quot;{{name}}\&quot;; GRANT SELECT ON ALL TABLES IN SCHEMA public TO \&quot;{{name}}\&quot;;&quot; `
-  default_ttl=&quot;5m&quot; max_ttl=&quot;1h&quot;
-</code></pre>
-<p>Reading credentials creates a real PostgreSQL role, not a stored secret:</p>
-<pre><code class="language-powershell">vault read database/creds/keycloak-readonly
-</code></pre>
-<pre><code>Key                Value
----                -----
-lease_id           database/creds/keycloak-readonly/GDqqrl...
-lease_duration     5m
-lease_renewable    true
-password           A1a-...redacted
-username           v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806
-</code></pre>
-<p>The username is generated per lease. The role is named from the Vault entity, the role, and an expiry stamp. Five minutes later it stops working whether or not anyone remembers to clean up.</p>
-<p>Proving it from inside the cluster:</p>
-<pre><code class="language-powershell">kubectl -n keycloak run psql-lease-test --restart=Never --image=postgres:16-alpine `
-  --env=&quot;PGPASSWORD=$LEASE_PASSWORD&quot; -- `
-  psql -h keycloak-db -U $LEASE_USER -d keycloak `
-       -c &quot;select current_user, (select count(*) from client) as clients;&quot;
-</code></pre>
-<pre><code>                  current_user                   | clients
--------------------------------------------------+---------
- v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806 |      15
-</code></pre>
-<p>That is a live query against Keycloak&#39;s own schema, run as a user that did not exist a minute earlier.</p>
-<p>Revoking the lease drops the role immediately:</p>
-<pre><code class="language-powershell">vault lease revoke database/creds/keycloak-readonly/GDqqrl...
-</code></pre>
-<pre><code>psql: error: connection to server at &quot;keycloak-db&quot; (10.43.18.44), port 5432 failed:
-FATAL:  password authentication failed for user &quot;v-root-keycloak-PNllHaWWarkqyk6VlSVv-1794451806&quot;
-</code></pre>
-<p>This is the difference between a secret and a credential. The password never appears in a ConfigMap, a Helm value, or a Git commit, and it stops existing on a timer you control.</p>
 <h2>The failures that cost time</h2>
 <p><strong>Vault&#39;s UI runs OIDC in a popup.</strong> Navigating the same tab to the callback URL produces <code>Cannot read properties of null (reading &#39;postMessage&#39;)</code>, because the callback page posts the token back to <code>window.opener</code>. If you are automating the flow, drive the popup, not the tab.</p>
 <p><strong>A stale SPA route can look like a permission bug.</strong> After logging in as the developer in a tab that previously held the admin session, the production page still rendered its path metadata. The API returned 403 the whole time. Always confirm authorization with a request, not with a page that may be showing cached shell state.</p>
 <p><strong>One Vault page wedged the browser renderer.</strong> The Access → Auth Methods welcome page hung <code>Page.captureScreenshot</code> for every page in that tab until it was closed. Reopening a fresh tab restored screenshots. Worth knowing before concluding the UI is broken.</p>
 <p><strong>Traefik kept logging a missing secret.</strong> Argo CD&#39;s ingress declared <code>argocd-server-tls</code> while the chart did not create it, so the route fell back to the default certificate and Traefik logged an error on every reconcile. Creating the secret from the lab CA fixed both the warning and the certificate consistency.</p>
 <h2>What this lab proves and what it does not</h2>
-<p>Proved: OIDC login with a private CA, group claims reaching Vault as external identities, policy enforcement at the API, dynamic PostgreSQL credentials, and immediate revocation.</p>
-<p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every human login. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
+<p>Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.</p>
+<p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every login, which is the cost of centralising identity. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
 <h2>Production checklist</h2>
 <ul>
 <li>Run Vault with three Raft nodes, auto-unseal through a KMS or transit seal, and a real backup of the Raft snapshots.</li>
 <li>Enable at least one audit device before storing anything that matters.</li>
 <li>Replace the lab CA with a managed certificate and keep <code>oidc_discovery_ca_pem</code> only if the issuer is genuinely private.</li>
-<li>Give the database engine its own least-privilege PostgreSQL account. The <code>keycloak</code> superuser is convenient and wrong.</li>
-<li>Shorten <code>max_ttl</code> and require renewal for long-running consumers; five minutes is a demo value, not a policy.</li>
+<li>Set an explicit <code>ttl</code> on the OIDC role and a shorter one for admin access; identity proves who you are, not how long a session should live.</li>
+<li>Keep the group-to-policy mapping in Vault identity groups only. Duplicating it on each login role guarantees the two copies drift.</li>
 <li>Add <code>bound_claims</code> for tenant or environment so a group alone is not sufficient for production access.</li>
 <li>Store the root token in a break-glass process, not in a file on the workstation.</li>
-<li>Decide whether Keycloak itself should fetch its database password from Vault at startup. That closes the loop, but it also makes Vault a hard dependency of the login path — a trade-off worth documenting before adopting it.</li>
 </ul>
 <h2>Troubleshooting</h2>
 <table>
@@ -801,14 +692,9 @@ FATAL:  password authentication failed for user &quot;v-root-keycloak-PNllHaWWar
 <td>Use the popup flow</td>
 </tr>
 <tr>
-<td>Database config write fails</td>
-<td>Connection string or admin credentials wrong</td>
-<td>Test <code>psql</code> from a pod with the same values</td>
-</tr>
-<tr>
-<td>Lease credentials stop working early</td>
-<td>TTL expired or lease revoked</td>
-<td>Re-read <code>database/creds/...</code></td>
+<td>User lands in the wrong policy</td>
+<td>Keycloak group missing from the token</td>
+<td>Check the group mapper and <code>groups_claim</code></td>
 </tr>
 </tbody></table>
 <h2>Cleanup</h2>
@@ -817,12 +703,11 @@ kubectl delete namespace vault --ignore-not-found
 </code></pre>
 <p>Removing the namespace also removes the Raft volume, which means the unseal keys become useless. Export what you need first.</p>
 <h2>Takeaways</h2>
-<p>SSO is only half of &quot;Vault + Keycloak&quot;. The first half removes a password prompt; the second half removes a password. Keycloak answers who the human is, Vault decides what that identity can read, and the database engine makes sure the answer has an expiry. Keep the group claim and the policy file in sync, verify authorization with the API rather than the UI, and treat unseal keys and root tokens as the break-glass material they are.</p>
+<p>SSO to Vault has three moving parts: Keycloak proves identity, the group claim carries authorization, and Vault policies decide what that group can touch. The part that usually breaks is not the login flow. It is the name of the group on each side. Keep the claim, the alias, and the policy file in sync, verify authorization against the API instead of the UI, and treat unseal keys and root tokens as the break-glass material they are.</p>
 <h2>References</h2>
 <ul>
 <li><a href="https://developer.hashicorp.com/vault/docs/auth/jwt">Vault: OIDC auth method</a></li>
 <li><a href="https://developer.hashicorp.com/vault/docs/secrets/identity">Vault: External groups and aliases</a></li>
-<li><a href="https://developer.hashicorp.com/vault/docs/secrets/databases">Vault: Database secrets engine</a></li>
 <li><a href="https://developer.hashicorp.com/vault/docs/platform/k8s/helm">Vault: Kubernetes Helm chart</a></li>
 <li><a href="https://www.keycloak.org/docs/latest/server_admin/">Keycloak: Server administration guide</a></li>
 </ul>
@@ -833,13 +718,13 @@ kubectl delete namespace vault --ignore-not-found
             <footer class="post-footer">
                 <div class="share-links">
                     <span class="share-label">Share this post:</span>
-                    <a href="https://twitter.com/intent/tweet?text=Vault%20%2B%20Keycloak%3A%20OIDC%20Login%20and%20Dynamic%20Database%20Credentials&url=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                    <a href="https://twitter.com/intent/tweet?text=Vault%20SSO%20with%20Keycloak%3A%20OIDC%20Login%20and%20Group-Based%20Access&url=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
                     </a>
-                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
                     </a>
-                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO-and-Dynamic-DB-Credentials" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Vault-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
                     </a>
                 </div>
@@ -1096,16 +981,16 @@ kubectl delete namespace vault --ignore-not-found
             // Values use JSON.stringify() in the build script, so no quotes needed here
             const langData = {
                 en: {
-                    title: "Vault + Keycloak: OIDC Login and Dynamic Database Credentials",
+                    title: "Vault SSO with Keycloak: OIDC Login and Group-Based Access",
                     date: "November 12, 2026",
-                    readingTime: "12 min read",
-                    tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">postgres</span>",
+                    readingTime: "10 min read",
+                    tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
                 th: {
-                    title: "Vault + Keycloak: OIDC Login and Dynamic Database Credentials",
+                    title: "Vault SSO with Keycloak: OIDC Login and Group-Based Access",
                     date: "November 12, 2026",
-                    readingTime: "12 นาที",
-                    tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>\n<span class=\"tag\">postgres</span>",
+                    readingTime: "10 นาที",
+                    tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
             };
 
