@@ -1061,6 +1061,22 @@ img.loaded {
     color: var(--text);
 }
 
+/* Inline code inside a heading must scale with the heading, not the
+   body copy. Without this, the rules above force 0.85rem and a word
+   like `kubectl` looks like a footnote inside an h2. */
+.post-content :is(h1, h2, h3, h4, h5, h6) code[class*="language-"],
+.post-content :is(h1, h2, h3, h4, h5, h6) code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    font-weight: inherit;
+    line-height: inherit;
+    vertical-align: baseline;
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+}
+
 .post-content pre::-webkit-scrollbar {
     height: 8px;
 }
