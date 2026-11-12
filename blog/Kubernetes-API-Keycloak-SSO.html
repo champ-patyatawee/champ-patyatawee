@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Give every human a Keycloak login for kubectl, map Keycloak groups to Kubernetes RBAC, and prove why one ServiceAccount per user is the wrong tool.">
+    <meta property="og:title" content="Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts — Champ Patyatawee">
+    <meta property="og:description" content="Give every human a Keycloak login for kubectl, map Keycloak groups to Kubernetes RBAC, and prove why one ServiceAccount per user is the wrong tool.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO">
+    <meta property="og:image" content="https://champ.patyatawee.com/image/blog/Kubernetes-API-Keycloak-SSO/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts">
+    <meta name="twitter:description" content="Give every human a Keycloak login for kubectl, map Keycloak groups to Kubernetes RBAC, and prove why one ServiceAccount per user is the wrong tool.">
+    <meta name="twitter:image" content="https://champ.patyatawee.com/image/blog/Kubernetes-API-Keycloak-SSO/og.jpg">
+    <meta name="twitter:image:alt" content="Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts">
+    <!-- Thai alternate meta -->
+    <meta name="description" content="Give every human a Keycloak login for kubectl, map Keycloak groups to Kubernetes RBAC, and prove why one ServiceAccount per user is the wrong tool." lang="th">
+    <meta property="og:locale:alternate" content="th_TH">
+    <link rel="canonical" href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO">
+    <link rel="alternate" hreflang="en" href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO">
+    <link rel="alternate" hreflang="th" href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO">
+    <link rel="alternate" hreflang="x-default" href="https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO">
+    <title>Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts — Champ Patyatawee</title>
+    <link rel="icon" href="../favicon.ico" sizes="any" type="image/x-icon">
+    <link rel="stylesheet" href="style.css?v=8">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <nav>
+        <div class="logo"><a href="../index.html">PATYATAWEE</a></div>
+        <div class="nav-links">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html" class="active">Blog</a>
+            <a href="../resume.html">Resume</a>
+        </div>
+        <div class="nav-buttons">
+            <button class="btn btn-hire-me" id="hire-me-btn">Free Consultation</button>
+        </div>
+        <button class="mobile-menu-btn" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-menu">
+            <a href="../index.html#about">About</a>
+            <a href="../index.html#services">Services</a>
+            <a href="../index.html#customers">Customers</a>
+            <a href="index.html">Blog</a>
+            <a href="../resume.html">Resume</a>
+            <a id="hire-me-mobile-btn">Free Consultation</a>
+        </div>
+
+        <div class="modal-overlay" id="contact-modal">
+            <div class="modal">
+                <button class="modal-close" aria-label="Close modal">
+                    <i data-lucide="x"></i>
+                </button>
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modal-title">Get In Touch</h2>
+                </div>
+                <div class="contact-info">
+                    <div class="modal-actions">
+                        <a href="https://line.me/ti/p/~champ.patyatawee" target="_blank" rel="noopener" class="modal-action modal-action-line">
+                            <i data-lucide="message-circle"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-line-label">Add Line</span>
+                                <span class="modal-action-sub">champ.patyatawee</span>
+                            </span>
+                        </a>
+                        <a href="https://m.me/ChampPatyataweeOfficial" target="_blank" rel="noopener" class="modal-action modal-action-fb">
+                            <i data-lucide="facebook"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-fb-label">Chat on Facebook</span>
+                                <span class="modal-action-sub">Champ Patyatawee Official</span>
+                            </span>
+                        </a>
+                        <a href="mailto:champ.patyatawee@gmail.com" class="modal-action modal-action-email">
+                            <i data-lucide="mail"></i>
+                            <span class="modal-action-text">
+                                <span class="modal-action-label" id="modal-email-label">Email</span>
+                                <span class="modal-action-sub">champ.patyatawee@gmail.com</span>
+                            </span>
+                        </a>
+                    </div>
+                    <div class="social-links">
+                        <a href="https://github.com/champ-patyatawee" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                        </a>
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" class="social-link" target="_blank">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="blog-post-container">
+        <article class="blog-post">
+            <a href="index.html" class="back-link"><i data-lucide="arrow-left" class="back-icon"></i> Back to Blog</a>
+            
+            <header class="post-header">
+                <h1 class="post-title" id="post-title">Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts</h1>
+                <div class="post-meta">
+                    <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">13 min read</span></span>
+                </div>
+                <div class="post-tags" id="post-tags">
+                    <span class="tag">kubernetes</span>
+<span class="tag">keycloak</span>
+<span class="tag">oidc</span>
+<span class="tag">sso</span>
+<span class="tag">rbac</span>
+<span class="tag">k3s</span>
+                </div>
+
+                <!-- Language tabs -->
+                <div class="lang-tabs" id="lang-tabs" data-has-both="false" data-has-en="true" data-has-th="false">
+                    <button class="lang-tab active" data-lang="en">English</button>
+                    <button class="lang-tab" data-lang="th">ไทย</button>
+                </div>
+            </header>
+
+            <!-- English content -->
+            <div id="content-en" class="lang-content active">
+                <div class="post-content en-content">
+                    <p>The kubeconfig that k3s writes is a cluster-admin credential. It works, it is convenient, and it is exactly the credential you should not copy to every developer. One file, one identity, no per-person revocation, and an audit log that only ever says <code>system:admin</code>.</p>
+<p>The question that usually follows is: <em>can Keycloak create a Kubernetes ServiceAccount for each user?</em> Short answer: no. Keycloak is an OIDC provider. It signs identity tokens for humans; it does not create objects in the Kubernetes API.</p>
+<p>What Keycloak can do is better. The API server authenticates the human directly against Keycloak, reads the user and group claims, and hands that identity to RBAC. The user gets a normal <code>kubectl</code>, a browser login, and only the permissions of their Keycloak groups. No ServiceAccount, no long-lived token in a kubeconfig.</p>
+<p>This lab wires that chain on a four-node k3s cluster and then attacks it to show where the boundary actually is.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>API server OIDC, Traefik ingress</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>kubernetes</code></td>
+</tr>
+<tr>
+<td>kubelogin</td>
+<td><code>v1.36.4</code></td>
+<td>kubectl exec credential plugin</td>
+</tr>
+<tr>
+<td>kubectl</td>
+<td><code>v1.36.1</code></td>
+<td>client on Windows</td>
+</tr>
+<tr>
+<td>Namespace</td>
+<td><code>guestbook</code></td>
+<td>developer-writable namespace</td>
+</tr>
+<tr>
+<td>Groups</td>
+<td><code>platform-admins</code>, <code>developers</code></td>
+<td>mapped to <code>cluster-admin</code> and <code>edit</code></td>
+</tr>
+</tbody></table>
+<p>The cluster already had Keycloak, Argo CD, Vault, Grafana, and Longhorn from earlier labs. This article reuses the <code>lab</code> realm and the existing <code>alice</code> and <code>bob</code> users. No second identity provider.</p>
+<h2>The trust chain</h2>
+<p>There are two separate decisions, and mixing them up is how SSO ends up granting too much.</p>
+<ol>
+<li><strong>Authentication.</strong> <code>kubelogin</code> opens a browser, the user signs in to Keycloak, and Keycloak returns an ID token. The token contains <code>preferred_username</code> and a <code>groups</code> claim.</li>
+<li><strong>Verification.</strong> The kube-apiserver checks the token signature against Keycloak&#39;s JWKS, checks that the issuer is exactly the configured URL, that the audience contains the client ID, and that the token has not expired. It then builds a Kubernetes user such as <code>oidc:bob</code> with groups such as <code>oidc:developers</code>.</li>
+<li><strong>Authorization.</strong> RBAC decides what <code>oidc:developers</code> can do. Keycloak never grants Kubernetes permissions by itself.</li>
+</ol>
+<p>The prefix in <code>oidc:</code> is not decoration. Without it, a Keycloak group literally named <code>system:masters</code> would become the Kubernetes <code>system:masters</code> group, which is cluster-admin. The prefix keeps the identity provider&#39;s namespace separate from Kubernetes&#39; built-in one.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>The <code>k3s-lab</code> context from <code>C:\Users\C\.kube\k3s-lab.yaml</code>. Every command below passes <code>--kubeconfig</code> explicitly.</li>
+<li>Admin access to the <code>lab</code> realm in Keycloak.</li>
+<li>The lab CA that signed the Keycloak ingress certificate.</li>
+<li>A namespace where a developer should be able to deploy. This lab uses <code>guestbook</code>.</li>
+</ul>
+<p>Confirm the cluster before changing anything:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes -o wide
+</code></pre>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION        INTERNAL-IP
+k3s-agent-0   Ready    &lt;none&gt;          19h   v1.36.5+k3s1   10.10.10.12
+k3s-agent-1   Ready    &lt;none&gt;          18h   v1.36.5+k3s1   10.10.10.13
+k3s-agent-2   Ready    &lt;none&gt;          18h   v1.36.5+k3s1   10.10.10.14
+k3s-server    Ready    control-plane   19h   v1.36.5+k3s1   10.10.10.11
+</code></pre>
+<h2>Step 1: Create the <code>kubernetes</code> client in Keycloak</h2>
+<p>The client is public, because <code>kubectl</code> runs on the user&#39;s machine and there is no safe place to embed a client secret. Security comes from PKCE and short-lived tokens, not from a shared secret in a kubeconfig.</p>
+<p>The important settings:</p>
+<ul>
+<li>Client ID <code>kubernetes</code>, public client, standard flow enabled.</li>
+<li>PKCE required, method <code>S256</code>.</li>
+<li>Redirect URIs <code>http://localhost:8000/*</code> and <code>http://localhost:18000/*</code>, the ports kubelogin listens on.</li>
+<li>A group membership mapper that writes <code>groups</code> into the ID token, with full path <strong>off</strong>.</li>
+<li>An audience mapper that adds <code>kubernetes</code> to the access token.</li>
+</ul>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/01-keycloak-client.png" alt="Keycloak client capability settings: public client, standard flow, device grant, PKCE S256"></p>
+<p>The group mapper is the one that decides whether RBAC can match anything. Keycloak can emit either <code>developers</code> or <code>/developers</code>. Kubernetes RBAC will not match <code>oidc:/developers</code> if the binding says <code>oidc:developers</code>, so turn &quot;Full group path&quot; off.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/02-keycloak-mappers.png" alt="The two token mappers on the kubernetes-dedicated scope"></p>
+<p>The equivalent Admin API calls:</p>
+<pre><code class="language-powershell">$kc = &quot;https://keycloak.10.10.10.11.nip.io&quot;
+$token = (Invoke-RestMethod -SkipCertificateCheck -Method Post `
+  -Uri &quot;$kc/realms/master/protocol/openid-connect/token&quot; `
+  -Body @{ client_id = &quot;admin-cli&quot;; username = &quot;admin&quot;; password = $adminPassword; grant_type = &quot;password&quot; }).access_token
+$headers = @{ Authorization = &quot;Bearer $token&quot;; &quot;Content-Type&quot; = &quot;application/json&quot; }
+
+$client = @{
+  clientId = &quot;kubernetes&quot;; publicClient = $true; standardFlowEnabled = $true
+  directAccessGrantsEnabled = $false; serviceAccountsEnabled = $false
+  redirectUris = @(&quot;http://localhost:8000/*&quot;, &quot;http://localhost:18000/*&quot;)
+  webOrigins = @(&quot;+&quot;)
+  attributes = @{
+    &quot;pkce.code.challenge.method&quot; = &quot;S256&quot;
+    &quot;oauth2.device.authorization.grant.enabled&quot; = &quot;true&quot;
+  }
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod -SkipCertificateCheck -Headers $headers -Method Post `
+  -Uri &quot;$kc/admin/realms/lab/clients&quot; -Body $client
+</code></pre>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;groups&quot;,
+  &quot;protocol&quot;: &quot;openid-connect&quot;,
+  &quot;protocolMapper&quot;: &quot;oidc-group-membership-mapper&quot;,
+  &quot;config&quot;: {
+    &quot;claim.name&quot;: &quot;groups&quot;,
+    &quot;full.path&quot;: &quot;false&quot;,
+    &quot;id.token.claim&quot;: &quot;true&quot;,
+    &quot;access.token.claim&quot;: &quot;true&quot;,
+    &quot;userinfo.token.claim&quot;: &quot;true&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;kubernetes-audience&quot;,
+  &quot;protocol&quot;: &quot;openid-connect&quot;,
+  &quot;protocolMapper&quot;: &quot;oidc-audience-mapper&quot;,
+  &quot;config&quot;: {
+    &quot;included.custom.audience&quot;: &quot;kubernetes&quot;,
+    &quot;id.token.claim&quot;: &quot;false&quot;,
+    &quot;access.token.claim&quot;: &quot;true&quot;
+  }
+}
+</code></pre>
+<p>The audience mapper matters if you ever present the access token instead of the ID token. Keycloak&#39;s default access token audience is <code>account</code>, not your client ID, and the API server will reject it.</p>
+<h2>Step 2: Point the API server at Keycloak</h2>
+<p>k3s accepts API server flags through <code>kube-apiserver-arg</code>. The whole file on the server is:</p>
+<pre><code class="language-yaml">kube-apiserver-arg:
+  - &quot;oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab&quot;
+  - &quot;oidc-client-id=kubernetes&quot;
+  - &quot;oidc-username-claim=preferred_username&quot;
+  - &quot;oidc-username-prefix=oidc:&quot;
+  - &quot;oidc-groups-claim=groups&quot;
+  - &quot;oidc-groups-prefix=oidc:&quot;
+  - &quot;oidc-ca-file=/var/lib/rancher/k3s/server/tls/oidc-ca.crt&quot;
+  - &quot;oidc-signing-algs=RS256&quot;
+</code></pre>
+<p>Two details are easy to miss.</p>
+<p>The issuer URL must be the exact URL the browser and the API server both use. If Keycloak advertises a different <code>issuer</code> in its discovery document, every token is rejected. Check it before restarting:</p>
+<pre><code class="language-powershell">curl.exe -sk https://keycloak.10.10.10.11.nip.io/realms/lab/.well-known/openid-configuration
+</code></pre>
+<pre><code class="language-text">&quot;issuer&quot;: &quot;https://keycloak.10.10.10.11.nip.io/realms/lab&quot;
+</code></pre>
+<p>The API server must trust the CA that signed that HTTPS endpoint. The lab certificate is issued by a private CA, so point <code>oidc-ca-file</code> at it. The <code>lab-tls</code> secret contains a two-certificate chain; the second certificate is the CA:</p>
+<pre><code class="language-powershell">$b64 = kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n kube-system `
+  get secret lab-tls -o jsonpath=&#39;{.data.tls\.crt}&#39;
+$pem = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64))
+$m = [regex]::Matches($pem, &#39;-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----&#39;)
+$m[$m.Count - 1].Value | Set-Content -Encoding ascii C:\Users\C\.kube\lab-ca.crt
+</code></pre>
+<p>Copy that file to <code>/var/lib/rancher/k3s/server/tls/oidc-ca.crt</code> on the server, then restart k3s. On this single-server lab that is a short API outage, so keep the client-certificate kubeconfig as break-glass.</p>
+<pre><code class="language-powershell">ssh -i C:\Users\C\.ssh\id_ed25519 ubuntu@10.10.10.11 &quot;sudo systemctl restart k3s&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get --raw /readyz
+</code></pre>
+<pre><code class="language-text">ok
+</code></pre>
+<p>The old <code>system:admin</code> path still works:</p>
+<pre><code class="language-text">Username   system:admin
+Groups     [system:masters system:authenticated]
+</code></pre>
+<p>If both OIDC and the client certificate work, you can recover from a Keycloak outage without locking yourself out.</p>
+<h2>Step 3: Give the user a <code>kubectl</code> that logs in</h2>
+<p>kubelogin is the exec credential plugin. Install a pinned release and verify the checksum before putting it on <code>PATH</code>:</p>
+<pre><code class="language-powershell">Invoke-WebRequest -UseBasicParsing `
+  https://github.com/int128/kubelogin/releases/download/v1.36.4/kubelogin_windows_amd64.zip `
+  -OutFile $env:TEMP\kubelogin.zip
+(Get-FileHash $env:TEMP\kubelogin.zip -Algorithm SHA256).Hash
+Expand-Archive $env:TEMP\kubelogin.zip $env:TEMP\kubelogin
+Copy-Item $env:TEMP\kubelogin\kubelogin.exe C:\Users\C\bin\kubelogin.exe
+</code></pre>
+<p>The kubeconfig is the stock cluster entry plus an <code>exec</code> block:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Config
+clusters:
+  - name: k3s-lab
+    cluster:
+      server: https://10.10.10.11:6443
+      certificate-authority-data: &lt;same value as k3s-lab.yaml&gt;
+users:
+  - name: oidc
+    user:
+      exec:
+        apiVersion: client.authentication.k8s.io/v1
+        command: C:\Users\C\bin\kubelogin.exe
+        args:
+          - get-token
+          - --oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab
+          - --oidc-client-id=kubernetes
+          - --certificate-authority=C:\Users\C\.kube\lab-ca.crt
+          - --grant-type=authcode
+          - --oidc-pkce-method=S256
+          - --skip-open-browser
+        interactiveMode: IfAvailable
+contexts:
+  - name: k3s-lab-oidc
+    context:
+      cluster: k3s-lab
+      user: oidc
+current-context: k3s-lab-oidc
+</code></pre>
+<p><code>--skip-open-browser</code> prints <code>http://localhost:8000/</code> instead of opening a browser. The lab used that so the login page could be driven in BrowserOS. On a normal desktop, drop the flag and kubelogin opens the browser itself.</p>
+<p>The token cache is on disk under <code>~/.kube/cache/oidc-login</code>. The cache key includes the plugin arguments, not just the issuer and client. Changing <code>--grant-type</code> or <code>--oidc-pkce-method</code> forces a second login even for the same user. That is expected; it is not a broken cache.</p>
+<h2>Step 4: Map groups to RBAC</h2>
+<p>Two bindings make the point. <code>platform-admins</code> gets cluster-admin in this lab. <code>developers</code> gets <code>edit</code> only in <code>guestbook</code>.</p>
+<pre><code class="language-yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-platform-admins
+subjects:
+  - kind: Group
+    name: oidc:platform-admins
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-developers-edit
+  namespace: guestbook
+subjects:
+  - kind: Group
+    name: oidc:developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+</code></pre>
+<p><code>edit</code> is a ClusterRole. A RoleBinding may reference a ClusterRole, but the <code>roleRef.kind</code> must say <code>ClusterRole</code>. Pointing it at a namespaced Role named <code>edit</code> fails with <code>role.rbac.authorization.k8s.io &quot;edit&quot; not found</code>.</p>
+<p>Check the policy before involving a browser at all, by impersonating the identities:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i create pods -n guestbook `
+  --as=oidc:alice --as-group=oidc:platform-admins
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i create pods -n guestbook `
+  --as=oidc:bob --as-group=oidc:developers
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i delete nodes `
+  --as=oidc:bob --as-group=oidc:developers
+</code></pre>
+<pre><code class="language-text">yes
+yes
+no
+</code></pre>
+<p>Impersonation proves the RBAC graph. It does not prove that Keycloak issues those groups. The next step does.</p>
+<h2>Step 5: Log in as a real user</h2>
+<p>The first attempt used the device-code grant and failed twice, in a useful order:</p>
+<pre><code class="language-text">unauthorized_client (Client is not allowed to initiate OAuth 2.0 Device Authorization Grant)
+</code></pre>
+<p>after enabling the grant on the client:</p>
+<pre><code class="language-text">invalid_request (Missing parameter: code_challenge_method)
+</code></pre>
+<p>Keycloak enforces PKCE on this client, and kubelogin&#39;s device-code request does not carry a PKCE challenge. The working path is the authorization-code flow with PKCE, which is also the better choice for a desktop user. <code>kubectl</code> prints a local URL, the browser completes the login, and the callback lands on <code>localhost:8000</code>.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/04-keycloak-kubernetes-session.png" alt="The active Keycloak session shows bob using the kubernetes client"></p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth whoami
+</code></pre>
+<pre><code class="language-text">Username   oidc:bob
+Groups     [oidc:developers system:authenticated]
+</code></pre>
+<p>That is the whole point. The audit identity is the human, not a shared admin and not a ServiceAccount. Now the same token goes through RBAC:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n guestbook get pods
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n guestbook auth can-i create deployments
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n kube-system auth can-i get secrets
+</code></pre>
+<pre><code class="language-text">NAME                            READY   STATUS    RESTARTS   AGE
+guestbook-ui-5d6468fd55-pmpjm   1/1     Running   0          12h
+
+yes
+no
+no
+</code></pre>
+<p>A real request to the forbidden resource produces the useful error:</p>
+<pre><code class="language-text">Error from server (Forbidden): nodes is forbidden: User &quot;oidc:bob&quot; cannot list
+resource &quot;nodes&quot; in API group &quot;&quot; at the cluster scope
+</code></pre>
+<h2>Step 6: Try to spoof <code>system:masters</code></h2>
+<p>A group mapper without a prefix is a privilege-escalation bug waiting for someone to create a group with the right name. To prove the prefix works, add <code>bob</code> to a Keycloak group literally named <code>system:masters</code>.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/03-keycloak-bob-groups.png" alt="bob is a member of developers and system:masters in Keycloak"></p>
+<p>After a fresh login (the token cache still holds the old groups, so clear it or use a new cache directory), the token contains the group, but the API server prefixes it:</p>
+<pre><code class="language-text">Username   oidc:bob
+Groups     [oidc:developers oidc:system:masters system:authenticated]
+</code></pre>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i &#39;*&#39; &#39;*&#39;
+</code></pre>
+<pre><code class="language-text">no
+no
+</code></pre>
+<p>The counterfactual makes the boundary obvious. If the group arrived unprefixed, the same user would be cluster-admin:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i delete nodes `
+  --as=oidc:bob --as-group=system:masters
+</code></pre>
+<pre><code class="language-text">yes
+</code></pre>
+<p>This is why <code>--oidc-groups-prefix=oidc:</code> is mandatory, not cosmetic.</p>
+<h2>Can Keycloak create a ServiceAccount per user?</h2>
+<p>No, and the token claims show why the two identities cannot be substituted for each other. Mint a normal ServiceAccount token and decode its payload:</p>
+<pre><code class="language-powershell">$jwt = kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n guestbook `
+  create token default --duration=10m
+</code></pre>
+<pre><code class="language-text">sa_iss=https://kubernetes.default.svc.cluster.local
+sa_sub=system:serviceaccount:guestbook:default
+sa_aud=https://kubernetes.default.svc.cluster.local k3s
+</code></pre>
+<p>Compare that with the Keycloak identity: the issuer is the <code>lab</code> realm URL, the subject is <code>bob</code>, and the groups come from the realm. The ServiceAccount token is signed by the API server&#39;s service-account key; the Keycloak token is signed by Keycloak. Neither side can mint the other&#39;s token. Keycloak also has no Kubernetes API client, so it cannot create the <code>ServiceAccount</code> object in the first place.</p>
+<p>If you still want one ServiceAccount per human, you have to build and operate a sync controller:</p>
+<ol>
+<li>Read users (or a group) from the Keycloak Admin API.</li>
+<li>Create a <code>ServiceAccount</code> and a <code>RoleBinding</code> per user.</li>
+<li>Mint tokens through the TokenRequest API, because Kubernetes 1.24+ no longer auto-creates permanent token Secrets.</li>
+<li>Rotate or reissue those tokens before they expire, and delete the ServiceAccount to revoke access.</li>
+<li>Accept that audit logs now say <code>system:serviceaccount:...</code> instead of the human, and that a token copied to a laptop bypasses the Keycloak login and MFA.</li>
+</ol>
+<p>That is a lot of custom control-plane code to reach a worse place than OIDC. ServiceAccounts are for workloads. Humans already have a first-class RBAC subject: <code>User</code> and <code>Group</code>.</p>
+<p>If the real requirement is short-lived per-user credentials for non-kubectl clients, look at Pinniped or Teleport rather than a home-grown ServiceAccount factory.</p>
+<h2>Traps worth remembering</h2>
+<ul>
+<li><strong>Device flow and PKCE disagree.</strong> Keycloak can enforce PKCE while kubelogin&#39;s device-code request omits <code>code_challenge_method</code>. Use the authorization-code flow, or do not enable the device grant.</li>
+<li><strong>Full group path.</strong> <code>/developers</code> and <code>developers</code> are different RBAC subjects. Turn the path off in the mapper.</li>
+<li><strong>Access-token audience.</strong> Keycloak defaults to <code>account</code>. Add the audience mapper, or rely on the ID token.</li>
+<li><strong>Group prefix.</strong> Without <code>oidc:</code>, a Keycloak group can collide with <code>system:masters</code>.</li>
+<li><strong>Immutable <code>roleRef</code>.</strong> A RoleBinding&#39;s <code>roleRef</code> cannot be edited in place. Delete and recreate it.</li>
+<li><strong>Multi-document YAML.</strong> Two manifests concatenated without <code>---</code> are not two manifests. <code>kubectl apply</code> will not do what you expect.</li>
+<li><strong>Issuer reachability and trust.</strong> The API server fetches discovery over HTTPS using its own CA bundle. Test with <code>curl --cacert</code> from the server before restarting k3s.</li>
+<li><strong>One server means one restart.</strong> A control-plane restart is an API outage. Keep the break-glass kubeconfig.</li>
+</ul>
+<h2>Security boundaries and production gaps</h2>
+<p>This is a lab, and the shortcuts are visible:</p>
+<ul>
+<li><code>platform-admins</code> is bound to <code>cluster-admin</code>. In production, bind a scoped ClusterRole and keep cluster-admin for a break-glass group.</li>
+<li>Keycloak runs as a single pod with a single Postgres pod. Production needs HA, backups, and a tested restore.</li>
+<li>The lab CA is private and the ingress certificate is not publicly trusted. Production uses a real CA and rotates it before <code>oidc-ca-file</code> expires.</li>
+<li>JWTs are stateless. Disabling a user in Keycloak stops new logins; an already-issued token remains valid until <code>exp</code> (five minutes by default in Keycloak, but check your realm settings). Short token lifetimes are the revocation mechanism.</li>
+<li>The client-certificate kubeconfig still exists. Protect it like a root credential, and do not ship it to users.</li>
+<li>Enable API server audit logging and ship it somewhere durable. The value of OIDC is that the audit entry says <code>oidc:bob</code>, which only helps if you keep the log.</li>
+<li>Enforce MFA in Keycloak for the groups that can reach the cluster. OIDC alone does not require a second factor.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the lab bindings and the test group membership first, then the client and the API server configuration:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete clusterrolebinding oidc-platform-admins
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n guestbook delete rolebinding oidc-developers-edit
+</code></pre>
+<p>Remove <code>bob</code> from the <code>system:masters</code> group in Keycloak, delete the <code>kubernetes</code> client, and remove the <code>kube-apiserver-arg</code> block from <code>/etc/rancher/k3s/config.yaml</code>. Restart k3s, confirm <code>/readyz</code>, and delete the local OIDC kubeconfigs and <code>~/.kube/cache/oidc-login</code>.</p>
+<h2>References</h2>
+<ul>
+<li>Kubernetes, <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating with OIDC</a></li>
+<li>Kubernetes, <a href="https://kubernetes.io/docs/concepts/security/service-accounts/">Service Accounts</a></li>
+<li>k3s, <a href="https://docs.k3s.io/cli/server">Server configuration</a></li>
+<li>int128, <a href="https://github.com/int128/kubelogin">kubelogin</a></li>
+<li>Keycloak, <a href="https://www.keycloak.org/docs/latest/server_admin/">Server Administration Guide</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <!-- Thai content -->
+            <div id="content-th" class="lang-content">
+                <div class="post-content th-content">
+                    <p>The kubeconfig that k3s writes is a cluster-admin credential. It works, it is convenient, and it is exactly the credential you should not copy to every developer. One file, one identity, no per-person revocation, and an audit log that only ever says <code>system:admin</code>.</p>
+<p>The question that usually follows is: <em>can Keycloak create a Kubernetes ServiceAccount for each user?</em> Short answer: no. Keycloak is an OIDC provider. It signs identity tokens for humans; it does not create objects in the Kubernetes API.</p>
+<p>What Keycloak can do is better. The API server authenticates the human directly against Keycloak, reads the user and group claims, and hands that identity to RBAC. The user gets a normal <code>kubectl</code>, a browser login, and only the permissions of their Keycloak groups. No ServiceAccount, no long-lived token in a kubeconfig.</p>
+<p>This lab wires that chain on a four-node k3s cluster and then attacks it to show where the boundary actually is.</p>
+<h2>What gets built</h2>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Version</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kubernetes</td>
+<td>k3s <code>v1.36.5+k3s1</code></td>
+<td>API server OIDC, Traefik ingress</td>
+</tr>
+<tr>
+<td>Keycloak</td>
+<td><code>26.8.2</code></td>
+<td>realm <code>lab</code>, client <code>kubernetes</code></td>
+</tr>
+<tr>
+<td>kubelogin</td>
+<td><code>v1.36.4</code></td>
+<td>kubectl exec credential plugin</td>
+</tr>
+<tr>
+<td>kubectl</td>
+<td><code>v1.36.1</code></td>
+<td>client on Windows</td>
+</tr>
+<tr>
+<td>Namespace</td>
+<td><code>guestbook</code></td>
+<td>developer-writable namespace</td>
+</tr>
+<tr>
+<td>Groups</td>
+<td><code>platform-admins</code>, <code>developers</code></td>
+<td>mapped to <code>cluster-admin</code> and <code>edit</code></td>
+</tr>
+</tbody></table>
+<p>The cluster already had Keycloak, Argo CD, Vault, Grafana, and Longhorn from earlier labs. This article reuses the <code>lab</code> realm and the existing <code>alice</code> and <code>bob</code> users. No second identity provider.</p>
+<h2>The trust chain</h2>
+<p>There are two separate decisions, and mixing them up is how SSO ends up granting too much.</p>
+<ol>
+<li><strong>Authentication.</strong> <code>kubelogin</code> opens a browser, the user signs in to Keycloak, and Keycloak returns an ID token. The token contains <code>preferred_username</code> and a <code>groups</code> claim.</li>
+<li><strong>Verification.</strong> The kube-apiserver checks the token signature against Keycloak&#39;s JWKS, checks that the issuer is exactly the configured URL, that the audience contains the client ID, and that the token has not expired. It then builds a Kubernetes user such as <code>oidc:bob</code> with groups such as <code>oidc:developers</code>.</li>
+<li><strong>Authorization.</strong> RBAC decides what <code>oidc:developers</code> can do. Keycloak never grants Kubernetes permissions by itself.</li>
+</ol>
+<p>The prefix in <code>oidc:</code> is not decoration. Without it, a Keycloak group literally named <code>system:masters</code> would become the Kubernetes <code>system:masters</code> group, which is cluster-admin. The prefix keeps the identity provider&#39;s namespace separate from Kubernetes&#39; built-in one.</p>
+<h2>Prerequisites</h2>
+<ul>
+<li>The <code>k3s-lab</code> context from <code>C:\Users\C\.kube\k3s-lab.yaml</code>. Every command below passes <code>--kubeconfig</code> explicitly.</li>
+<li>Admin access to the <code>lab</code> realm in Keycloak.</li>
+<li>The lab CA that signed the Keycloak ingress certificate.</li>
+<li>A namespace where a developer should be able to deploy. This lab uses <code>guestbook</code>.</li>
+</ul>
+<p>Confirm the cluster before changing anything:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get nodes -o wide
+</code></pre>
+<pre><code class="language-text">NAME          STATUS   ROLES           AGE   VERSION        INTERNAL-IP
+k3s-agent-0   Ready    &lt;none&gt;          19h   v1.36.5+k3s1   10.10.10.12
+k3s-agent-1   Ready    &lt;none&gt;          18h   v1.36.5+k3s1   10.10.10.13
+k3s-agent-2   Ready    &lt;none&gt;          18h   v1.36.5+k3s1   10.10.10.14
+k3s-server    Ready    control-plane   19h   v1.36.5+k3s1   10.10.10.11
+</code></pre>
+<h2>Step 1: Create the <code>kubernetes</code> client in Keycloak</h2>
+<p>The client is public, because <code>kubectl</code> runs on the user&#39;s machine and there is no safe place to embed a client secret. Security comes from PKCE and short-lived tokens, not from a shared secret in a kubeconfig.</p>
+<p>The important settings:</p>
+<ul>
+<li>Client ID <code>kubernetes</code>, public client, standard flow enabled.</li>
+<li>PKCE required, method <code>S256</code>.</li>
+<li>Redirect URIs <code>http://localhost:8000/*</code> and <code>http://localhost:18000/*</code>, the ports kubelogin listens on.</li>
+<li>A group membership mapper that writes <code>groups</code> into the ID token, with full path <strong>off</strong>.</li>
+<li>An audience mapper that adds <code>kubernetes</code> to the access token.</li>
+</ul>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/01-keycloak-client.png" alt="Keycloak client capability settings: public client, standard flow, device grant, PKCE S256"></p>
+<p>The group mapper is the one that decides whether RBAC can match anything. Keycloak can emit either <code>developers</code> or <code>/developers</code>. Kubernetes RBAC will not match <code>oidc:/developers</code> if the binding says <code>oidc:developers</code>, so turn &quot;Full group path&quot; off.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/02-keycloak-mappers.png" alt="The two token mappers on the kubernetes-dedicated scope"></p>
+<p>The equivalent Admin API calls:</p>
+<pre><code class="language-powershell">$kc = &quot;https://keycloak.10.10.10.11.nip.io&quot;
+$token = (Invoke-RestMethod -SkipCertificateCheck -Method Post `
+  -Uri &quot;$kc/realms/master/protocol/openid-connect/token&quot; `
+  -Body @{ client_id = &quot;admin-cli&quot;; username = &quot;admin&quot;; password = $adminPassword; grant_type = &quot;password&quot; }).access_token
+$headers = @{ Authorization = &quot;Bearer $token&quot;; &quot;Content-Type&quot; = &quot;application/json&quot; }
+
+$client = @{
+  clientId = &quot;kubernetes&quot;; publicClient = $true; standardFlowEnabled = $true
+  directAccessGrantsEnabled = $false; serviceAccountsEnabled = $false
+  redirectUris = @(&quot;http://localhost:8000/*&quot;, &quot;http://localhost:18000/*&quot;)
+  webOrigins = @(&quot;+&quot;)
+  attributes = @{
+    &quot;pkce.code.challenge.method&quot; = &quot;S256&quot;
+    &quot;oauth2.device.authorization.grant.enabled&quot; = &quot;true&quot;
+  }
+} | ConvertTo-Json -Depth 5
+Invoke-RestMethod -SkipCertificateCheck -Headers $headers -Method Post `
+  -Uri &quot;$kc/admin/realms/lab/clients&quot; -Body $client
+</code></pre>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;groups&quot;,
+  &quot;protocol&quot;: &quot;openid-connect&quot;,
+  &quot;protocolMapper&quot;: &quot;oidc-group-membership-mapper&quot;,
+  &quot;config&quot;: {
+    &quot;claim.name&quot;: &quot;groups&quot;,
+    &quot;full.path&quot;: &quot;false&quot;,
+    &quot;id.token.claim&quot;: &quot;true&quot;,
+    &quot;access.token.claim&quot;: &quot;true&quot;,
+    &quot;userinfo.token.claim&quot;: &quot;true&quot;
+  }
+}
+</code></pre>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;kubernetes-audience&quot;,
+  &quot;protocol&quot;: &quot;openid-connect&quot;,
+  &quot;protocolMapper&quot;: &quot;oidc-audience-mapper&quot;,
+  &quot;config&quot;: {
+    &quot;included.custom.audience&quot;: &quot;kubernetes&quot;,
+    &quot;id.token.claim&quot;: &quot;false&quot;,
+    &quot;access.token.claim&quot;: &quot;true&quot;
+  }
+}
+</code></pre>
+<p>The audience mapper matters if you ever present the access token instead of the ID token. Keycloak&#39;s default access token audience is <code>account</code>, not your client ID, and the API server will reject it.</p>
+<h2>Step 2: Point the API server at Keycloak</h2>
+<p>k3s accepts API server flags through <code>kube-apiserver-arg</code>. The whole file on the server is:</p>
+<pre><code class="language-yaml">kube-apiserver-arg:
+  - &quot;oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab&quot;
+  - &quot;oidc-client-id=kubernetes&quot;
+  - &quot;oidc-username-claim=preferred_username&quot;
+  - &quot;oidc-username-prefix=oidc:&quot;
+  - &quot;oidc-groups-claim=groups&quot;
+  - &quot;oidc-groups-prefix=oidc:&quot;
+  - &quot;oidc-ca-file=/var/lib/rancher/k3s/server/tls/oidc-ca.crt&quot;
+  - &quot;oidc-signing-algs=RS256&quot;
+</code></pre>
+<p>Two details are easy to miss.</p>
+<p>The issuer URL must be the exact URL the browser and the API server both use. If Keycloak advertises a different <code>issuer</code> in its discovery document, every token is rejected. Check it before restarting:</p>
+<pre><code class="language-powershell">curl.exe -sk https://keycloak.10.10.10.11.nip.io/realms/lab/.well-known/openid-configuration
+</code></pre>
+<pre><code class="language-text">&quot;issuer&quot;: &quot;https://keycloak.10.10.10.11.nip.io/realms/lab&quot;
+</code></pre>
+<p>The API server must trust the CA that signed that HTTPS endpoint. The lab certificate is issued by a private CA, so point <code>oidc-ca-file</code> at it. The <code>lab-tls</code> secret contains a two-certificate chain; the second certificate is the CA:</p>
+<pre><code class="language-powershell">$b64 = kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n kube-system `
+  get secret lab-tls -o jsonpath=&#39;{.data.tls\.crt}&#39;
+$pem = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($b64))
+$m = [regex]::Matches($pem, &#39;-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----&#39;)
+$m[$m.Count - 1].Value | Set-Content -Encoding ascii C:\Users\C\.kube\lab-ca.crt
+</code></pre>
+<p>Copy that file to <code>/var/lib/rancher/k3s/server/tls/oidc-ca.crt</code> on the server, then restart k3s. On this single-server lab that is a short API outage, so keep the client-certificate kubeconfig as break-glass.</p>
+<pre><code class="language-powershell">ssh -i C:\Users\C\.ssh\id_ed25519 ubuntu@10.10.10.11 &quot;sudo systemctl restart k3s&quot;
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml get --raw /readyz
+</code></pre>
+<pre><code class="language-text">ok
+</code></pre>
+<p>The old <code>system:admin</code> path still works:</p>
+<pre><code class="language-text">Username   system:admin
+Groups     [system:masters system:authenticated]
+</code></pre>
+<p>If both OIDC and the client certificate work, you can recover from a Keycloak outage without locking yourself out.</p>
+<h2>Step 3: Give the user a <code>kubectl</code> that logs in</h2>
+<p>kubelogin is the exec credential plugin. Install a pinned release and verify the checksum before putting it on <code>PATH</code>:</p>
+<pre><code class="language-powershell">Invoke-WebRequest -UseBasicParsing `
+  https://github.com/int128/kubelogin/releases/download/v1.36.4/kubelogin_windows_amd64.zip `
+  -OutFile $env:TEMP\kubelogin.zip
+(Get-FileHash $env:TEMP\kubelogin.zip -Algorithm SHA256).Hash
+Expand-Archive $env:TEMP\kubelogin.zip $env:TEMP\kubelogin
+Copy-Item $env:TEMP\kubelogin\kubelogin.exe C:\Users\C\bin\kubelogin.exe
+</code></pre>
+<p>The kubeconfig is the stock cluster entry plus an <code>exec</code> block:</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Config
+clusters:
+  - name: k3s-lab
+    cluster:
+      server: https://10.10.10.11:6443
+      certificate-authority-data: &lt;same value as k3s-lab.yaml&gt;
+users:
+  - name: oidc
+    user:
+      exec:
+        apiVersion: client.authentication.k8s.io/v1
+        command: C:\Users\C\bin\kubelogin.exe
+        args:
+          - get-token
+          - --oidc-issuer-url=https://keycloak.10.10.10.11.nip.io/realms/lab
+          - --oidc-client-id=kubernetes
+          - --certificate-authority=C:\Users\C\.kube\lab-ca.crt
+          - --grant-type=authcode
+          - --oidc-pkce-method=S256
+          - --skip-open-browser
+        interactiveMode: IfAvailable
+contexts:
+  - name: k3s-lab-oidc
+    context:
+      cluster: k3s-lab
+      user: oidc
+current-context: k3s-lab-oidc
+</code></pre>
+<p><code>--skip-open-browser</code> prints <code>http://localhost:8000/</code> instead of opening a browser. The lab used that so the login page could be driven in BrowserOS. On a normal desktop, drop the flag and kubelogin opens the browser itself.</p>
+<p>The token cache is on disk under <code>~/.kube/cache/oidc-login</code>. The cache key includes the plugin arguments, not just the issuer and client. Changing <code>--grant-type</code> or <code>--oidc-pkce-method</code> forces a second login even for the same user. That is expected; it is not a broken cache.</p>
+<h2>Step 4: Map groups to RBAC</h2>
+<p>Two bindings make the point. <code>platform-admins</code> gets cluster-admin in this lab. <code>developers</code> gets <code>edit</code> only in <code>guestbook</code>.</p>
+<pre><code class="language-yaml">apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-platform-admins
+subjects:
+  - kind: Group
+    name: oidc:platform-admins
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: oidc-developers-edit
+  namespace: guestbook
+subjects:
+  - kind: Group
+    name: oidc:developers
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: edit
+  apiGroup: rbac.authorization.k8s.io
+</code></pre>
+<p><code>edit</code> is a ClusterRole. A RoleBinding may reference a ClusterRole, but the <code>roleRef.kind</code> must say <code>ClusterRole</code>. Pointing it at a namespaced Role named <code>edit</code> fails with <code>role.rbac.authorization.k8s.io &quot;edit&quot; not found</code>.</p>
+<p>Check the policy before involving a browser at all, by impersonating the identities:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i create pods -n guestbook `
+  --as=oidc:alice --as-group=oidc:platform-admins
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i create pods -n guestbook `
+  --as=oidc:bob --as-group=oidc:developers
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i delete nodes `
+  --as=oidc:bob --as-group=oidc:developers
+</code></pre>
+<pre><code class="language-text">yes
+yes
+no
+</code></pre>
+<p>Impersonation proves the RBAC graph. It does not prove that Keycloak issues those groups. The next step does.</p>
+<h2>Step 5: Log in as a real user</h2>
+<p>The first attempt used the device-code grant and failed twice, in a useful order:</p>
+<pre><code class="language-text">unauthorized_client (Client is not allowed to initiate OAuth 2.0 Device Authorization Grant)
+</code></pre>
+<p>after enabling the grant on the client:</p>
+<pre><code class="language-text">invalid_request (Missing parameter: code_challenge_method)
+</code></pre>
+<p>Keycloak enforces PKCE on this client, and kubelogin&#39;s device-code request does not carry a PKCE challenge. The working path is the authorization-code flow with PKCE, which is also the better choice for a desktop user. <code>kubectl</code> prints a local URL, the browser completes the login, and the callback lands on <code>localhost:8000</code>.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/04-keycloak-kubernetes-session.png" alt="The active Keycloak session shows bob using the kubernetes client"></p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth whoami
+</code></pre>
+<pre><code class="language-text">Username   oidc:bob
+Groups     [oidc:developers system:authenticated]
+</code></pre>
+<p>That is the whole point. The audit identity is the human, not a shared admin and not a ServiceAccount. Now the same token goes through RBAC:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n guestbook get pods
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n guestbook auth can-i create deployments
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml -n kube-system auth can-i get secrets
+</code></pre>
+<pre><code class="language-text">NAME                            READY   STATUS    RESTARTS   AGE
+guestbook-ui-5d6468fd55-pmpjm   1/1     Running   0          12h
+
+yes
+no
+no
+</code></pre>
+<p>A real request to the forbidden resource produces the useful error:</p>
+<pre><code class="language-text">Error from server (Forbidden): nodes is forbidden: User &quot;oidc:bob&quot; cannot list
+resource &quot;nodes&quot; in API group &quot;&quot; at the cluster scope
+</code></pre>
+<h2>Step 6: Try to spoof <code>system:masters</code></h2>
+<p>A group mapper without a prefix is a privilege-escalation bug waiting for someone to create a group with the right name. To prove the prefix works, add <code>bob</code> to a Keycloak group literally named <code>system:masters</code>.</p>
+<p><img src="../image/blog/Kubernetes-API-Keycloak-SSO/03-keycloak-bob-groups.png" alt="bob is a member of developers and system:masters in Keycloak"></p>
+<p>After a fresh login (the token cache still holds the old groups, so clear it or use a new cache directory), the token contains the group, but the API server prefixes it:</p>
+<pre><code class="language-text">Username   oidc:bob
+Groups     [oidc:developers oidc:system:masters system:authenticated]
+</code></pre>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i delete nodes
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab-oidc.yaml auth can-i &#39;*&#39; &#39;*&#39;
+</code></pre>
+<pre><code class="language-text">no
+no
+</code></pre>
+<p>The counterfactual makes the boundary obvious. If the group arrived unprefixed, the same user would be cluster-admin:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml auth can-i delete nodes `
+  --as=oidc:bob --as-group=system:masters
+</code></pre>
+<pre><code class="language-text">yes
+</code></pre>
+<p>This is why <code>--oidc-groups-prefix=oidc:</code> is mandatory, not cosmetic.</p>
+<h2>Can Keycloak create a ServiceAccount per user?</h2>
+<p>No, and the token claims show why the two identities cannot be substituted for each other. Mint a normal ServiceAccount token and decode its payload:</p>
+<pre><code class="language-powershell">$jwt = kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n guestbook `
+  create token default --duration=10m
+</code></pre>
+<pre><code class="language-text">sa_iss=https://kubernetes.default.svc.cluster.local
+sa_sub=system:serviceaccount:guestbook:default
+sa_aud=https://kubernetes.default.svc.cluster.local k3s
+</code></pre>
+<p>Compare that with the Keycloak identity: the issuer is the <code>lab</code> realm URL, the subject is <code>bob</code>, and the groups come from the realm. The ServiceAccount token is signed by the API server&#39;s service-account key; the Keycloak token is signed by Keycloak. Neither side can mint the other&#39;s token. Keycloak also has no Kubernetes API client, so it cannot create the <code>ServiceAccount</code> object in the first place.</p>
+<p>If you still want one ServiceAccount per human, you have to build and operate a sync controller:</p>
+<ol>
+<li>Read users (or a group) from the Keycloak Admin API.</li>
+<li>Create a <code>ServiceAccount</code> and a <code>RoleBinding</code> per user.</li>
+<li>Mint tokens through the TokenRequest API, because Kubernetes 1.24+ no longer auto-creates permanent token Secrets.</li>
+<li>Rotate or reissue those tokens before they expire, and delete the ServiceAccount to revoke access.</li>
+<li>Accept that audit logs now say <code>system:serviceaccount:...</code> instead of the human, and that a token copied to a laptop bypasses the Keycloak login and MFA.</li>
+</ol>
+<p>That is a lot of custom control-plane code to reach a worse place than OIDC. ServiceAccounts are for workloads. Humans already have a first-class RBAC subject: <code>User</code> and <code>Group</code>.</p>
+<p>If the real requirement is short-lived per-user credentials for non-kubectl clients, look at Pinniped or Teleport rather than a home-grown ServiceAccount factory.</p>
+<h2>Traps worth remembering</h2>
+<ul>
+<li><strong>Device flow and PKCE disagree.</strong> Keycloak can enforce PKCE while kubelogin&#39;s device-code request omits <code>code_challenge_method</code>. Use the authorization-code flow, or do not enable the device grant.</li>
+<li><strong>Full group path.</strong> <code>/developers</code> and <code>developers</code> are different RBAC subjects. Turn the path off in the mapper.</li>
+<li><strong>Access-token audience.</strong> Keycloak defaults to <code>account</code>. Add the audience mapper, or rely on the ID token.</li>
+<li><strong>Group prefix.</strong> Without <code>oidc:</code>, a Keycloak group can collide with <code>system:masters</code>.</li>
+<li><strong>Immutable <code>roleRef</code>.</strong> A RoleBinding&#39;s <code>roleRef</code> cannot be edited in place. Delete and recreate it.</li>
+<li><strong>Multi-document YAML.</strong> Two manifests concatenated without <code>---</code> are not two manifests. <code>kubectl apply</code> will not do what you expect.</li>
+<li><strong>Issuer reachability and trust.</strong> The API server fetches discovery over HTTPS using its own CA bundle. Test with <code>curl --cacert</code> from the server before restarting k3s.</li>
+<li><strong>One server means one restart.</strong> A control-plane restart is an API outage. Keep the break-glass kubeconfig.</li>
+</ul>
+<h2>Security boundaries and production gaps</h2>
+<p>This is a lab, and the shortcuts are visible:</p>
+<ul>
+<li><code>platform-admins</code> is bound to <code>cluster-admin</code>. In production, bind a scoped ClusterRole and keep cluster-admin for a break-glass group.</li>
+<li>Keycloak runs as a single pod with a single Postgres pod. Production needs HA, backups, and a tested restore.</li>
+<li>The lab CA is private and the ingress certificate is not publicly trusted. Production uses a real CA and rotates it before <code>oidc-ca-file</code> expires.</li>
+<li>JWTs are stateless. Disabling a user in Keycloak stops new logins; an already-issued token remains valid until <code>exp</code> (five minutes by default in Keycloak, but check your realm settings). Short token lifetimes are the revocation mechanism.</li>
+<li>The client-certificate kubeconfig still exists. Protect it like a root credential, and do not ship it to users.</li>
+<li>Enable API server audit logging and ship it somewhere durable. The value of OIDC is that the audit entry says <code>oidc:bob</code>, which only helps if you keep the log.</li>
+<li>Enforce MFA in Keycloak for the groups that can reach the cluster. OIDC alone does not require a second factor.</li>
+</ul>
+<h2>Cleanup</h2>
+<p>Remove the lab bindings and the test group membership first, then the client and the API server configuration:</p>
+<pre><code class="language-powershell">kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml delete clusterrolebinding oidc-platform-admins
+kubectl --kubeconfig C:\Users\C\.kube\k3s-lab.yaml -n guestbook delete rolebinding oidc-developers-edit
+</code></pre>
+<p>Remove <code>bob</code> from the <code>system:masters</code> group in Keycloak, delete the <code>kubernetes</code> client, and remove the <code>kube-apiserver-arg</code> block from <code>/etc/rancher/k3s/config.yaml</code>. Restart k3s, confirm <code>/readyz</code>, and delete the local OIDC kubeconfigs and <code>~/.kube/cache/oidc-login</code>.</p>
+<h2>References</h2>
+<ul>
+<li>Kubernetes, <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating with OIDC</a></li>
+<li>Kubernetes, <a href="https://kubernetes.io/docs/concepts/security/service-accounts/">Service Accounts</a></li>
+<li>k3s, <a href="https://docs.k3s.io/cli/server">Server configuration</a></li>
+<li>int128, <a href="https://github.com/int128/kubelogin">kubelogin</a></li>
+<li>Keycloak, <a href="https://www.keycloak.org/docs/latest/server_admin/">Server Administration Guide</a></li>
+</ul>
+
+                </div>
+            </div>
+
+            <footer class="post-footer">
+                <div class="share-links">
+                    <span class="share-label">Share this post:</span>
+                    <a href="https://twitter.com/intent/tweet?text=Kubernetes%20API%20SSO%20with%20Keycloak%3A%20Per-User%20RBAC%20Without%20Per-User%20ServiceAccounts&url=https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Twitter">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"/></svg>
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on Facebook">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                    </a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://champ.patyatawee.com/blog/Kubernetes-API-Keycloak-SSO" target="_blank" rel="noopener noreferrer" class="share-link" title="Share on LinkedIn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    </a>
+                </div>
+            </footer>
+        </article>
+    </main>
+
+    <section class="cta-section blog-cta">
+        <div class="cta-content blog-cta-content">
+            <h2 id="cta-title">Build the Right System for Your Business</h2>
+            <p id="cta-subtitle">Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.</p>
+            <button class="btn btn-primary" id="cta-hire-btn">Free Consultation</button>
+        </div>
+    </section>
+
+    <section class="article-services services" id="article-services">
+            <h1 data-svc-i18n="services_title">Services</h1>
+            <div class="services-container">
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="graduation-cap" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_coach_name">AI Coaching</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_coach_tagline">Learn to build apps with AI</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_coach_price">THB 1,000 / hr</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f1">Build a web app with AI, step by step</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f2">Build a mobile app with AI</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f3">AI prompt techniques that write better code</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f4">From idea to a working app</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_coach_f5">Great for beginners &amp; business owners</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card pricing-card-popular">
+                    <span class="pricing-card-badge" data-svc-i18n="plan_badge">Most Popular</span>
+                    <div class="pricing-card-header">
+                        <i data-lucide="code-2" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_dev_name">Web &amp; Mobile App Development</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_dev_tagline">Billed by actual development time</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_dev_price">From THB 5,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f1">Web app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f2">Mobile app development</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f3">API &amp; database integration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f4">Cloud deployment &amp; CI/CD</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f6">App Store / Play Store publishing</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_dev_f5">Custom features for your business</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+                <div class="pricing-card">
+                    <div class="pricing-card-header">
+                        <i data-lucide="cloud-cog" class="service-icon"></i>
+                        <h3 data-svc-i18n="plan_cloud_name">Cloud / DevOps / SRE Consulting &amp; Delivery</h3>
+                        <p class="pricing-card-tagline" data-svc-i18n="plan_cloud_tagline">For mid-to-large scale systems</p>
+                    </div>
+                    <div class="pricing-card-price" data-svc-i18n="plan_cloud_price">From THB 10,000</div>
+                    <ul class="pricing-card-features">
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f1">Cloud architecture design &amp; review</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f2">Kubernetes &amp; container orchestration</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f3">CI/CD pipelines &amp; GitOps</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f4">Monitoring, alerting &amp; incident response</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f5">Security, backup &amp; disaster recovery</span></li>
+                        <li><i data-lucide="check" class="pricing-check"></i><span data-svc-i18n="plan_cloud_f6">Cloud cost optimization</span></li>
+                    </ul>
+                    <button class="btn btn-primary pricing-card-cta" data-svc-i18n="plan_cta">Start</button>
+                </div>
+            </div>
+        </section>
+
+    <footer class="blog-footer">
+        <div class="footer-content">
+            <div class="footer-info">
+                <h3>Champ Patyatawee</h3>
+                <p>Software engineer specializing in Cloud Architecture and Applications.</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-nav">
+                    <h4>Navigation</h4>
+                    <ul>
+                        <li><a href="../index.html#about">About</a></li>
+                        <li><a href="../index.html#services">Services</a></li>
+                        <li><a href="../index.html#customers">Customers</a></li>
+                        <li><a href="index.html">Blog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-connect">
+                    <h4>Connect</h4>
+                    <div class="social-links">
+                        <a href="https://www.linkedin.com/in/ChampPatyatawee/" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/champ-patyatawee" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                            GitHub
+                        </a>
+                        <a href="https://www.youtube.com/@ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>
+                            YouTube
+                        </a>
+                        <a href="https://www.facebook.com/ChampPatyataweeOfficial" target="_blank" rel="noopener noreferrer">
+                            <svg class="footer-social-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+                            Facebook
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 Champ Patyatawee. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <button id="back-to-top" class="back-to-top" aria-label="Back to top">
+        <i data-lucide="arrow-up"></i>
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        // ============================================
+        // Mermaid diagram rendering
+        // ============================================
+        function renderMermaidDiagrams() {
+            if (typeof mermaid === 'undefined') return;
+            var diagrams = document.querySelectorAll('.lang-content.active pre.mermaid');
+            if (diagrams.length === 0) return;
+            mermaid.initialize({ startOnLoad: false });
+            diagrams.forEach(function (el) {
+                if (el.dataset.processed === 'true') return;
+                try {
+                    mermaid.run({ nodes: [el] });
+                } catch (e) {
+                    console.error('Mermaid render failed:', e);
+                }
+            });
+        }
+
+        // ============================================
+        // Language tab switcher
+        // ============================================
+        (function() {
+            const tabs = document.querySelectorAll('.lang-tab');
+            const contents = {
+                en: document.getElementById('content-en'),
+                th: document.getElementById('content-th'),
+            };
+            const hasBoth = document.getElementById('lang-tabs').dataset.hasBoth === 'true';
+            const hasEn = document.getElementById('lang-tabs').dataset.hasEn === 'true';
+            const hasTh = document.getElementById('lang-tabs').dataset.hasTh === 'true';
+            const htmlEl = document.documentElement;
+            const postTitle = document.getElementById('post-title');
+            const postDate = document.getElementById('post-date');
+            const postReadingTime = document.getElementById('post-reading-time');
+            const postTags = document.getElementById('post-tags');
+            const ctaTitle = document.getElementById('cta-title');
+            const ctaSubtitle = document.getElementById('cta-subtitle');
+            const ctaBtn = document.getElementById('cta-hire-btn');
+            const navHireBtn = document.getElementById('hire-me-btn');
+            const navHireMobileBtn = document.getElementById('hire-me-mobile-btn');
+
+            const ctaText = {
+                en: {
+                    title: 'Build the Right System for Your Business',
+                    subtitle: "Have an idea, starting a new project, or facing system issues? Let's talk and find the right approach for your business together.",
+                    btn: 'Free Consultation',
+                },
+                th: {
+                    title: 'สร้างระบบที่ใช่สำหรับธุรกิจคุณ',
+                    subtitle: 'มีไอเดีย กำลังเริ่มโปรเจกต์ หรือกำลังเจอปัญหาด้านระบบ? ทักมาคุยกันได้ มาหาแนวทางที่เหมาะกับธุรกิจของคุณไปด้วยกัน',
+                    btn: 'ปรึกษาฟรี',
+                },
+            };
+
+            const svcText = {
+                en: {
+                    services_title: 'Services',
+                    plan_coach_name: 'AI Coaching',
+                    plan_coach_tagline: 'Learn to build apps with AI',
+                    plan_coach_price: 'THB 1,000 / hr',
+                    plan_coach_f1: 'Build a web app with AI, step by step',
+                    plan_coach_f2: 'Build a mobile app with AI',
+                    plan_coach_f3: 'AI prompt techniques that write better code',
+                    plan_coach_f4: 'From idea to a working app',
+                    plan_coach_f5: 'Great for beginners & business owners',
+                    plan_dev_name: 'Web & Mobile App Development',
+                    plan_dev_tagline: 'Billed by actual development time',
+                    plan_badge: 'Most Popular',
+                    plan_dev_price: 'From THB 5,000',
+                    plan_dev_f1: 'Web app development',
+                    plan_dev_f2: 'Mobile app development',
+                    plan_dev_f3: 'API & database integration',
+                    plan_dev_f4: 'Cloud deployment & CI/CD',
+                    plan_dev_f6: 'App Store / Play Store publishing',
+                    plan_dev_f5: 'Custom features for your business',
+                    plan_cloud_name: 'Cloud / DevOps / SRE Consulting & Delivery',
+                    plan_cloud_tagline: 'For mid-to-large scale systems',
+                    plan_cloud_price: 'From THB 10,000',
+                    plan_cloud_f1: 'Cloud architecture design & review',
+                    plan_cloud_f2: 'Kubernetes & container orchestration',
+                    plan_cloud_f3: 'CI/CD pipelines & GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting & incident response',
+                    plan_cloud_f5: 'Security, backup & disaster recovery',
+                    plan_cloud_f6: 'Cloud cost optimization',
+                    plan_cta: 'Start',
+                },
+                th: {
+                    services_title: 'บริการ',
+                    plan_coach_name: 'รับสอนสร้าง Web App, Mobile App ด้วย AI',
+                    plan_coach_tagline: 'สอนสร้างแอปด้วย AI แบบตัวต่อตัว',
+                    plan_coach_price: 'THB 1,000 / ชม.',
+                    plan_coach_f1: 'สอนสร้าง Web App ด้วย AI ทีละขั้นตอน',
+                    plan_coach_f2: 'สอนสร้าง Mobile App ด้วย AI',
+                    plan_coach_f3: 'เทคนิค Prompt ให้ AI เขียนโคดดีขึ้น',
+                    plan_coach_f4: 'จากไอเดีย → แอปใช้งานจริง',
+                    plan_coach_f5: 'เหมาะสำหรับมือใหม่และเจ้าของธุรกิจ',
+                    plan_dev_name: 'รับพัฒนา Web App & Mobile App',
+                    plan_dev_tagline: 'คิดตามระยะเวลาที่พัฒนาจริง',
+                    plan_badge: 'ยอดนิยม',
+                    plan_dev_price: 'เริ่มต้น THB 5,000',
+                    plan_dev_f1: 'พัฒนา Web App',
+                    plan_dev_f2: 'พัฒนา Mobile App',
+                    plan_dev_f3: 'เชื่อม API และ Database',
+                    plan_dev_f4: 'Deploy ขึ้นคลาวด์และ CI/CD',
+                    plan_dev_f6: 'เอาขึ้น App Store / Play Store',
+                    plan_dev_f5: 'ฟีเจอร์ตามความต้องการธุรกิจคุณ',
+                    plan_cloud_name: 'ให้คำปรึกษาและรับทำ Cloud / DevOps / SRE',
+                    plan_cloud_tagline: 'สำหรับระบบขนาดกลางถึงขนาดใหญ่',
+                    plan_cloud_price: 'เริ่มต้น THB 10,000',
+                    plan_cloud_f1: 'ออกแบบและรีวิวสถาปัตยกรรมคลาวด์',
+                    plan_cloud_f2: 'Kubernetes และจัดการ container',
+                    plan_cloud_f3: 'CI/CD pipelines และ GitOps',
+                    plan_cloud_f4: 'Monitoring, alerting และรับมือเหตุการณ์',
+                    plan_cloud_f5: 'ความปลอดภัย, backup และกู้คืนระบบ',
+                    plan_cloud_f6: 'ลดต้นทุนคลาวด์',
+                    plan_cta: 'เริ่มเลย',
+                },
+            };
+            function applySvcI18n(lang) {
+                if (!svcText[lang]) return;
+                document.querySelectorAll('[data-svc-i18n]').forEach(function(el){
+                    var k = el.getAttribute('data-svc-i18n');
+                    if (svcText[lang][k] !== undefined) el.textContent = svcText[lang][k];
+                });
+            }
+
+            // Store per-language data from server-rendered content
+            // Values use JSON.stringify() in the build script, so no quotes needed here
+            const langData = {
+                en: {
+                    title: "Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts",
+                    date: "November 12, 2026",
+                    readingTime: "13 min read",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
+                },
+                th: {
+                    title: "Kubernetes API SSO with Keycloak: Per-User RBAC Without Per-User ServiceAccounts",
+                    date: "November 12, 2026",
+                    readingTime: "13 นาที",
+                    tags: "<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">rbac</span>\n<span class=\"tag\">k3s</span>",
+                },
+            };
+
+            function switchLang(lang) {
+                if (lang !== 'en' && lang !== 'th') return;
+
+                // Update tab button styles
+                tabs.forEach(function(tab) {
+                    if (tab.dataset.lang === lang) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Show/hide content
+                Object.keys(contents).forEach(function(key) {
+                    if (contents[key]) {
+                        if (key === lang) {
+                            contents[key].classList.add('active');
+                        } else {
+                            contents[key].classList.remove('active');
+                        }
+                    }
+                });
+
+                // Update <html lang>
+                htmlEl.setAttribute('lang', lang);
+
+                // Update CTA section text (same as homepage hire_me)
+                if (ctaText[lang]) {
+                    if (ctaTitle) ctaTitle.textContent = ctaText[lang].title;
+                    if (ctaSubtitle) ctaSubtitle.textContent = ctaText[lang].subtitle;
+                    if (ctaBtn) ctaBtn.textContent = ctaText[lang].btn;
+                    if (navHireBtn) navHireBtn.textContent = ctaText[lang].btn;
+                    if (navHireMobileBtn) navHireMobileBtn.textContent = ctaText[lang].btn;
+                }
+                applySvcI18n(lang);
+
+                // Update header metadata
+                if (langData[lang]) {
+                    if (postTitle) postTitle.textContent = langData[lang].title;
+                    if (postDate) postDate.textContent = langData[lang].date;
+                    if (postReadingTime) postReadingTime.textContent = langData[lang].readingTime;
+                    if (postTags) postTags.innerHTML = langData[lang].tags;
+                }
+
+                // Update URL hash
+                history.replaceState(null, '', '#' + lang);
+
+                // Re-create Lucide icons in the newly visible content
+                lucide.createIcons();
+
+                // Render Mermaid diagrams in the now-visible content
+                renderMermaidDiagrams();
+            }
+
+            // Attach click handlers
+            tabs.forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    switchLang(tab.dataset.lang);
+                });
+            });
+
+            // Hide the tab for a missing language
+            if (!hasBoth) {
+                tabs.forEach(function(tab) {
+                    if ((tab.dataset.lang === 'en' && !hasEn) || (tab.dataset.lang === 'th' && !hasTh)) {
+                        tab.style.display = 'none';
+                    }
+                });
+            }
+
+            // Check URL hash on load
+            var hash = window.location.hash.replace('#', '');
+            if (hash === 'th' || hash === 'en') {
+                // If hash requests a missing language, fallback to available one
+                if ((hash === 'en' && !hasEn) || (hash === 'th' && !hasTh)) {
+                    if (hasTh) switchLang('th');
+                    else if (hasEn) switchLang('en');
+                } else {
+                    switchLang(hash);
+                }
+            } else if (!hasBoth) {
+                // No hash and only one language available — default to it
+                if (hasTh) switchLang('th');
+                else if (hasEn) switchLang('en');
+            }
+        })();
+
+        // ============================================
+        // Mobile menu toggle
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+            const mobileMenu = document.querySelector('.mobile-menu');
+
+            mobileMenuBtn.addEventListener('click', function () {
+                mobileMenu.classList.toggle('active');
+            });
+
+            const mobileLinks = document.querySelectorAll('.mobile-menu a');
+            mobileLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    mobileMenu.classList.remove('active');
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!mobileMenu.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
+                    mobileMenu.classList.remove('active');
+                }
+            });
+
+            // Modal functionality
+            const modal = document.getElementById('contact-modal');
+            const hireMeBtn = document.getElementById('hire-me-btn');
+            const hireMeMobileBtn = document.getElementById('hire-me-mobile-btn');
+            const modalCloseBtn = document.querySelector('.modal-close');
+
+            hireMeBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            hireMeMobileBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                mobileMenu.classList.remove('active');
+                document.body.style.overflow = 'hidden';
+            });
+
+            const ctaHireBtn = document.getElementById('cta-hire-btn');
+            if (ctaHireBtn) ctaHireBtn.addEventListener('click', function() {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            });
+            document.querySelectorAll('.pricing-card-cta').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+
+            modalCloseBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Back to top button
+            const backToTop = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 500) {
+                    backToTop.classList.add('visible');
+                } else {
+                    backToTop.classList.remove('visible');
+                }
+            });
+
+            backToTop.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            // Image fade-in
+            document.querySelectorAll('img').forEach(img => {
+                if (img.complete) {
+                    img.classList.add('loaded');
+                } else {
+                    img.addEventListener('load', function() {
+                        this.classList.add('loaded');
+                    });
+                }
+            });
+
+            // Render Mermaid diagrams on initial load
+            renderMermaidDiagrams();
+        });
+    </script>
+</body>
+</html>
