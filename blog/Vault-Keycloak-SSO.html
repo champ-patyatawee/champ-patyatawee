@@ -114,7 +114,7 @@
                 <h1 class="post-title" id="post-title">Vault SSO with Keycloak: OIDC Login and Group-Based Access</h1>
                 <div class="post-meta">
                     <span class="post-date"><i data-lucide="calendar" class="meta-icon"></i> <span id="post-date">November 12, 2026</span></span>
-                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">10 min read</span></span>
+                    <span class="post-reading-time"><i data-lucide="clock" class="meta-icon"></i> <span id="post-reading-time">9 min read</span></span>
                 </div>
                 <div class="post-tags" id="post-tags">
                     <span class="tag">vault</span>
@@ -354,11 +354,6 @@ vault write identity/group-alias name=&quot;developers&quot; `
 <pre><code class="language-json">{&quot;errors&quot;:[&quot;1 error occurred:\n\t* permission denied\n\n&quot;]}
 </code></pre>
 <p>A 403 from the API is proof. A hidden menu item is not.</p>
-<h2>The failures that cost time</h2>
-<p><strong>Vault&#39;s UI runs OIDC in a popup.</strong> Navigating the same tab to the callback URL produces <code>Cannot read properties of null (reading &#39;postMessage&#39;)</code>, because the callback page posts the token back to <code>window.opener</code>. If you are automating the flow, drive the popup, not the tab.</p>
-<p><strong>A stale SPA route can look like a permission bug.</strong> After logging in as the developer in a tab that previously held the admin session, the production page still rendered its path metadata. The API returned 403 the whole time. Always confirm authorization with a request, not with a page that may be showing cached shell state.</p>
-<p><strong>One Vault page wedged the browser renderer.</strong> The Access → Auth Methods welcome page hung <code>Page.captureScreenshot</code> for every page in that tab until it was closed. Reopening a fresh tab restored screenshots. Worth knowing before concluding the UI is broken.</p>
-<p><strong>Traefik kept logging a missing secret.</strong> Argo CD&#39;s ingress declared <code>argocd-server-tls</code> while the chart did not create it, so the route fell back to the default certificate and Traefik logged an error on every reconcile. Creating the secret from the lab CA fixed both the warning and the certificate consistency.</p>
 <h2>What this lab proves and what it does not</h2>
 <p>Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.</p>
 <p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every login, which is the cost of centralising identity. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
@@ -646,11 +641,6 @@ vault write identity/group-alias name=&quot;developers&quot; `
 <pre><code class="language-json">{&quot;errors&quot;:[&quot;1 error occurred:\n\t* permission denied\n\n&quot;]}
 </code></pre>
 <p>A 403 from the API is proof. A hidden menu item is not.</p>
-<h2>The failures that cost time</h2>
-<p><strong>Vault&#39;s UI runs OIDC in a popup.</strong> Navigating the same tab to the callback URL produces <code>Cannot read properties of null (reading &#39;postMessage&#39;)</code>, because the callback page posts the token back to <code>window.opener</code>. If you are automating the flow, drive the popup, not the tab.</p>
-<p><strong>A stale SPA route can look like a permission bug.</strong> After logging in as the developer in a tab that previously held the admin session, the production page still rendered its path metadata. The API returned 403 the whole time. Always confirm authorization with a request, not with a page that may be showing cached shell state.</p>
-<p><strong>One Vault page wedged the browser renderer.</strong> The Access → Auth Methods welcome page hung <code>Page.captureScreenshot</code> for every page in that tab until it was closed. Reopening a fresh tab restored screenshots. Worth knowing before concluding the UI is broken.</p>
-<p><strong>Traefik kept logging a missing secret.</strong> Argo CD&#39;s ingress declared <code>argocd-server-tls</code> while the chart did not create it, so the route fell back to the default certificate and Traefik logged an error on every reconcile. Creating the secret from the lab CA fixed both the warning and the certificate consistency.</p>
 <h2>What this lab proves and what it does not</h2>
 <p>Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.</p>
 <p>Not proved: availability. One Vault pod with Raft on a single Longhorn volume means an unseal after every restart and a full outage if that volume is lost. Keycloak being down also blocks every login, which is the cost of centralising identity. There is no audit device enabled, which in a real deployment would be the first thing to add, because &quot;who read <code>secret/prod/db</code>&quot; is the question Vault exists to answer.</p>
@@ -985,13 +975,13 @@ kubectl delete namespace vault --ignore-not-found
                 en: {
                     title: "Vault SSO with Keycloak: OIDC Login and Group-Based Access",
                     date: "November 12, 2026",
-                    readingTime: "10 min read",
+                    readingTime: "9 min read",
                     tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
                 th: {
                     title: "Vault SSO with Keycloak: OIDC Login and Group-Based Access",
                     date: "November 12, 2026",
-                    readingTime: "10 นาที",
+                    readingTime: "9 นาที",
                     tags: "<span class=\"tag\">vault</span>\n<span class=\"tag\">keycloak</span>\n<span class=\"tag\">sso</span>\n<span class=\"tag\">oidc</span>\n<span class=\"tag\">kubernetes</span>\n<span class=\"tag\">k3s</span>\n<span class=\"tag\">security</span>",
                 },
             };

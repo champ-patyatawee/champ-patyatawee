@@ -277,16 +277,6 @@ curl.exe -k -H "X-Vault-Token: $BOB_TOKEN" https://vault.10.10.10.11.nip.io/v1/s
 
 A 403 from the API is proof. A hidden menu item is not.
 
-## The failures that cost time
-
-**Vault's UI runs OIDC in a popup.** Navigating the same tab to the callback URL produces `Cannot read properties of null (reading 'postMessage')`, because the callback page posts the token back to `window.opener`. If you are automating the flow, drive the popup, not the tab.
-
-**A stale SPA route can look like a permission bug.** After logging in as the developer in a tab that previously held the admin session, the production page still rendered its path metadata. The API returned 403 the whole time. Always confirm authorization with a request, not with a page that may be showing cached shell state.
-
-**One Vault page wedged the browser renderer.** The Access → Auth Methods welcome page hung `Page.captureScreenshot` for every page in that tab until it was closed. Reopening a fresh tab restored screenshots. Worth knowing before concluding the UI is broken.
-
-**Traefik kept logging a missing secret.** Argo CD's ingress declared `argocd-server-tls` while the chart did not create it, so the route fell back to the default certificate and Traefik logged an error on every reconcile. Creating the secret from the lab CA fixed both the warning and the certificate consistency.
-
 ## What this lab proves and what it does not
 
 Proved: OIDC login through a private CA, group claims arriving in Vault as external identities, a group-to-policy mapping that survives re-login, and a 403 from the API when a developer reaches for production data.
